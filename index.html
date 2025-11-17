@@ -1590,6 +1590,40 @@
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./sw.js").catch(() => {});
     }
+       /* ---------- SIMPLE NAV CONTROLLER (ensures nav buttons work) ---------- */
+   window.addEventListener("load", () => {
+     const pages = Array.from(document.querySelectorAll(".page"));
+     const navButtons = Array.from(document.querySelectorAll(".app-nav button"));
+
+     function navShowPage(pageId) {
+       // show / hide pages
+       pages.forEach(p => {
+         if (!p) return;
+         p.classList.toggle("hidden", p.id !== pageId);
+       });
+
+       // highlight active nav button
+       navButtons.forEach(btn => {
+         if (!btn) return;
+         const controls = btn.getAttribute("aria-controls");
+         btn.setAttribute("aria-selected", controls === pageId ? "true" : "false");
+       });
+     }
+
+     // expose globally so inline onclick="showPage('page-xyz')" also works
+     window.showPage = navShowPage;
+
+     // attach click handlers for all nav buttons
+     navButtons.forEach(btn => {
+       btn.addEventListener("click", () => {
+         const target = btn.getAttribute("aria-controls");
+         if (target) navShowPage(target);
+       });
+     });
+
+     // default page on load
+     navShowPage("page-inventory");
+   });
   </script>
 </body>
 </html>
