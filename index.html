@@ -962,161 +962,152 @@
     // ---------- SHOPPING LIST ----------
 
     function generateShoppingList() {
-      const required = {};
+  const required = {};
 
-      mealPlan.forEach((entry) => {
-        if (!entry.recipeId) return;
-        const plannedServings = parseFloat(entry.servings || "0");
-        if (plannedServings <= 0) return;
+  // Work out how much is needed for all planned meals
+  mealPlan.forEach((entry) => {
+    if (!entry.recipeId) return;
+    const plannedServings = parseFloat(entry.servings || "0");
+    if (plannedServings <= 0) return;
 
-        const recipe = recipes.find((r) => r.id === entry.recipeId);
-        if (!recipe) return;
+    const recipe = recipes.find((r) => r.id === entry.recipeId);
+    if (!recipe) return;
 
-        const scale = plannedServings / recipe.servings;
+    const scale = plannedServings / recipe.servings;
 
-        recipe.ingredients.forEach((ing) => {
-          const key = ing.name.toLowerCase();
-          const ingUnit = ing.unit || "";
-          const baseUnit = required[key]
-            ? required[key].baseUnit
-            : chooseBaseUnit(ingUnit);
+    recipe.ingredients.forEach((ing) => {
+      const key = ing.name.toLowerCase();
+      const ingUnit = ing.unit || "";
+      const baseUnit = required[key]
+        ? required[key].baseUnit
+        : chooseBaseUnit(ingUnit); // g/kg -> g, ml/l -> ml, else itself
 
-          if (!required[key]) {
-            required[key] = {
-              name: ing.name,
-              quantityBase: 0,
-              baseUnit,
-            };
-          }
+      if (!required[key]) {
+        required[key] = {
+          name: ing.name,
+          quantityBase: 0,
+          baseUnit,
+        };
+      }
 
-          const qtyScaled = ing.quantity * scale;
-          const qtyInBase = convertToUnit(
-            qtyScaled,
-            ingUnit,
-            required[key].baseUnit
-          );
-          required[key].quantityBase += qtyInBase;
-        });
-      });
+      const qtyScaled = ing.quantity * scale;
+      const qtyInBase = convertToUnit(qtyScaled, ingUnit, required[key].baseUnit);
+      required[key].quantityBase += qtyInBase;
+    });
+  });
 
-      const tbody = document.querySelector("#shopping-table tbody");
-      if (!tbody) return;
-      tbody.innerHTML = "";
+  const tbody = document.querySelector("#shopping-table tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
 
-      Object.keys(required).forEach((key) => {
-        const need = required[key];
-        const baseUnit = need.baseUnit;
-        let requiredBase = need.quantityBase;
+  // Helper to make numbers look tidy
+  function formatNumberNice(n) {
+    if (Number.isInteger(n)) return String(n);
+    const oneDp = Math.round(n * 10) / 10;
+    if (Number.isInteger(oneDp * 10)) return oneDp.toString();
+    return (Math.round(n * 100) / 100).toString();
+  }
 
-        let invQtyBase = 0;
-        const invItem = inventory.find(
-          (i) => i.name.toLowerCase() === key
-        );
-        if (invItem && baseUnit) {
-          invQtyBase = convertToUnit(
-            invItem.quantity,
-            invItem.unit || "",
-            baseUnit
-          );
-        } else if (invItem && !baseUnit) {
-          invQtyBase = invItem.quantity;
-        }
+  Object.keys(required).forEach((key) => {
+    const need = required[key];
+    const baseUnit = need.baseUnit;
+    let requiredBase = need.quantityBase;
 
-        let toBuyBase = Math.max(0, requiredBase - invQtyBase);
-        if (toBuyBase <= 1e-9) return;
-
-        let displayUnit = baseUnit;
-        if (
-          baseUnit === "g" &&
-          (requiredBase >= 1000 ||
-            invQtyBase >= 1000 ||
-            toBuyBase >= 1000)
-        ) {
-          displayUnit = "kg";
-        } else if (
-          baseUnit === "ml" &&
-          (requiredBase >= 1000 ||
-            invQtyBase >= 1000 ||
-            toBuyBase >= 1000)
-        ) {
-          displayUnit = "l";
-        }
-
-        let displayQtyNumeric;
-        if (displayUnit) {
-          displayQtyNumeric = convertToUnit(
-            toBuyBase,
-            baseUnit,
-            displayUnit
-          );
-        } else {
-          displayQtyNumeric = toBuyBase;
-        }
-        displayQtyNumeric =
-          Math.round(displayQtyNumeric * 100) / 100;
-
-        const compactUnits = ["g", "kg", "ml", "l"];
-        const isCompact = displayUnit && compactUnits.includes(displayUnit);
-
-        let qtyStr;
-        if (!displayUnit) {
-          qtyStr = displayQtyNumeric.toString();
-        } else if (isCompact) {
-          const nStr = Number.isInteger(displayQtyNumeric)
-            ? String(displayQtyNumeric)
-            : displayQtyNumeric.toFixed(2);
-          qtyStr = nStr + displayUnit;
-        } else {
-          const nStr = Number.isInteger(displayQtyNumeric)
-            ? String(displayQtyNumeric)
-            : displayQtyNumeric.toFixed(2);
-          qtyStr = nStr + " " + displayUnit.toLowerCase();
-        }
-
-        const tr = document.createElement("tr");
-        tr.dataset.itemName = need.name;
-        tr.dataset.buyQty = String(displayQtyNumeric);
-        tr.dataset.buyUnit = displayUnit || "";
-
-        const tdCheck = document.createElement("td");
-        const cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.className = "shopping-bought";
-        tdCheck.appendChild(cb);
-
-        const tdName = document.createElement("td");
-        tdName.textContent = need.name;
-
-        const tdBuy = document.createElement("td");
-        tdBuy.textContent = qtyStr;
-
-        tr.appendChild(tdCheck);
-        tr.appendChild(tdName);
-        tr.appendChild(tdBuy);
-        tbody.appendChild(tr);
-      });
-
-      const checkboxes = tbody.querySelectorAll(".shopping-bought");
-      checkboxes.forEach((cb) => {
-        cb.addEventListener("change", () => {
-          const tr = cb.closest("tr");
-          if (!tr) return;
-          if (!cb.checked || tr.dataset.applied === "true") return;
-
-          const name = tr.dataset.itemName;
-          const qty = parseFloat(tr.dataset.buyQty || "0");
-          const unit = tr.dataset.buyUnit || "";
-          if (!name || !qty || qty <= 0) return;
-
-          upsertInventoryItem(name, qty, unit);
-          tr.dataset.applied = "true";
-
-          renderInventory();
-          renderInventoryNameSuggestions();
-          saveState();
-        });
-      });
+    // Work out what we already have in inventory (in the same base unit)
+    let invQtyBase = 0;
+    const invItem = inventory.find((i) => i.name.toLowerCase() === key);
+    if (invItem && baseUnit) {
+      invQtyBase = convertToUnit(invItem.quantity, invItem.unit || "", baseUnit);
+    } else if (invItem && !baseUnit) {
+      invQtyBase = invItem.quantity;
     }
+
+    let toBuyBase = Math.max(0, requiredBase - invQtyBase);
+    if (toBuyBase <= 1e-9) return; // nothing to buy → skip row
+
+    // Decide how to *display* that quantity
+    let displayQty = toBuyBase;
+    let displayUnit = baseUnit;
+
+    // Rule we want:
+    //  - if < 1000g/ml -> stay in g/ml
+    //  - if >= 1000g/ml -> convert to kg/L
+    if (baseUnit === "g") {
+      if (displayQty >= 1000) {
+        displayQty = displayQty / 1000;
+        displayUnit = "kg";
+      } else {
+        displayUnit = "g";
+      }
+    } else if (baseUnit === "ml") {
+      if (displayQty >= 1000) {
+        displayQty = displayQty / 1000;
+        displayUnit = "l";
+      } else {
+        displayUnit = "ml";
+      }
+    }
+
+    // Build a nice string like "500g" or "1.5kg" or "2 packs"
+    let qtyStr;
+    if (!displayUnit) {
+      qtyStr = formatNumberNice(displayQty);
+    } else {
+      const smallUnits = ["g", "kg", "ml", "l"];
+      const nStr = formatNumberNice(displayQty);
+      if (smallUnits.includes(displayUnit)) {
+        qtyStr = nStr + displayUnit;
+      } else {
+        qtyStr = nStr + " " + displayUnit.toLowerCase();
+      }
+    }
+
+    // Create table row
+    const tr = document.createElement("tr");
+    tr.dataset.itemName = need.name;
+    tr.dataset.buyQty = String(displayQty);
+    tr.dataset.buyUnit = displayUnit || "";
+
+    const tdCheck = document.createElement("td");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "shopping-bought";
+    tdCheck.appendChild(cb);
+
+    const tdName = document.createElement("td");
+    tdName.textContent = need.name;
+
+    const tdBuy = document.createElement("td");
+    tdBuy.textContent = qtyStr;
+
+    tr.appendChild(tdCheck);
+    tr.appendChild(tdName);
+    tr.appendChild(tdBuy);
+    tbody.appendChild(tr);
+  });
+
+  // When you tick items, add them into inventory
+  const checkboxes = tbody.querySelectorAll(".shopping-bought");
+  checkboxes.forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const tr = cb.closest("tr");
+      if (!tr) return;
+      if (!cb.checked || tr.dataset.applied === "true") return;
+
+      const name = tr.dataset.itemName;
+      const qty = parseFloat(tr.dataset.buyQty || "0");
+      const unit = tr.dataset.buyUnit || "";
+      if (!name || !qty || qty <= 0) return;
+
+      upsertInventoryItem(name, qty, unit);
+      tr.dataset.applied = "true";
+
+      renderInventory();
+      renderInventoryNameSuggestions();
+      saveState();
+    });
+  });
+}
 
     // ---------- NAVIGATION ----------
 
