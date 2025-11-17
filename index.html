@@ -32,22 +32,50 @@
   </header>
 
   <!-- HAMBURGER NAV (DROPDOWN) -->
+  <  <!-- HAMBURGER NAV -->
   <nav
     id="app-nav"
     class="app-nav"
     role="tablist"
     aria-label="Pantry navigation"
   >
-    <button id="nav-inventory" role="tab" aria-selected="true" aria-controls="page-inventory">
+    <button
+      id="nav-inventory"
+      role="tab"
+      aria-selected="true"
+      aria-controls="page-inventory"
+      onclick="showPage('page-inventory')"
+    >
       Inventory
     </button>
-    <button id="nav-recipes" role="tab" aria-selected="false" aria-controls="page-recipes">
+
+    <button
+      id="nav-recipes"
+      role="tab"
+      aria-selected="false"
+      aria-controls="page-recipes"
+      onclick="showPage('page-recipes')"
+    >
       Recipes
     </button>
-    <button id="nav-mealplan" role="tab" aria-selected="false" aria-controls="page-mealplan">
+
+    <button
+      id="nav-mealplan"
+      role="tab"
+      aria-selected="false"
+      aria-controls="page-mealplan"
+      onclick="showPage('page-mealplan')"
+    >
       Meal plan
     </button>
-    <button id="nav-shopping" role="tab" aria-selected="false" aria-controls="page-shopping">
+
+    <button
+      id="nav-shopping"
+      role="tab"
+      aria-selected="false"
+      aria-controls="page-shopping"
+      onclick="showPage('page-shopping')"
+    >
       Shopping list
     </button>
   </nav>
