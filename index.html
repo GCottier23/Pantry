@@ -1155,9 +1155,11 @@ tdBuy.textContent = fixedQtyStr;
 
     // ---------- INIT ----------
 
-    document.addEventListener("DOMContentLoaded", () => {
-      loadState();
-        const menuToggle = document.getElementById("menu-toggle");
+ document.addEventListener("DOMContentLoaded", () => {
+  loadState();
+
+  // Hamburger + nav panel
+  const menuToggle = document.getElementById("menu-toggle");
   const appNav = document.getElementById("app-nav");
 
   if (menuToggle && appNav) {
@@ -1166,8 +1168,8 @@ tdBuy.textContent = fixedQtyStr;
       menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
     });
   }
-
-        // Nav
+  
+   // Nav
   document
     .getElementById("nav-inventory")
     .addEventListener("click", () => {
