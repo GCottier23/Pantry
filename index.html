@@ -6,10 +6,10 @@
   <meta name="color-scheme" content="dark light">
   <title>Pantry App</title>
 
-  <!-- cache-busted CSS -->
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <!-- Use your existing styles.css (the one you like the look of) -->
+  <link rel="stylesheet" href="styles.css?v=21" />
 
-  <!-- PWA bits -->
+  <!-- PWA bits (you can keep your existing manifest / icons) -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#ff7a00">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,12 +17,12 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
-  <!-- TOP BAR WITH HAMBURGER -->
+  <!-- TOP BAR -->
   <header class="top-bar">
     <button
       id="menu-toggle"
       class="menu-toggle"
-      aria-label="Open navigation menu"
+      aria-label="Navigation"
       aria-expanded="false"
       aria-controls="app-nav"
     >
@@ -31,8 +31,7 @@
     <span class="top-bar-title">Pantry App</span>
   </header>
 
-  <!-- HAMBURGER NAV (DROPDOWN) -->
-  <!-- HAMBURGER NAV -->
+  <!-- NAV BAR (ALWAYS VISIBLE) -->
   <nav
     id="app-nav"
     class="app-nav"
@@ -44,37 +43,30 @@
       role="tab"
       aria-selected="true"
       aria-controls="page-inventory"
-      onclick="showPage('page-inventory')"
     >
       Inventory
     </button>
-
     <button
       id="nav-recipes"
       role="tab"
       aria-selected="false"
       aria-controls="page-recipes"
-      onclick="showPage('page-recipes')"
     >
       Recipes
     </button>
-
     <button
       id="nav-mealplan"
       role="tab"
       aria-selected="false"
       aria-controls="page-mealplan"
-      onclick="showPage('page-mealplan')"
     >
       Meal plan
     </button>
-
     <button
       id="nav-shopping"
       role="tab"
       aria-selected="false"
       aria-controls="page-shopping"
-      onclick="showPage('page-shopping')"
     >
       Shopping list
     </button>
@@ -92,7 +84,6 @@
     <section class="panel">
       <h2>Inventory</h2>
 
-      <!-- Fake barcode scan tools -->
       <div class="barcode-tools">
         <button type="button" id="fake-scan-btn" class="secondary">
           Fake barcode scan
@@ -105,6 +96,7 @@
           <input type="text" id="inv-name" list="inv-name-list" required />
           <datalist id="inv-name-list"></datalist>
         </label>
+
         <div class="grid-2">
           <label>
             Quantity
@@ -124,9 +116,12 @@
             </select>
           </label>
         </div>
+
         <div class="form-actions">
           <button type="submit" id="inventory-submit-btn">Add / Update</button>
-          <button type="button" id="inventory-cancel-edit" class="secondary hidden">Cancel edit</button>
+          <button type="button" id="inventory-cancel-edit" class="secondary hidden">
+            Cancel edit
+          </button>
         </div>
       </form>
 
@@ -150,7 +145,9 @@
         </label>
         <div class="form-actions">
           <button type="button" id="start-recipe">Start new recipe</button>
-          <button type="button" id="cancel-recipe-edit" class="secondary hidden">Cancel edit</button>
+          <button type="button" id="cancel-recipe-edit" class="secondary hidden">
+            Cancel edit
+          </button>
         </div>
       </form>
 
@@ -236,7 +233,8 @@
 
   <!-- ================= JS ================= -->
   <script>
-    /* ------------ helpers ------------ */
+    /* ---------- Helpers ---------- */
+
     function titleCase(str) {
       return str
         .toLowerCase()
@@ -274,13 +272,14 @@
 
     function formatQuantityWithUnit(quantity, unit) {
       if (!unit) return String(quantity);
-      const compact = ["g","kg","ml","l"];
+      const compact = ["g", "kg", "ml", "l"];
       const isCompact = compact.includes(unit);
       const nStr = Number.isInteger(quantity) ? String(quantity) : quantity.toString();
       return isCompact ? nStr + unit : nStr + " " + unit.toLowerCase();
     }
 
-    /* ------------ ingredient parser ------------ */
+    /* ---------- Ingredient parsing ---------- */
+
     function parseIngredientCore(rawText) {
       let line = rawText.trim();
       if (!line) return null;
@@ -312,7 +311,7 @@
       const baseUnits = new Set([
         "g","kg","ml","l","tsp","teaspoon","teaspoons","tbsp","tablespoon",
         "tablespoons","cup","cups"
-      ];
+      ]);
 
       const ofIndex = rest.indexOf("of");
       let unitWords = [];
@@ -374,7 +373,8 @@
       return { name, quantity: qty, unit };
     }
 
-    /* ------------ state ------------ */
+    /* ---------- State ---------- */
+
     let inventory = [];
     let recipes = [];
     let currentRecipe = null;
@@ -384,7 +384,6 @@
     let editingIngredientIndex = null;
     let mealPlan = [];
 
-    // barcode templates and index
     let barcodeItems = {};  // nameKey -> { name, baseQuantity, unit }
     let barcodeIndex = {};  // barcode -> [nameKey, ...]
 
@@ -437,7 +436,8 @@
       if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
     }
 
-    /* ------------ inventory ------------ */
+    /* ---------- Inventory ---------- */
+
     function upsertInventoryItem(name, quantity, unit) {
       const cleanName = titleCase(name.trim());
       const key = cleanName.toLowerCase();
@@ -568,7 +568,8 @@
       editingInventoryKey = null;
     }
 
-    /* ------------ recipes & ingredients ------------ */
+    /* ---------- Recipes & ingredients ---------- */
+
     function renderCurrentRecipeIngredients() {
       const ul = document.getElementById("current-recipe-ingredients");
       if (!ul) return;
@@ -744,17 +745,14 @@
       clearIngredientEditState();
     }
 
-    /* ------------ meal plan ------------ */
-    function initDefaultMealPlanIfNeeded() {
-      if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
-    }
+    /* ---------- Meal plan ---------- */
 
     function renderMealPlan() {
       const container = document.getElementById("meal-plan-container");
       if (!container) return;
       container.innerHTML = "";
 
-      initDefaultMealPlanIfNeeded();
+      if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
 
       const validIds = new Set(recipes.map(r => r.id));
       mealPlan.forEach(entry => {
@@ -839,7 +837,8 @@
       });
     }
 
-    /* ------------ shopping list ------------ */
+    /* ---------- Shopping list ---------- */
+
     function generateShoppingList() {
       const required = {};
 
@@ -972,7 +971,7 @@
       });
     }
 
-    /* ------------ fake barcode scan logic ------------ */
+    /* ---------- Fake barcode logic ---------- */
 
     function ensureBarcodeArray(barcode) {
       if (!barcodeIndex[barcode]) barcodeIndex[barcode] = [];
@@ -982,7 +981,6 @@
     function handleExistingBarcode(barcode, mappings) {
       if (!mappings.length) return false;
 
-      // single mapping
       if (mappings.length === 1) {
         const nameKey = mappings[0];
         const tpl = barcodeItems[nameKey];
@@ -996,7 +994,6 @@
 
         const isCorrect = confirm(confirmMsg);
         if (!isCorrect) {
-          // treat as new item for this barcode
           return false;
         }
 
@@ -1026,7 +1023,6 @@
         return true;
       }
 
-      // multiple mappings – user chooses which item, or 0 for new
       let msg = "This barcode is linked to multiple items:\n\n";
       mappings.forEach((nameKey, idx) => {
         const tpl2 = barcodeItems[nameKey];
@@ -1043,7 +1039,6 @@
       if (!choiceStr) return false;
       const choice = parseInt(choiceStr, 10);
       if (isNaN(choice) || choice < 1 || choice > mappings.length) {
-        // user chose 0 or invalid → treat as new item
         return false;
       }
 
@@ -1088,7 +1083,6 @@
 
       const existingTpl = barcodeItems[nameKey];
 
-      // barcode for an item we already know (e.g. Beef Mince from before)
       if (existingTpl) {
         const arr = ensureBarcodeArray(barcode);
         if (!arr.includes(nameKey)) arr.push(nameKey);
@@ -1124,7 +1118,6 @@
         return;
       }
 
-      // brand new item template
       const qtyStr2 = prompt(
         'For one typical amount of "' + cleanName + '", what is the quantity?\n' +
         'Example: for a 500g pack, enter 500.',
@@ -1188,30 +1181,19 @@
 
       const mappings = barcodeIndex[code] || [];
 
-      // if we have mappings, try to handle them first
       if (mappings.length) {
         const handled = handleExistingBarcode(code, mappings);
         if (handled) return;
-        // otherwise fall through to "new item" flow
       }
 
       handleNewBarcodeOrNewItem(code);
     }
 
-    /* ------------ navigation ------------ */
+    /* ---------- Navigation ---------- */
+
     function showPage(pageId) {
-      const pages = [
-        document.getElementById("page-inventory"),
-        document.getElementById("page-recipes"),
-        document.getElementById("page-mealplan"),
-        document.getElementById("page-shopping")
-      ];
-      const navButtons = [
-        document.getElementById("nav-inventory"),
-        document.getElementById("nav-recipes"),
-        document.getElementById("nav-mealplan"),
-        document.getElementById("nav-shopping")
-      ];
+      const pages = document.querySelectorAll(".page");
+      const navButtons = document.querySelectorAll(".app-nav button");
 
       pages.forEach(page => {
         if (!page) return;
@@ -1223,46 +1205,22 @@
         const controls = btn.getAttribute("aria-controls");
         btn.setAttribute("aria-selected", controls === pageId ? "true" : "false");
       });
-
-      // Close the hamburger menu after navigation (mobile)
-      const appNav = document.getElementById("app-nav");
-      const menuToggle = document.getElementById("menu-toggle");
-      if (appNav && menuToggle) {
-        appNav.classList.remove("open");
-        menuToggle.setAttribute("aria-expanded", "false");
-      }
-
-      // Keep focus behaviour as simple as possible (optional)
-      const page = document.getElementById(pageId);
-      if (page) {
-        const h2 = page.querySelector("h2");
-        if (h2) {
-          h2.setAttribute("tabindex", "-1");
-          h2.focus();
-        }
-      }
     }
 
-    /* ------------ DOMContentLoaded ------------ */
+    /* ---------- Main init ---------- */
+
     document.addEventListener("DOMContentLoaded", () => {
       loadAppState();
 
-      // hamburger toggle
-      const menuToggle = document.getElementById("menu-toggle");
-      const appNav = document.getElementById("app-nav");
-      if (menuToggle && appNav) {
-        menuToggle.addEventListener("click", () => {
-          const isOpen = appNav.classList.toggle("open");
-          menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
-        });
-      }
-
+      // nav buttons
       document.getElementById("nav-inventory").addEventListener("click", () => showPage("page-inventory"));
       document.getElementById("nav-recipes").addEventListener("click", () => showPage("page-recipes"));
       document.getElementById("nav-mealplan").addEventListener("click", () => showPage("page-mealplan"));
       document.getElementById("nav-shopping").addEventListener("click", () => showPage("page-shopping"));
-      showPage("page-inventory");
 
+      showPage("page-inventory"); // default
+
+      // inventory form
       const invForm = document.getElementById("inventory-form");
       const searchInput = document.getElementById("inventory-search");
       const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
@@ -1308,7 +1266,7 @@
         fakeBarcodeScanFlow();
       });
 
-      /* recipes: start recipe, ingredient add/import, save, etc. */
+      // recipes
       const startRecipeBtn = document.getElementById("start-recipe");
       const ingSection = document.getElementById("recipe-ingredients-section");
       const cancelRecipeEditBtn = document.getElementById("cancel-recipe-edit");
@@ -1579,89 +1537,17 @@
         showPage("page-shopping");
       });
 
-      // initial renders
+      // initial render
       renderInventory();
       renderInventoryNameSuggestions();
       renderRecipesList();
       renderMealPlan();
     });
 
-    /* service worker */
+    // service worker (safe to leave as-is)
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./sw.js").catch(() => {});
     }
-       /* ---------- SIMPLE NAV CONTROLLER (ensures nav buttons work) ---------- */
-   window.addEventListener("load", () => {
-     const pages = Array.from(document.querySelectorAll(".page"));
-     const navButtons = Array.from(document.querySelectorAll(".app-nav button"));
-
-     function navShowPage(pageId) {
-       // show / hide pages
-       pages.forEach(p => {
-         if (!p) return;
-         p.classList.toggle("hidden", p.id !== pageId);
-       });
-
-       // highlight active nav button
-       navButtons.forEach(btn => {
-         if (!btn) return;
-         const controls = btn.getAttribute("aria-controls");
-         btn.setAttribute("aria-selected", controls === pageId ? "true" : "false");
-       });
-     }
-
-     // expose globally so inline onclick="showPage('page-xyz')" also works
-     window.showPage = navShowPage;
-
-     // attach click handlers for all nav buttons
-     navButtons.forEach(btn => {
-       btn.addEventListener("click", () => {
-         const target = btn.getAttribute("aria-controls");
-         if (target) navShowPage(target);
-       });
-     });
-
-     // default page on load
-     navShowPage("page-inventory");
-   });
   </script>
-      </script>
-
-    <!-- Tiny navigation fixer: makes the top buttons switch pages -->
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        const pages = Array.from(document.querySelectorAll('.page'));
-        const navButtons = Array.from(document.querySelectorAll('.app-nav button'));
-
-        function setActivePage(pageId) {
-          // show/hide pages
-          pages.forEach(function (page) {
-            if (!page) return;
-            page.classList.toggle('hidden', page.id !== pageId);
-          });
-
-          // highlight active nav button
-          navButtons.forEach(function (btn) {
-            if (!btn) return;
-            const controls = btn.getAttribute('aria-controls');
-            btn.setAttribute('aria-selected', controls === pageId ? 'true' : 'false');
-          });
-        }
-
-        // expose globally so any existing code or inline handlers can call it
-        window.showPage = setActivePage;
-
-        // click handlers for the nav buttons
-        navButtons.forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            const target = btn.getAttribute('aria-controls');
-            if (target) setActivePage(target);
-          });
-        });
-
-        // default page on load
-        setActivePage('page-inventory');
-      });
-    </script>
-  </body>
+</body>
 </html>
