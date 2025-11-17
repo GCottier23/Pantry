@@ -1,19 +1,19 @@
 /* ---------- Base theme ---------- */
 
 :root {
-  --bg: #080808;
-  --bg-elevated: #151515;
-  --bg-elevated-2: #1f1f1f;
+  --bg: #101010;
+  --bg-elevated: #181818;
+  --bg-elevated-2: #202020;
   --border-subtle: #333;
   --accent: #ff7a00;
   --accent-soft: rgba(255, 122, 0, 0.16);
   --text-main: #f5f5f5;
-  --text-muted: #b8b8b8;
+  --text-muted: #bbbbbb;
   --danger: #ff4b4b;
   --radius-lg: 18px;
   --radius-md: 12px;
   --radius-pill: 999px;
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.7);
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
 *,
@@ -26,12 +26,12 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: radial-gradient(circle at top, #202020 0, #050505 50%, #000 100%);
+  background: radial-gradient(circle at top, #202020 0, #050505 50%, #000000 100%);
   color: var(--text-main);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
 }
 
-/* ---------- Top bar ---------- */
+/* ---------- Top bar + hamburger ---------- */
 
 .top-bar {
   position: sticky;
@@ -41,7 +41,7 @@ body {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  background: rgba(8, 8, 8, 0.96);
+  background: rgba(10, 10, 10, 0.96);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -49,80 +49,67 @@ body {
 .top-bar-title {
   font-weight: 600;
   letter-spacing: 0.03em;
-  font-size: 0.95rem;
 }
 
-/* ---------- Navigation bar ---------- */
+/* Hamburger button (we’ll leave it as a visual element) */
 
-/* Slide-down nav panel, hidden by default but animated */
-/* Slide-down nav panel, hidden by default but animated */
+.menu-toggle {
+  border: none;
+  outline: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: default;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* ---------- Navigation bar (always visible under top bar) ---------- */
+
 .app-nav {
-  position: fixed;
-  top: 3.1rem;
-  left: 0;
-  right: 0;
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.6rem 1rem 0.8rem;
-  background: rgba(12, 12, 12, 0.97);
-  backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem 0.75rem;
+  background: rgba(12, 12, 12, 0.96);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 40;
-
-  /* closed state */
-  opacity: 0;
-  transform: translateY(-25px); /* bigger slide = more obvious */
-  max-height: 0;
-  overflow: hidden;
-  pointer-events: none;
-
-  transition:
-    opacity 0.45s cubic-bezier(0.25, 0.1, 0.25, 1),
-    transform 0.45s cubic-bezier(0.25, 0.1, 0.25, 1),
-    max-height 0.45s ease-in-out;
-}
-
-/* open state */
-.app-nav.nav-open {
-  opacity: 1;
-  transform: translateY(0);
-  max-height: 500px;
-  pointer-events: auto;
 }
 
 .app-nav button {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0.45rem 0.8rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: radial-gradient(circle at top left, #262626 0, #151515 55%, #0c0c0c 100%);
+  flex: 1 1 calc(50% - 0.5rem);
+  min-width: 7rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: radial-gradient(circle at top left, #262626 0, #121212 60%, #101010 100%);
   color: var(--text-main);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-align: center;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.08s ease,
-    box-shadow 0.12s ease;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.7);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
 }
 
 .app-nav button[aria-selected="true"] {
-  border-color: rgba(255, 122, 0, 0.9);
+  border-color: rgba(255, 122, 0, 0.7);
   box-shadow:
     0 0 0 1px rgba(255, 122, 0, 0.5),
-    0 10px 24px rgba(255, 122, 0, 0.4);
+    0 10px 24px rgba(255, 122, 0, 0.35);
   background:
     radial-gradient(circle at top, rgba(255, 122, 0, 0.35), transparent 55%),
     radial-gradient(circle at bottom, #1b1b1b 0, #101010 60%, #050505 100%);
 }
 
-/* Larger screens: nav buttons shrink / align nicely */
+/* Larger screens: nav buttons shrink a bit, hamburger not really needed */
 
 @media (min-width: 768px) {
   .app-nav {
@@ -138,7 +125,7 @@ body {
 /* ---------- Page layout ---------- */
 
 .page {
-  padding: 0.85rem 1rem 2.5rem;
+  padding: 0.75rem 1rem 2rem;
 }
 
 .page.hidden {
@@ -148,11 +135,11 @@ body {
 /* ---------- Panels ---------- */
 
 .panel {
-  background: radial-gradient(circle at top left, #252525 0, #161616 55%, #0a0a0a 100%);
+  background: radial-gradient(circle at top left, #232323 0, #131313 55%, #080808 100%);
   border-radius: var(--radius-lg);
   padding: 1rem;
   margin-bottom: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: var(--shadow-soft);
 }
 
@@ -161,10 +148,10 @@ body {
   border-radius: var(--radius-md);
   padding: 0.75rem 0.9rem;
   margin-top: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ---------- Headings & text ---------- */
+/* ---------- Headings ---------- */
 
 h1,
 h2,
@@ -181,16 +168,10 @@ h3 {
   font-size: 0.95rem;
 }
 
-p {
-  margin: 0.15rem 0 0.5rem;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
 /* ---------- Inventory search ---------- */
 
 .inventory-controls {
-  margin: 0 0 0.6rem;
+  margin: 0 0 0.5rem;
 }
 
 .inventory-controls label {
@@ -200,7 +181,7 @@ p {
 }
 
 .inventory-controls input {
-  margin-top: 0.3rem;
+  margin-top: 0.25rem;
 }
 
 /* ---------- Form elements ---------- */
@@ -223,27 +204,24 @@ select {
   padding: 0.5rem 0.6rem;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(10, 10, 10, 0.95);
+  background: rgba(10, 10, 10, 0.9);
   color: var(--text-main);
   font-size: 0.9rem;
   outline: none;
-  transition:
-    border-color 0.12s ease,
-    box-shadow 0.12s ease,
-    background 0.12s ease;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 input:focus,
 textarea:focus,
 select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(255, 122, 0, 0.55);
-  background: #141414;
+  box-shadow: 0 0 0 1px rgba(255, 122, 0, 0.5);
+  background: #121212;
 }
 
 textarea {
@@ -251,7 +229,7 @@ textarea {
   min-height: 5rem;
 }
 
-/* Two-column grid */
+/* Grid helpers */
 
 .grid-2 {
   display: grid;
@@ -259,13 +237,12 @@ textarea {
   gap: 0.5rem;
 }
 
-/* Form buttons row */
+/* Form actions */
 
 .form-actions {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.45rem;
-  flex-wrap: wrap;
+  margin-top: 0.4rem;
 }
 
 /* ---------- Buttons ---------- */
@@ -275,11 +252,11 @@ button {
 }
 
 button[type="submit"],
-button:not(.secondary):not(.menu-toggle):not(.shopping-bought-btn) {
+button:not(.secondary):not(.menu-toggle) {
   border-radius: var(--radius-pill);
   border: none;
   padding: 0.55rem 1rem;
-  background: radial-gradient(circle at top, #ff9c3a 0, #ff7a00 40%, #d55d00 100%);
+  background: radial-gradient(circle at top, #ff9c3a 0, #ff7a00 40%, #d95e00 100%);
   color: #1b0a00;
   font-weight: 600;
   font-size: 0.9rem;
@@ -287,35 +264,29 @@ button:not(.secondary):not(.menu-toggle):not(.shopping-bought-btn) {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.05),
     0 10px 24px rgba(0, 0, 0, 0.9);
-  transition:
-    transform 0.08s ease,
-    box-shadow 0.12s ease,
-    filter 0.12s ease;
+  transition: transform 0.08s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
 
 button[type="submit"]:active,
-button:not(.secondary):not(.menu-toggle):not(.shopping-bought-btn):active {
+button:not(.secondary):not(.menu-toggle):active {
   transform: translateY(1px) scale(0.98);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.8);
-  filter: brightness(0.95);
+  filter: brightness(0.96);
 }
 
 button.secondary {
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  padding: 0.5rem 0.9rem;
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.55rem 0.9rem;
+  background: rgba(255, 255, 255, 0.02);
   color: var(--text-main);
   font-size: 0.8rem;
   cursor: pointer;
-  transition:
-    background 0.12s ease,
-    border-color 0.12s ease,
-    transform 0.08s ease;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
 }
 
 button.secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 button.secondary:active {
@@ -325,7 +296,7 @@ button.secondary:active {
 /* ---------- Inventory list ---------- */
 
 .inventory-list {
-  margin-top: 0.8rem;
+  margin-top: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -339,7 +310,7 @@ button.secondary:active {
   padding: 0.45rem 0.55rem;
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .inventory-item-text {
@@ -352,9 +323,7 @@ button.secondary:active {
 }
 
 .inventory-actions button {
-  padding-inline: 0.55rem;
-  padding-block: 0.3rem;
-  font-size: 0.8rem;
+  padding-inline: 0.5rem;
 }
 
 /* ---------- Recipes / subpanels ---------- */
@@ -366,44 +335,13 @@ button.secondary:active {
   gap: 0.4rem;
 }
 
-#current-recipe-ingredients {
-  margin: 0.5rem 0;
+.subpanel ul {
+  margin: 0.25rem 0 0;
   padding-left: 1rem;
   font-size: 0.85rem;
 }
 
-#current-recipe-ingredients li {
-  margin-bottom: 0.2rem;
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-#current-recipe-ingredients li > span {
-  flex: 1;
-}
-
-.table-actions {
-  display: inline-flex;
-  gap: 0.25rem;
-}
-
-.table-actions button {
-  padding-inline: 0.55rem;
-  padding-block: 0.3rem;
-  font-size: 0.8rem;
-}
-
-/* Saved recipes list */
-
-#recipes-list .subpanel ul {
-  margin: 0.3rem 0 0;
-  padding-left: 1rem;
-  font-size: 0.85rem;
-}
-
-/* ---------- Shopping list table ---------- */
+/* ---------- Shopping table ---------- */
 
 #shopping-table {
   width: 100%;
@@ -413,7 +351,7 @@ button.secondary:active {
 
 #shopping-table th,
 #shopping-table td {
-  padding: 0.45rem 0.35rem;
+  padding: 0.4rem 0.35rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -427,9 +365,65 @@ button.secondary:active {
   border-bottom: none;
 }
 
-#shopping-table input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
+/* ---------- Optional ingredients modal ---------- */
+
+.optional-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.optional-modal {
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  background: #141414;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 1rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.optional-modal h3 {
+  margin-bottom: 0.4rem;
+}
+
+.optional-modal p {
+  margin-top: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.optional-modal fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  margin: 0.4rem 0;
+  padding: 0.4rem 0.5rem 0.5rem;
+}
+
+.optional-modal legend {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.optional-modal label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.optional-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
 }
 
 /* ---------- Misc ---------- */
@@ -438,14 +432,19 @@ button.secondary:active {
   display: none !important;
 }
 
-/* Small devices tweaks */
+p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* Smaller screens: stack two-column bits */
 
 @media (max-width: 374px) {
   .grid-2 {
     grid-template-columns: 1fr;
   }
 
-  .app-nav button {
-    flex: 1 1 100%;
+  .form-actions {
+    flex-wrap: wrap;
   }
 }

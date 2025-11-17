@@ -18,19 +18,19 @@
 </head>
 <body>
   <!-- TOP BAR -->
- <header class="top-bar">
-  <button
-    id="menu-toggle"
-    class="menu-toggle"
-    aria-label="Navigation"
-    aria-controls="app-nav"
-    aria-expanded="false"
-    type="button"
-  >
-    ☰
-  </button>
-  <span class="top-bar-title">Pantry App</span>
-</header>
+  <header class="top-bar">
+    <button
+      id="menu-toggle"
+      class="menu-toggle"
+      aria-label="Navigation"
+      aria-controls="app-nav"
+      aria-expanded="false"
+      type="button"
+    >
+      ☰
+    </button>
+    <span class="top-bar-title">Pantry App</span>
+  </header>
 
   <!-- NAV BAR (kept simple & always visible) -->
   <nav
@@ -118,7 +118,7 @@
               <option value="pack">pack</option>
               <option value="packs">packs</option>
               <option value="pcs">pcs</option>
-              <option value="tin">tin</option>
+            </select>
           </label>
         </div>
 
@@ -1168,7 +1168,7 @@ tdBuy.textContent = fixedQtyStr;
       menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
     });
   }
-
+  
    // Nav
   document
     .getElementById("nav-inventory")
