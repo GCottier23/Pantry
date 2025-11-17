@@ -72,39 +72,39 @@ body {
 
 /* ---------- Navigation bar ---------- */
 
-//* Slide-down nav panel, animated */
+/* Slide-down nav panel, hidden by default but animated */
 .app-nav {
   position: fixed;
-  top: 3.1rem;       /* just under the top bar */
+  top: 3.1rem;          /* just under the top bar */
   left: 0;
   right: 0;
-  display: flex;     /* always flex, but visually hidden until nav-open */
+  display: flex;        /* always flex, but visually hidden until nav-open */
   flex-direction: column;
   gap: 0.4rem;
-  padding: 0.45rem 0.9rem 0.7rem;
+  padding: 0.6rem 1rem 0.8rem;
   background: rgba(12, 12, 12, 0.97);
   backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   z-index: 40;
 
-  /* hidden state */
+  /* closed state */
   opacity: 0;
-  transform: translateY(-12px);
+  transform: translateY(-10px);
   max-height: 0;
   overflow: hidden;
   pointer-events: none;
 
   transition:
-    opacity 0.18s ease-out,
-    transform 0.18s ease-out,
-    max-height 0.18s ease-out;
+    opacity 0.2s ease-out,
+    transform 0.2s ease-out,
+    max-height 0.2s ease-out;
 }
 
-/* When the hamburger opens it */
+/* open state – when hamburger adds nav-open */
 .app-nav.nav-open {
   opacity: 1;
   transform: translateY(0);
-  max-height: 400px;       /* enough height for 4 buttons */
+  max-height: 400px;        /* enough for 4 buttons */
   pointer-events: auto;
 }
 
