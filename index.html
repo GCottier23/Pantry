@@ -1625,5 +1625,43 @@
      navShowPage("page-inventory");
    });
   </script>
-</body>
+      </script>
+
+    <!-- Tiny navigation fixer: makes the top buttons switch pages -->
+    <script>
+      window.addEventListener('DOMContentLoaded', function () {
+        const pages = Array.from(document.querySelectorAll('.page'));
+        const navButtons = Array.from(document.querySelectorAll('.app-nav button'));
+
+        function setActivePage(pageId) {
+          // show/hide pages
+          pages.forEach(function (page) {
+            if (!page) return;
+            page.classList.toggle('hidden', page.id !== pageId);
+          });
+
+          // highlight active nav button
+          navButtons.forEach(function (btn) {
+            if (!btn) return;
+            const controls = btn.getAttribute('aria-controls');
+            btn.setAttribute('aria-selected', controls === pageId ? 'true' : 'false');
+          });
+        }
+
+        // expose globally so any existing code or inline handlers can call it
+        window.showPage = setActivePage;
+
+        // click handlers for the nav buttons
+        navButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const target = btn.getAttribute('aria-controls');
+            if (target) setActivePage(target);
+          });
+        });
+
+        // default page on load
+        setActivePage('page-inventory');
+      });
+    </script>
+  </body>
 </html>
