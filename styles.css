@@ -73,12 +73,13 @@ body {
 /* ---------- Navigation bar ---------- */
 
 /* Slide-down nav panel, hidden by default but animated */
+/* Slide-down nav panel, hidden by default but animated */
 .app-nav {
   position: fixed;
-  top: 3.1rem;          /* just under the top bar */
+  top: 3.1rem;
   left: 0;
   right: 0;
-  display: flex;        /* always flex, but visually hidden until nav-open */
+  display: flex;
   flex-direction: column;
   gap: 0.4rem;
   padding: 0.6rem 1rem 0.8rem;
@@ -89,22 +90,22 @@ body {
 
   /* closed state */
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-25px); /* bigger slide = more obvious */
   max-height: 0;
   overflow: hidden;
   pointer-events: none;
 
   transition:
-    opacity 0.2s ease-out,
-    transform 0.2s ease-out,
-    max-height 0.2s ease-out;
+    opacity 0.45s cubic-bezier(0.25, 0.1, 0.25, 1),
+    transform 0.45s cubic-bezier(0.25, 0.1, 0.25, 1),
+    max-height 0.45s ease-in-out;
 }
 
-/* open state – when hamburger adds nav-open */
+/* open state */
 .app-nav.nav-open {
   opacity: 1;
   transform: translateY(0);
-  max-height: 400px;        /* enough for 4 buttons */
+  max-height: 500px;
   pointer-events: auto;
 }
 
