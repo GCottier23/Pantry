@@ -1078,7 +1078,30 @@
     tdName.textContent = need.name;
 
     const tdBuy = document.createElement("td");
-    tdBuy.textContent = qtyStr;
+    // Convert tiny kg / L amounts back to g / ml for display
+let fixedQtyStr = qtyStr;
+const match = qtyStr.match(/^(\d+(?:\.\d+)?)\s*(kg|KG|l|L)$/); // e.g. "0.5kg", "0.75L"
+
+if (match) {
+  let value = parseFloat(match[1]);
+  const unit = match[2].toLowerCase();
+
+  // helper to make the number look neat
+  const tidy = (n) =>
+    Number.isInteger(n) ? String(n) : (Math.round(n * 100) / 100).toString();
+
+  if (unit === "kg" && value < 1) {
+    // e.g. 0.5kg -> 500g
+    const grams = value * 1000;
+    fixedQtyStr = tidy(grams) + "g";
+  } else if (unit === "l" && value < 1) {
+    // e.g. 0.75L -> 750ml
+    const ml = value * 1000;
+    fixedQtyStr = tidy(ml) + "ml";
+  }
+}
+
+tdBuy.textContent = fixedQtyStr;
 
     tr.appendChild(tdCheck);
     tr.appendChild(tdName);
