@@ -1157,29 +1157,50 @@ tdBuy.textContent = fixedQtyStr;
 
     document.addEventListener("DOMContentLoaded", () => {
       loadState();
+        const menuToggle = document.getElementById("menu-toggle");
+  const appNav = document.getElementById("app-nav");
 
-      // Nav
-      document
-        .getElementById("nav-inventory")
-        .addEventListener("click", () =>
-          showPage("page-inventory")
-        );
-      document
-        .getElementById("nav-recipes")
-        .addEventListener("click", () =>
-          showPage("page-recipes")
-        );
-      document
-        .getElementById("nav-mealplan")
-        .addEventListener("click", () =>
-          showPage("page-mealplan")
-        );
-      document
-        .getElementById("nav-shopping")
-        .addEventListener("click", () =>
-          showPage("page-shopping")
-        );
+  if (menuToggle && appNav) {
+    menuToggle.addEventListener("click", () => {
+      const isOpen = appNav.classList.toggle("nav-open");
+      menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+  }
+
+        // Nav
+  document
+    .getElementById("nav-inventory")
+    .addEventListener("click", () => {
       showPage("page-inventory");
+      if (appNav) appNav.classList.remove("nav-open");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+    });
+
+  document
+    .getElementById("nav-recipes")
+    .addEventListener("click", () => {
+      showPage("page-recipes");
+      if (appNav) appNav.classList.remove("nav-open");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+    });
+
+  document
+    .getElementById("nav-mealplan")
+    .addEventListener("click", () => {
+      showPage("page-mealplan");
+      if (appNav) appNav.classList.remove("nav-open");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+    });
+
+  document
+    .getElementById("nav-shopping")
+    .addEventListener("click", () => {
+      showPage("page-shopping");
+      if (appNav) appNav.classList.remove("nav-open");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+    });
+
+  showPage("page-inventory");
 
       // Inventory events
       const invForm = document.getElementById("inventory-form");
