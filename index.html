@@ -18,7 +18,7 @@
 </head>
 <body>
   <!-- TOP BAR -->
-  <header class="top-bar">
+ <header class="top-bar">
   <button
     id="menu-toggle"
     class="menu-toggle"
@@ -27,11 +27,8 @@
     aria-expanded="false"
     type="button"
   >
-    <span class="bar"></span>
-    <span class="bar"></span>
-    <span class="bar"></span>
+    ☰
   </button>
-
   <span class="top-bar-title">Pantry App</span>
 </header>
 
@@ -1169,7 +1166,6 @@ tdBuy.textContent = fixedQtyStr;
     menuToggle.addEventListener("click", () => {
       const isOpen = appNav.classList.toggle("nav-open");
       menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
-      menuToggle.classList.toggle("open");
     });
   }
 
