@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="dark light">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
   <title>Pantry App</title>
 
-  <!-- Use your existing styles.css (the one you like the look of) -->
+  <!-- Use your existing dark / modern CSS file -->
   <link rel="stylesheet" href="styles.css?v=21" />
 
-  <!-- PWA bits (you can keep your existing manifest / icons) -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#ff7a00">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- PWA bits (keep for your phone shortcut) -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#ff7a00" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
 </head>
 <body>
   <!-- TOP BAR -->
@@ -23,15 +23,16 @@
       id="menu-toggle"
       class="menu-toggle"
       aria-label="Navigation"
-      aria-expanded="false"
       aria-controls="app-nav"
+      aria-expanded="false"
+      type="button"
     >
       ☰
     </button>
     <span class="top-bar-title">Pantry App</span>
   </header>
 
-  <!-- NAV BAR (ALWAYS VISIBLE) -->
+  <!-- NAV BAR (kept simple & always visible) -->
   <nav
     id="app-nav"
     class="app-nav"
@@ -43,6 +44,7 @@
       role="tab"
       aria-selected="true"
       aria-controls="page-inventory"
+      type="button"
     >
       Inventory
     </button>
@@ -51,6 +53,7 @@
       role="tab"
       aria-selected="false"
       aria-controls="page-recipes"
+      type="button"
     >
       Recipes
     </button>
@@ -59,6 +62,7 @@
       role="tab"
       aria-selected="false"
       aria-controls="page-mealplan"
+      type="button"
     >
       Meal plan
     </button>
@@ -67,17 +71,18 @@
       role="tab"
       aria-selected="false"
       aria-controls="page-shopping"
+      type="button"
     >
       Shopping list
     </button>
   </nav>
 
   <!-- PAGE 1: INVENTORY -->
-  <div id="page-inventory" class="page" role="tabpanel" aria-labelledby="nav-inventory">
+  <main id="page-inventory" class="page" role="tabpanel" aria-labelledby="nav-inventory">
     <div class="inventory-controls">
       <label>
         Search inventory
-        <input type="text" id="inventory-search" placeholder="Type to filter items..." />
+        <input id="inventory-search" type="text" placeholder="Type to filter items..." />
       </label>
     </div>
 
@@ -85,7 +90,7 @@
       <h2>Inventory</h2>
 
       <div class="barcode-tools">
-        <button type="button" id="fake-scan-btn" class="secondary">
+        <button id="fake-scan-btn" type="button" class="secondary">
           Fake barcode scan
         </button>
       </div>
@@ -93,14 +98,14 @@
       <form id="inventory-form">
         <label>
           Item name
-          <input type="text" id="inv-name" list="inv-name-list" required />
+          <input id="inv-name" type="text" list="inv-name-list" required />
           <datalist id="inv-name-list"></datalist>
         </label>
 
         <div class="grid-2">
           <label>
             Quantity
-            <input type="number" id="inv-qty" value="1" min="0" step="0.1" required />
+            <input id="inv-qty" type="number" min="0" step="0.1" value="1" required />
           </label>
           <label>
             Unit
@@ -118,8 +123,8 @@
         </div>
 
         <div class="form-actions">
-          <button type="submit" id="inventory-submit-btn">Add / Update</button>
-          <button type="button" id="inventory-cancel-edit" class="secondary hidden">
+          <button id="inventory-submit-btn" type="submit">Add / Update</button>
+          <button id="inventory-cancel-edit" type="button" class="secondary hidden">
             Cancel edit
           </button>
         </div>
@@ -127,25 +132,30 @@
 
       <div id="inventory-list" class="inventory-list"></div>
     </section>
-  </div>
+  </main>
 
   <!-- PAGE 2: RECIPES -->
-  <div id="page-recipes" class="page hidden" role="tabpanel" aria-labelledby="nav-recipes">
+  <section
+    id="page-recipes"
+    class="page hidden"
+    role="tabpanel"
+    aria-labelledby="nav-recipes"
+  >
     <section class="panel">
       <h2>Recipes</h2>
 
       <form id="recipe-form">
         <label>
           Recipe name
-          <input type="text" id="recipe-name" required />
+          <input id="recipe-name" type="text" required />
         </label>
         <label>
           Servings (base recipe)
-          <input type="number" id="recipe-servings" value="2" min="1" required />
+          <input id="recipe-servings" type="number" value="2" min="1" required />
         </label>
         <div class="form-actions">
-          <button type="button" id="start-recipe">Start new recipe</button>
-          <button type="button" id="cancel-recipe-edit" class="secondary hidden">
+          <button id="start-recipe" type="button">Start new recipe</button>
+          <button id="cancel-recipe-edit" type="button" class="secondary hidden">
             Cancel edit
           </button>
         </div>
@@ -157,21 +167,23 @@
         <form id="ingredient-form">
           <label>
             Ingredient name
-            <input type="text" id="ing-name" required />
+            <input id="ing-name" type="text" required />
           </label>
           <div class="grid-2">
             <label>
               Quantity
-              <input type="number" id="ing-qty" value="1" min="0" step="0.1" required />
+              <input id="ing-qty" type="number" value="1" min="0" step="0.1" required />
             </label>
             <label>
               Unit
-              <input type="text" id="ing-unit" placeholder="g, ml, pcs..." />
+              <input id="ing-unit" type="text" placeholder="g, ml, pcs..." />
             </label>
           </div>
           <div class="form-actions">
-            <button type="submit" id="ingredient-submit-btn">Add ingredient</button>
-            <button type="button" id="cancel-ingredient-edit" class="secondary hidden">
+            <button id="ingredient-submit-btn" type="submit">
+              Add ingredient
+            </button>
+            <button id="cancel-ingredient-edit" type="button" class="secondary hidden">
               Cancel ingredient edit
             </button>
           </div>
@@ -179,19 +191,28 @@
 
         <ul id="current-recipe-ingredients"></ul>
 
-        <button id="save-recipe">Save recipe</button>
+        <button id="save-recipe" type="button">Save recipe</button>
 
         <div class="subpanel">
           <h3>Quick import from text</h3>
-          <p>Paste one ingredient per line, e.g. “500g beef mince” or “4 sticks celery, finely chopped (optional)”.</p>
+          <p>
+            Paste one ingredient per line, e.g.
+            “500g beef mince” or “4 sticks celery”.
+          </p>
           <label>
             Ingredients text
-            <textarea id="import-text" rows="6" placeholder="Example:
+            <textarea
+              id="import-text"
+              rows="6"
+              placeholder="Example:
 500g beef mince
-4 sticks celery, finely chopped (optional)
-1 onion, chopped"></textarea>
+4 sticks celery
+1 onion, chopped"
+            ></textarea>
           </label>
-          <button type="button" id="import-ingredients-btn">Import into current recipe</button>
+          <button id="import-ingredients-btn" type="button">
+            Import into current recipe
+          </button>
         </div>
       </div>
     </section>
@@ -201,20 +222,32 @@
       <p>Recipes you create here can be used on the Meal plan page.</p>
       <div id="recipes-list"></div>
     </section>
-  </div>
+  </section>
 
   <!-- PAGE 3: MEAL PLAN -->
-  <div id="page-mealplan" class="page hidden" role="tabpanel" aria-labelledby="nav-mealplan">
+  <section
+    id="page-mealplan"
+    class="page hidden"
+    role="tabpanel"
+    aria-labelledby="nav-mealplan"
+  >
     <section class="panel">
       <h2>Meal plan</h2>
       <p>Select meals for each day and how many portions you’ll cook.</p>
       <div id="meal-plan-container"></div>
-      <button id="generate-shopping-list">Generate shopping list</button>
+      <button id="generate-shopping-list" type="button">
+        Generate shopping list
+      </button>
     </section>
-  </div>
+  </section>
 
   <!-- PAGE 4: SHOPPING LIST -->
-  <div id="page-shopping" class="page hidden" role="tabpanel" aria-labelledby="nav-shopping">
+  <section
+    id="page-shopping"
+    class="page hidden"
+    role="tabpanel"
+    aria-labelledby="nav-shopping"
+  >
     <section class="panel">
       <h2>Shopping list</h2>
       <p>This list is based on your weekly meal plan and current inventory.</p>
@@ -229,18 +262,18 @@
         <tbody></tbody>
       </table>
     </section>
-  </div>
+  </section>
 
-  <!-- ================= JS ================= -->
+  <!-- =============== JAVASCRIPT =============== -->
   <script>
-    /* ---------- Helpers ---------- */
+    // ---------- UTILITIES ----------
 
     function titleCase(str) {
       return str
         .toLowerCase()
         .split(" ")
         .filter(Boolean)
-        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
     }
 
@@ -274,193 +307,164 @@
       if (!unit) return String(quantity);
       const compact = ["g", "kg", "ml", "l"];
       const isCompact = compact.includes(unit);
-      const nStr = Number.isInteger(quantity) ? String(quantity) : quantity.toString();
+      const nStr = Number.isInteger(quantity)
+        ? String(quantity)
+        : quantity.toString();
       return isCompact ? nStr + unit : nStr + " " + unit.toLowerCase();
     }
 
-    /* ---------- Ingredient parsing ---------- */
+    // ---------- VERY SIMPLE PARSER FOR IMPORT ----------
 
-    function parseIngredientCore(rawText) {
-      let line = rawText.trim();
-      if (!line) return null;
+    function parseIngredientLine(line) {
+      let trimmed = line.trim();
+      if (!trimmed) return null;
 
-      const commaIndex = line.indexOf(",");
-      if (commaIndex !== -1) line = line.slice(0, commaIndex).trim();
-      if (!line) return null;
+      // Strip trailing notes after comma
+      const commaIndex = trimmed.indexOf(",");
+      if (commaIndex !== -1) trimmed = trimmed.slice(0, commaIndex).trim();
 
-      const m = line.match(/^(\d+(?:\.\d+)?)([a-zA-Z]+)\/\S+\s+(.+)$/);
-      if (m) line = `${m[1]} ${m[2]} ${m[3]}`;
-
-      const parts = line.split(/\s+/);
+      // Try: "500g beef mince" or "2 tbsp olive oil"
+      const parts = trimmed.split(/\s+/);
       if (!parts.length) return null;
 
       const qty = parseFloat(parts[0]);
       if (isNaN(qty) || qty <= 0) {
-        return { name: titleCase(line), quantity: 1, unit: "" };
+        return { name: titleCase(trimmed), quantity: 1, unit: "" };
       }
 
-      const rest = parts.slice(1);
-      if (!rest.length) return { name: "", quantity: qty, unit: "" };
-
-      const adjectivesToDrop = [
-        "level","heaped","heaping","rounded","about","approx","approximately","roughly"
-      ];
-      const countUnits = [
-        "clove","cloves","stick","sticks","tin","tins","can","cans","slice","slices"
-      ];
-      const baseUnits = new Set([
-        "g","kg","ml","l","tsp","teaspoon","teaspoons","tbsp","tablespoon",
-        "tablespoons","cup","cups"
-      ]);
-
-      const ofIndex = rest.indexOf("of");
-      let unitWords = [];
-      let nameWords = [];
-
-      if (ofIndex !== -1) {
-        unitWords = rest.slice(0, ofIndex);
-        nameWords = rest.slice(ofIndex + 1);
-      } else {
-        const firstLower = rest[0].toLowerCase();
-        if (baseUnits.has(firstLower)) {
-          unitWords = [rest[0]];
-          nameWords = rest.slice(1);
-        } else {
-          unitWords = rest.slice(0, Math.min(2, rest.length));
-          nameWords = rest.slice(unitWords.length);
-        }
-      }
-
-      unitWords = unitWords.filter(w => !adjectivesToDrop.includes(w.toLowerCase()));
-
-      if (!nameWords.length) {
-        if (unitWords.length === 1) {
-          const w = unitWords[0];
-          return { name: titleCase(w), quantity: qty, unit: "" };
-        } else if (unitWords.length >= 2) {
-          const first = unitWords[0];
-          const last = unitWords[unitWords.length - 1];
-
-          if (countUnits.includes(first.toLowerCase())) {
-            const namePart = unitWords.slice(1).join(" ");
-            return { name: titleCase(namePart), quantity: qty, unit: first.toLowerCase() };
-          }
-          if (countUnits.includes(last.toLowerCase())) {
-            const namePart = unitWords.slice(0, -1).join(" ");
-            return { name: titleCase(namePart), quantity: qty, unit: last.toLowerCase() };
-          }
-          return { name: titleCase(unitWords.join(" ")), quantity: qty, unit: "" };
-        }
+      if (parts.length === 1) {
+        return { name: "", quantity: qty, unit: "" };
       }
 
       let unit = "";
-      if (unitWords.length) {
-        const rawUnit = unitWords[unitWords.length - 1].toLowerCase();
-        const unitMap = {
-          tablespoon: "tbsp", tablespoons: "tbsp", tbsp: "tbsp",
-          teaspoon: "tsp", teaspoons: "tsp", tsp: "tsp",
-          gram: "g", grams: "g", g: "g", kg: "kg",
-          millilitre: "ml", millilitres: "ml", ml: "ml",
-          litre: "l", litres: "l", l: "l",
-          stick: "stick", sticks: "sticks",
-          clove: "clove", cloves: "cloves",
-          cup: "cup", cups: "cups"
-        };
-        unit = unitMap[rawUnit] || rawUnit;
+      let nameWords = [];
+
+      // If second word looks like a unit
+      const knownUnit = parts[1].toLowerCase();
+      const unitMap = {
+        g: "g",
+        kg: "kg",
+        ml: "ml",
+        l: "l",
+        tsp: "tsp",
+        teaspoon: "tsp",
+        teaspoons: "tsp",
+        tbsp: "tbsp",
+        tablespoon: "tbsp",
+        tablespoons: "tbsp",
+        pack: "pack",
+        packs: "packs",
+        clove: "clove",
+        cloves: "cloves",
+        stick: "stick",
+        sticks: "sticks",
+      };
+
+      if (unitMap[knownUnit]) {
+        unit = unitMap[knownUnit];
+        nameWords = parts.slice(2);
+      } else {
+        // otherwise treat everything after qty as name
+        unit = "";
+        nameWords = parts.slice(1);
       }
 
-      const name = titleCase(nameWords.join(" "));
-      return { name, quantity: qty, unit };
+      return {
+        name: titleCase(nameWords.join(" ")),
+        quantity: qty,
+        unit: unit,
+      };
     }
 
-    /* ---------- State ---------- */
+    // ---------- STATE ----------
+
+    const STORAGE_KEY = "pantryApp_simple_v1";
 
     let inventory = [];
     let recipes = [];
-    let currentRecipe = null;
+    let mealPlan = [];
+    let barcodeMap = {}; // barcode -> {name, baseQty, unit}
+
     let inventoryFilter = "";
     let editingInventoryKey = null;
+
+    let currentRecipe = null;
     let editingRecipeId = null;
     let editingIngredientIndex = null;
-    let mealPlan = [];
-
-    let barcodeItems = {};  // nameKey -> { name, baseQuantity, unit }
-    let barcodeIndex = {};  // barcode -> [nameKey, ...]
-
-    const STORAGE_KEY = "pantryAppState_v1";
 
     function initDefaultMealPlan() {
-      const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-      mealPlan = days.map(day => ({
-        dayId: day.toLowerCase(),
-        dayLabel: day,
+      const days = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ];
+      mealPlan = days.map((d) => ({
+        dayId: d.toLowerCase(),
+        dayLabel: d,
         recipeId: "",
-        servings: 0
+        servings: 0,
       }));
     }
 
-    function saveAppState() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          inventory,
-          recipes,
-          mealPlan,
-          barcodeItems,
-          barcodeIndex
-        }));
-      } catch (e) {
-        console.error("Failed to save", e);
-      }
-    }
-
-    function loadAppState() {
+    function loadState() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) {
           initDefaultMealPlan();
-          barcodeItems = {};
-          barcodeIndex = {};
           return;
         }
         const data = JSON.parse(raw);
         if (Array.isArray(data.inventory)) inventory = data.inventory;
         if (Array.isArray(data.recipes)) recipes = data.recipes;
-        if (Array.isArray(data.mealPlan)) mealPlan = data.mealPlan; else initDefaultMealPlan();
-        barcodeItems = data.barcodeItems || {};
-        barcodeIndex = data.barcodeIndex || {};
+        if (Array.isArray(data.mealPlan)) mealPlan = data.mealPlan;
+        if (data.barcodeMap && typeof data.barcodeMap === "object") {
+          barcodeMap = data.barcodeMap;
+        }
+        if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
       } catch {
         initDefaultMealPlan();
-        barcodeItems = {};
-        barcodeIndex = {};
       }
-      if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
     }
 
-    /* ---------- Inventory ---------- */
+    function saveState() {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ inventory, recipes, mealPlan, barcodeMap })
+        );
+      } catch (e) {
+        console.error("Failed to save", e);
+      }
+    }
+
+    // ---------- INVENTORY ----------
 
     function upsertInventoryItem(name, quantity, unit) {
       const cleanName = titleCase(name.trim());
       const key = cleanName.toLowerCase();
-      let item = inventory.find(i => i.key === key);
+      let item = inventory.find((i) => i.key === key);
 
       if (!item) {
         item = { key, name: cleanName, quantity, unit };
         normalizeInventoryItem(item);
         inventory.push(item);
-        return;
+      } else {
+        const baseUnit = item.unit || unit;
+        const converted = convertToUnit(quantity, unit, baseUnit);
+        if (!item.unit && unit) item.unit = unit;
+        item.quantity += converted;
+        normalizeInventoryItem(item);
       }
-
-      const baseUnit = item.unit || unit;
-      const converted = convertToUnit(quantity, unit, baseUnit);
-      if (!item.unit && unit) item.unit = unit;
-      item.quantity += converted;
-      normalizeInventoryItem(item);
     }
 
     function setInventoryItemExact(originalKey, name, quantity, unit) {
       const cleanName = titleCase(name.trim());
       const newKey = cleanName.toLowerCase();
-      let item = inventory.find(i => i.key === originalKey);
+      let item = inventory.find((i) => i.key === originalKey);
 
       if (!item) {
         item = { key: newKey, name: cleanName, quantity, unit };
@@ -476,20 +480,20 @@
     }
 
     function deleteInventoryItem(key) {
-      inventory = inventory.filter(i => i.key !== key);
+      inventory = inventory.filter((i) => i.key !== key);
     }
 
     function renderInventoryNameSuggestions() {
-      const datalist = document.getElementById("inv-name-list");
-      if (!datalist) return;
-      datalist.innerHTML = "";
+      const dl = document.getElementById("inv-name-list");
+      if (!dl) return;
+      dl.innerHTML = "";
       inventory
         .slice()
-        .sort((a,b) => a.name.localeCompare(b.name))
-        .forEach(item => {
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .forEach((item) => {
           const opt = document.createElement("option");
           opt.value = item.name;
-          datalist.appendChild(opt);
+          dl.appendChild(opt);
         });
     }
 
@@ -498,12 +502,12 @@
       if (!container) return;
       container.innerHTML = "";
 
-      const filter = inventoryFilter.toLowerCase();
+      const filter = (inventoryFilter || "").toLowerCase();
 
       inventory
         .slice()
-        .sort((a,b) => a.name.localeCompare(b.name))
-        .forEach(item => {
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .forEach((item) => {
           if (filter && !item.name.toLowerCase().includes(filter)) return;
 
           const row = document.createElement("div");
@@ -512,7 +516,9 @@
           const text = document.createElement("span");
           text.className = "inventory-item-text";
           text.textContent =
-            `${item.name} - ${formatQuantityWithUnit(item.quantity, item.unit || "")}`;
+            item.name +
+            " - " +
+            formatQuantityWithUnit(item.quantity, item.unit || "");
           row.appendChild(text);
 
           const actions = document.createElement("div");
@@ -534,7 +540,7 @@
               if (editingInventoryKey === item.key) clearInventoryEditState();
               renderInventory();
               renderInventoryNameSuggestions();
-              saveAppState();
+              saveState();
             }
           });
 
@@ -547,15 +553,18 @@
     }
 
     function startInventoryEdit(key) {
-      const item = inventory.find(i => i.key === key);
+      const item = inventory.find((i) => i.key === key);
       if (!item) return;
 
       document.getElementById("inv-name").value = item.name;
       document.getElementById("inv-qty").value = item.quantity;
       document.getElementById("inv-unit").value = item.unit || "";
 
-      document.getElementById("inventory-submit-btn").textContent = "Save changes";
-      document.getElementById("inventory-cancel-edit").classList.remove("hidden");
+      document.getElementById("inventory-submit-btn").textContent =
+        "Save changes";
+      document
+        .getElementById("inventory-cancel-edit")
+        .classList.remove("hidden");
       editingInventoryKey = key;
     }
 
@@ -563,12 +572,113 @@
       document.getElementById("inv-name").value = "";
       document.getElementById("inv-qty").value = "1";
       document.getElementById("inv-unit").value = "";
-      document.getElementById("inventory-submit-btn").textContent = "Add / Update";
-      document.getElementById("inventory-cancel-edit").classList.add("hidden");
+      document.getElementById("inventory-submit-btn").textContent =
+        "Add / Update";
+      document
+        .getElementById("inventory-cancel-edit")
+        .classList.add("hidden");
       editingInventoryKey = null;
     }
 
-    /* ---------- Recipes & ingredients ---------- */
+    // ---------- FAKE BARCODE (SIMPLE) ----------
+
+    function handleFakeBarcodeScan() {
+      let code = prompt("Fake barcode scan: enter a code.", "");
+      if (!code) return;
+      code = String(code).trim();
+      if (!code) return;
+
+      const existing = barcodeMap[code];
+
+      if (existing) {
+        const answer = confirm(
+          `Barcode ${code} is ${existing.name}.\nIs that correct?`
+        );
+        if (!answer) {
+          // treat as new item
+          createBarcodeMapping(code);
+          return;
+        }
+
+        const defaultQty =
+          existing.baseQty && existing.baseQty > 0
+            ? String(existing.baseQty)
+            : "1";
+        const unitText = existing.unit ? " in " + existing.unit : "";
+        const qtyStr = prompt(
+          `How much did you buy${unitText}?`,
+          defaultQty
+        );
+        if (!qtyStr) return;
+        const qty = parseFloat(qtyStr);
+        if (isNaN(qty) || qty <= 0) return;
+
+        upsertInventoryItem(existing.name, qty, existing.unit || "");
+        renderInventory();
+        renderInventoryNameSuggestions();
+        saveState();
+        alert(
+          "Added " +
+            formatQuantityWithUnit(qty, existing.unit || "") +
+            " of " +
+            existing.name
+        );
+        return;
+      }
+
+      // new barcode
+      createBarcodeMapping(code);
+    }
+
+    function createBarcodeMapping(code) {
+      let name = prompt("What is this item called?", "");
+      if (!name) return;
+      const cleanName = titleCase(name);
+
+      let baseQtyStr = prompt(
+        `For one 'typical' amount of ${cleanName}, what quantity? (e.g. 500 for 500g)`,
+        "500"
+      );
+      if (!baseQtyStr) return;
+      const baseQty = parseFloat(baseQtyStr);
+      if (isNaN(baseQty) || baseQty <= 0) return;
+
+      let unit = prompt(
+        "What is the unit? (e.g. g, kg, ml, l, pack, pcs)",
+        "g"
+      );
+      unit = (unit || "").trim();
+
+      barcodeMap[code] = {
+        name: cleanName,
+        baseQty: baseQty,
+        unit: unit,
+      };
+
+      let nowQtyStr = prompt(
+        `How much did you buy now in ${unit || "units"}?`,
+        String(baseQty)
+      );
+      if (!nowQtyStr) {
+        saveState();
+        return;
+      }
+      const nowQty = parseFloat(nowQtyStr);
+      if (isNaN(nowQty) || nowQty <= 0) {
+        saveState();
+        return;
+      }
+
+      upsertInventoryItem(cleanName, nowQty, unit);
+      renderInventory();
+      renderInventoryNameSuggestions();
+      saveState();
+      alert(
+        "Added " + formatQuantityWithUnit(nowQty, unit) + " of " + cleanName
+      );
+    }
+
+    // ---------- RECIPES ----------
 
     function renderCurrentRecipeIngredients() {
       const ul = document.getElementById("current-recipe-ingredients");
@@ -581,11 +691,12 @@
         const li = document.createElement("li");
 
         const textSpan = document.createElement("span");
-        textSpan.textContent = `${ing.name}: ${ing.quantity} ${ing.unit}`;
+        textSpan.textContent =
+          ing.name + ": " + ing.quantity + " " + (ing.unit || "");
         li.appendChild(textSpan);
 
-        const actionsDiv = document.createElement("div");
-        actionsDiv.className = "table-actions";
+        const actions = document.createElement("div");
+        actions.className = "table-actions";
 
         const editBtn = document.createElement("button");
         editBtn.type = "button";
@@ -602,23 +713,26 @@
           renderCurrentRecipeIngredients();
         });
 
-        actionsDiv.appendChild(editBtn);
-        actionsDiv.appendChild(delBtn);
-        li.appendChild(actionsDiv);
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        li.appendChild(actions);
         ul.appendChild(li);
       });
     }
 
     function startIngredientEdit(index) {
       if (!currentRecipe || !currentRecipe.ingredients[index]) return;
-
       const ing = currentRecipe.ingredients[index];
+
       document.getElementById("ing-name").value = ing.name;
       document.getElementById("ing-qty").value = ing.quantity;
       document.getElementById("ing-unit").value = ing.unit;
 
-      document.getElementById("ingredient-submit-btn").textContent = "Save ingredient";
-      document.getElementById("cancel-ingredient-edit").classList.remove("hidden");
+      document.getElementById("ingredient-submit-btn").textContent =
+        "Save ingredient";
+      document
+        .getElementById("cancel-ingredient-edit")
+        .classList.remove("hidden");
       editingIngredientIndex = index;
     }
 
@@ -626,9 +740,27 @@
       document.getElementById("ing-name").value = "";
       document.getElementById("ing-qty").value = "1";
       document.getElementById("ing-unit").value = "";
-      document.getElementById("ingredient-submit-btn").textContent = "Add ingredient";
-      document.getElementById("cancel-ingredient-edit").classList.add("hidden");
+      document.getElementById("ingredient-submit-btn").textContent =
+        "Add ingredient";
+      document
+        .getElementById("cancel-ingredient-edit")
+        .classList.add("hidden");
       editingIngredientIndex = null;
+    }
+
+    function clearRecipeEditState() {
+      editingRecipeId = null;
+      currentRecipe = null;
+      document.getElementById("recipe-name").value = "";
+      document.getElementById("recipe-servings").value = "2";
+      document.getElementById("current-recipe-ingredients").innerHTML = "";
+      document
+        .getElementById("recipe-ingredients-section")
+        .classList.add("hidden");
+      document
+        .getElementById("cancel-recipe-edit")
+        .classList.add("hidden");
+      clearIngredientEditState();
     }
 
     function renderRecipesList() {
@@ -641,55 +773,57 @@
         return;
       }
 
-      recipes.forEach(recipe => {
+      recipes.forEach((r) => {
         const wrapper = document.createElement("div");
         wrapper.className = "subpanel";
 
-        const titleRow = document.createElement("div");
-        titleRow.className = "recipe-header";
+        const header = document.createElement("div");
+        header.className = "recipe-header";
 
         const title = document.createElement("h3");
-        title.textContent = `${recipe.name} (serves ${recipe.servings})`;
+        title.textContent = `${r.name} (serves ${r.servings})`;
 
-        const actionsDiv = document.createElement("div");
-        actionsDiv.className = "table-actions";
+        const actions = document.createElement("div");
+        actions.className = "table-actions";
 
         const editBtn = document.createElement("button");
         editBtn.type = "button";
         editBtn.className = "secondary";
         editBtn.textContent = "Edit";
-        editBtn.addEventListener("click", () => startRecipeEdit(recipe.id));
+        editBtn.addEventListener("click", () => {
+          startRecipeEdit(r.id);
+        });
 
         const delBtn = document.createElement("button");
         delBtn.type = "button";
         delBtn.className = "secondary";
         delBtn.textContent = "Delete";
         delBtn.addEventListener("click", () => {
-          if (confirm(`Delete recipe "${recipe.name}"?`)) {
-            deleteRecipe(recipe.id);
-            mealPlan.forEach(entry => {
-              if (entry.recipeId === recipe.id) {
+          if (confirm(`Delete recipe "${r.name}"?`)) {
+            recipes = recipes.filter((x) => x.id !== r.id);
+            mealPlan.forEach((entry) => {
+              if (entry.recipeId === r.id) {
                 entry.recipeId = "";
                 entry.servings = 0;
               }
             });
             renderRecipesList();
             renderMealPlan();
-            saveAppState();
+            saveState();
           }
         });
 
-        actionsDiv.appendChild(editBtn);
-        actionsDiv.appendChild(delBtn);
-
-        titleRow.appendChild(title);
-        titleRow.appendChild(actionsDiv);
-        wrapper.appendChild(titleRow);
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        header.appendChild(title);
+        header.appendChild(actions);
+        wrapper.appendChild(header);
 
         const ul = document.createElement("ul");
-        recipe.ingredients.forEach(ing => {
+        r.ingredients.forEach((ing) => {
           const li = document.createElement("li");
-          li.textContent = `${ing.name}: ${ing.quantity} ${ing.unit}`;
+          li.textContent =
+            ing.name + ": " + ing.quantity + " " + (ing.unit || "");
           ul.appendChild(li);
         });
         wrapper.appendChild(ul);
@@ -700,13 +834,8 @@
       renderMealPlan();
     }
 
-    function deleteRecipe(id) {
-      recipes = recipes.filter(r => r.id !== id);
-      if (editingRecipeId === id) clearRecipeEditState();
-    }
-
     function startRecipeEdit(id) {
-      const recipe = recipes.find(r => r.id === id);
+      const recipe = recipes.find((r) => r.id === id);
       if (!recipe) return;
 
       editingRecipeId = id;
@@ -714,38 +843,29 @@
         id: recipe.id,
         name: recipe.name,
         servings: recipe.servings,
-        ingredients: recipe.ingredients.map(ing => ({
+        ingredients: recipe.ingredients.map((ing) => ({
           name: ing.name,
           quantity: ing.quantity,
-          unit: ing.unit
-        }))
+          unit: ing.unit,
+        })),
       };
 
       document.getElementById("recipe-name").value = currentRecipe.name;
-      document.getElementById("recipe-servings").value = currentRecipe.servings;
+      document.getElementById("recipe-servings").value =
+        currentRecipe.servings;
 
-      document.getElementById("recipe-ingredients-section").classList.remove("hidden");
-      document.getElementById("cancel-recipe-edit").classList.remove("hidden");
+      document
+        .getElementById("recipe-ingredients-section")
+        .classList.remove("hidden");
+      document
+        .getElementById("cancel-recipe-edit")
+        .classList.remove("hidden");
 
       renderCurrentRecipeIngredients();
       clearIngredientEditState();
     }
 
-    function clearRecipeEditState() {
-      editingRecipeId = null;
-      currentRecipe = null;
-
-      document.getElementById("recipe-name").value = "";
-      document.getElementById("recipe-servings").value = "2";
-
-      document.getElementById("current-recipe-ingredients").innerHTML = "";
-      document.getElementById("recipe-ingredients-section").classList.add("hidden");
-      document.getElementById("cancel-recipe-edit").classList.add("hidden");
-
-      clearIngredientEditState();
-    }
-
-    /* ---------- Meal plan ---------- */
+    // ---------- MEAL PLAN ----------
 
     function renderMealPlan() {
       const container = document.getElementById("meal-plan-container");
@@ -754,15 +874,15 @@
 
       if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
 
-      const validIds = new Set(recipes.map(r => r.id));
-      mealPlan.forEach(entry => {
+      const validIds = new Set(recipes.map((r) => r.id));
+      mealPlan.forEach((entry) => {
         if (entry.recipeId && !validIds.has(entry.recipeId)) {
           entry.recipeId = "";
           entry.servings = 0;
         }
       });
 
-      mealPlan.forEach(entry => {
+      mealPlan.forEach((entry) => {
         const row = document.createElement("div");
         row.className = "subpanel";
 
@@ -783,8 +903,8 @@
 
         recipes
           .slice()
-          .sort((a,b) => a.name.localeCompare(b.name))
-          .forEach(recipe => {
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .forEach((recipe) => {
             const opt = document.createElement("option");
             opt.value = recipe.id;
             opt.textContent = `${recipe.name} (serves ${recipe.servings})`;
@@ -792,18 +912,19 @@
           });
 
         select.value = entry.recipeId || "";
-
-        select.addEventListener("change", e => {
+        select.addEventListener("change", (e) => {
           const id = e.target.dataset.dayId;
-          const planEntry = mealPlan.find(p => p.dayId === id);
+          const planEntry = mealPlan.find((p) => p.dayId === id);
           if (!planEntry) return;
           planEntry.recipeId = e.target.value;
           if (!planEntry.recipeId) {
             planEntry.servings = 0;
-            const sInput = document.querySelector(`input[data-day-id="${id}"]`);
+            const sInput = document.querySelector(
+              `input[data-day-id="${id}"]`
+            );
             if (sInput) sInput.value = "0";
           }
-          saveAppState();
+          saveState();
         });
 
         recipeLabel.appendChild(select);
@@ -817,17 +938,18 @@
         servingsInput.min = "0";
         servingsInput.step = "1";
         servingsInput.dataset.dayId = entry.dayId;
-        servingsInput.value = entry.servings && entry.servings > 0 ? entry.servings : "0";
+        servingsInput.value =
+          entry.servings && entry.servings > 0 ? entry.servings : "0";
 
-        servingsInput.addEventListener("change", e => {
+        servingsInput.addEventListener("change", (e) => {
           const id = e.target.dataset.dayId;
-          const planEntry = mealPlan.find(p => p.dayId === id);
+          const planEntry = mealPlan.find((p) => p.dayId === id);
           if (!planEntry) return;
           let val = parseFloat(e.target.value || "0");
           if (isNaN(val) || val < 0) val = 0;
           planEntry.servings = val;
           e.target.value = val === 0 ? "0" : String(val);
-          saveAppState();
+          saveState();
         });
 
         servingsLabel.appendChild(servingsInput);
@@ -837,22 +959,22 @@
       });
     }
 
-    /* ---------- Shopping list ---------- */
+    // ---------- SHOPPING LIST ----------
 
     function generateShoppingList() {
       const required = {};
 
-      mealPlan.forEach(entry => {
+      mealPlan.forEach((entry) => {
         if (!entry.recipeId) return;
         const plannedServings = parseFloat(entry.servings || "0");
         if (plannedServings <= 0) return;
 
-        const recipe = recipes.find(r => r.id === entry.recipeId);
+        const recipe = recipes.find((r) => r.id === entry.recipeId);
         if (!recipe) return;
 
         const scale = plannedServings / recipe.servings;
 
-        recipe.ingredients.forEach(ing => {
+        recipe.ingredients.forEach((ing) => {
           const key = ing.name.toLowerCase();
           const ingUnit = ing.unit || "";
           const baseUnit = required[key]
@@ -863,12 +985,16 @@
             required[key] = {
               name: ing.name,
               quantityBase: 0,
-              baseUnit
+              baseUnit,
             };
           }
 
           const qtyScaled = ing.quantity * scale;
-          const qtyInBase = convertToUnit(qtyScaled, ingUnit, required[key].baseUnit);
+          const qtyInBase = convertToUnit(
+            qtyScaled,
+            ingUnit,
+            required[key].baseUnit
+          );
           required[key].quantityBase += qtyInBase;
         });
       });
@@ -877,15 +1003,21 @@
       if (!tbody) return;
       tbody.innerHTML = "";
 
-      Object.keys(required).forEach(key => {
+      Object.keys(required).forEach((key) => {
         const need = required[key];
         const baseUnit = need.baseUnit;
         let requiredBase = need.quantityBase;
 
         let invQtyBase = 0;
-        const invItem = inventory.find(i => i.name.toLowerCase() === key);
+        const invItem = inventory.find(
+          (i) => i.name.toLowerCase() === key
+        );
         if (invItem && baseUnit) {
-          invQtyBase = convertToUnit(invItem.quantity, invItem.unit || "", baseUnit);
+          invQtyBase = convertToUnit(
+            invItem.quantity,
+            invItem.unit || "",
+            baseUnit
+          );
         } else if (invItem && !baseUnit) {
           invQtyBase = invItem.quantity;
         }
@@ -894,21 +1026,36 @@
         if (toBuyBase <= 1e-9) return;
 
         let displayUnit = baseUnit;
-        if (baseUnit === "g" && (requiredBase >= 1000 || invQtyBase >= 1000 || toBuyBase >= 1000)) {
+        if (
+          baseUnit === "g" &&
+          (requiredBase >= 1000 ||
+            invQtyBase >= 1000 ||
+            toBuyBase >= 1000)
+        ) {
           displayUnit = "kg";
-        } else if (baseUnit === "ml" && (requiredBase >= 1000 || invQtyBase >= 1000 || toBuyBase >= 1000)) {
+        } else if (
+          baseUnit === "ml" &&
+          (requiredBase >= 1000 ||
+            invQtyBase >= 1000 ||
+            toBuyBase >= 1000)
+        ) {
           displayUnit = "l";
         }
 
         let displayQtyNumeric;
         if (displayUnit) {
-          displayQtyNumeric = convertToUnit(toBuyBase, baseUnit, displayUnit);
+          displayQtyNumeric = convertToUnit(
+            toBuyBase,
+            baseUnit,
+            displayUnit
+          );
         } else {
           displayQtyNumeric = toBuyBase;
         }
-        displayQtyNumeric = Math.round(displayQtyNumeric * 100) / 100;
+        displayQtyNumeric =
+          Math.round(displayQtyNumeric * 100) / 100;
 
-        const compactUnits = ["g","kg","ml","l"];
+        const compactUnits = ["g", "kg", "ml", "l"];
         const isCompact = displayUnit && compactUnits.includes(displayUnit);
 
         let qtyStr;
@@ -950,7 +1097,7 @@
       });
 
       const checkboxes = tbody.querySelectorAll(".shopping-bought");
-      checkboxes.forEach(cb => {
+      checkboxes.forEach((cb) => {
         cb.addEventListener("change", () => {
           const tr = cb.closest("tr");
           if (!tr) return;
@@ -966,272 +1113,77 @@
 
           renderInventory();
           renderInventoryNameSuggestions();
-          saveAppState();
+          saveState();
         });
       });
     }
 
-    /* ---------- Fake barcode logic ---------- */
-
-    function ensureBarcodeArray(barcode) {
-      if (!barcodeIndex[barcode]) barcodeIndex[barcode] = [];
-      return barcodeIndex[barcode];
-    }
-
-    function handleExistingBarcode(barcode, mappings) {
-      if (!mappings.length) return false;
-
-      if (mappings.length === 1) {
-        const nameKey = mappings[0];
-        const tpl = barcodeItems[nameKey];
-        if (!tpl) return false;
-
-        const confirmMsg =
-          "This barcode is currently linked to:\n\n" +
-          tpl.name +
-          (tpl.baseQuantity ? " (typical amount: " + tpl.baseQuantity + (tpl.unit || "") + ")" : "") +
-          "\n\nIs that correct?";
-
-        const isCorrect = confirm(confirmMsg);
-        if (!isCorrect) {
-          return false;
-        }
-
-        const unit = tpl.unit || "";
-        const defaultVal = (tpl.baseQuantity && tpl.baseQuantity > 0)
-          ? String(tpl.baseQuantity)
-          : "1";
-        const unitText = unit ? " in " + unit : "";
-        const qtyMsg =
-          tpl.name + " already in list - how much did you buy?" +
-          "\n\n" +
-          (tpl.baseQuantity
-            ? "Typical amount: " + tpl.baseQuantity + (unit || "") + ".\n"
-            : "") +
-          "Enter the total amount" + unitText + ":";
-
-        const qtyStr = prompt(qtyMsg, defaultVal);
-        if (!qtyStr) return true;
-        const qty = parseFloat(qtyStr);
-        if (isNaN(qty) || qty <= 0) return true;
-
-        upsertInventoryItem(tpl.name, qty, unit);
-        renderInventory();
-        renderInventoryNameSuggestions();
-        saveAppState();
-        alert("Added " + formatQuantityWithUnit(qty, unit) + " of " + tpl.name + " to inventory.");
-        return true;
-      }
-
-      let msg = "This barcode is linked to multiple items:\n\n";
-      mappings.forEach((nameKey, idx) => {
-        const tpl2 = barcodeItems[nameKey];
-        if (!tpl2) return;
-        msg +=
-          (idx + 1) + ". " + tpl2.name +
-          (tpl2.baseQuantity ? " (" + tpl2.baseQuantity + (tpl2.unit || "") + " typical)" : "") +
-          "\n";
-      });
-      msg += "\nEnter the number of the correct item,\n" +
-             "or 0 if it's a different item:";
-
-      const choiceStr = prompt(msg, "");
-      if (!choiceStr) return false;
-      const choice = parseInt(choiceStr, 10);
-      if (isNaN(choice) || choice < 1 || choice > mappings.length) {
-        return false;
-      }
-
-      const pickedNameKey = mappings[choice - 1];
-      const tpl3 = barcodeItems[pickedNameKey];
-      if (!tpl3) return true;
-
-      const unit3 = tpl3.unit || "";
-      const defaultVal3 = (tpl3.baseQuantity && tpl3.baseQuantity > 0)
-        ? String(tpl3.baseQuantity)
-        : "1";
-      const unitText3 = unit3 ? " in " + unit3 : "";
-      const qtyMsg3 =
-        tpl3.name + " already in list - how much did you buy?" +
-        "\n\n" +
-        (tpl3.baseQuantity
-          ? "Typical amount: " + tpl3.baseQuantity + (unit3 || "") + ".\n"
-          : "") +
-        "Enter the total amount" + unitText3 + ":";
-
-      const qtyStr3 = prompt(qtyMsg3, defaultVal3);
-      if (!qtyStr3) return true;
-      const qty3 = parseFloat(qtyStr3);
-      if (isNaN(qty3) || qty3 <= 0) return true;
-
-      upsertInventoryItem(tpl3.name, qty3, unit3);
-      renderInventory();
-      renderInventoryNameSuggestions();
-      saveAppState();
-      alert("Added " + formatQuantityWithUnit(qty3, unit3) + " of " + tpl3.name + " to inventory.");
-      return true;
-    }
-
-    function handleNewBarcodeOrNewItem(barcode) {
-      let name = prompt("What is this item called?", "");
-      if (!name) {
-        alert("Cancelled.");
-        return;
-      }
-      const cleanName = titleCase(name.trim());
-      const nameKey = cleanName.toLowerCase();
-
-      const existingTpl = barcodeItems[nameKey];
-
-      if (existingTpl) {
-        const arr = ensureBarcodeArray(barcode);
-        if (!arr.includes(nameKey)) arr.push(nameKey);
-
-        const unit = existingTpl.unit || "";
-        const defaultVal = (existingTpl.baseQuantity && existingTpl.baseQuantity > 0)
-          ? String(existingTpl.baseQuantity)
-          : "1";
-        const unitText = unit ? " in " + unit : "";
-        const msg =
-          cleanName + " is already defined in your pantry.\n" +
-          (existingTpl.baseQuantity
-            ? "Typical amount: " + existingTpl.baseQuantity + (unit || "") + ".\n"
-            : "") +
-          "How much did you buy" + unitText + "?";
-
-        const qtyStr = prompt(msg, defaultVal);
-        if (!qtyStr) {
-          saveAppState();
-          return;
-        }
-        const qty = parseFloat(qtyStr);
-        if (isNaN(qty) || qty <= 0) {
-          saveAppState();
-          return;
-        }
-
-        upsertInventoryItem(cleanName, qty, unit);
-        renderInventory();
-        renderInventoryNameSuggestions();
-        saveAppState();
-        alert("Added " + formatQuantityWithUnit(qty, unit) + " of " + cleanName + " to inventory.");
-        return;
-      }
-
-      const qtyStr2 = prompt(
-        'For one typical amount of "' + cleanName + '", what is the quantity?\n' +
-        'Example: for a 500g pack, enter 500.',
-        "500"
-      );
-      if (!qtyStr2) {
-        alert("Cancelled.");
-        return;
-      }
-      const baseQty = parseFloat(qtyStr2);
-      if (isNaN(baseQty) || baseQty <= 0) {
-        alert("Invalid quantity. Cancelled.");
-        return;
-      }
-
-      const unitStr = prompt(
-        "What is the unit for this quantity?\n" +
-        "Examples: g, kg, ml, l, pack, packs, pcs",
-        "g"
-      );
-      const unit2 = (unitStr || "").trim();
-
-      barcodeItems[nameKey] = {
-        name: cleanName,
-        baseQuantity: baseQty,
-        unit: unit2
-      };
-
-      const arr2 = ensureBarcodeArray(barcode);
-      if (!arr2.includes(nameKey)) arr2.push(nameKey);
-
-      const unitText2 = unit2 ? " in " + unit2 : "";
-      const msgNow =
-        "Saved " + cleanName + " as a typical amount of " + baseQty + (unit2 || "") + ".\n\n" +
-        "How much did you buy right now" + unitText2 + "?\n" +
-        "Example: if you bought one pack, enter " + baseQty + ".";
-
-      const qtyNowStr = prompt(msgNow, String(baseQty));
-      if (!qtyNowStr) {
-        saveAppState();
-        return;
-      }
-      const qtyNow = parseFloat(qtyNowStr);
-      if (isNaN(qtyNow) || qtyNow <= 0) {
-        saveAppState();
-        return;
-      }
-
-      upsertInventoryItem(cleanName, qtyNow, unit2);
-      renderInventory();
-      renderInventoryNameSuggestions();
-      saveAppState();
-      alert("Added " + formatQuantityWithUnit(qtyNow, unit2) + " of " + cleanName + " to inventory.");
-    }
-
-    function fakeBarcodeScanFlow() {
-      let code = prompt("Fake barcode scan: enter a barcode number or code.", "");
-      if (!code) return;
-      code = String(code).trim();
-      if (!code) return;
-
-      const mappings = barcodeIndex[code] || [];
-
-      if (mappings.length) {
-        const handled = handleExistingBarcode(code, mappings);
-        if (handled) return;
-      }
-
-      handleNewBarcodeOrNewItem(code);
-    }
-
-    /* ---------- Navigation ---------- */
+    // ---------- NAVIGATION ----------
 
     function showPage(pageId) {
       const pages = document.querySelectorAll(".page");
       const navButtons = document.querySelectorAll(".app-nav button");
 
-      pages.forEach(page => {
+      pages.forEach((page) => {
         if (!page) return;
         page.classList.toggle("hidden", page.id !== pageId);
       });
 
-      navButtons.forEach(btn => {
+      navButtons.forEach((btn) => {
         if (!btn) return;
         const controls = btn.getAttribute("aria-controls");
-        btn.setAttribute("aria-selected", controls === pageId ? "true" : "false");
+        btn.setAttribute(
+          "aria-selected",
+          controls === pageId ? "true" : "false"
+        );
       });
     }
 
-    /* ---------- Main init ---------- */
+    // ---------- INIT ----------
 
     document.addEventListener("DOMContentLoaded", () => {
-      loadAppState();
+      loadState();
 
-      // nav buttons
-      document.getElementById("nav-inventory").addEventListener("click", () => showPage("page-inventory"));
-      document.getElementById("nav-recipes").addEventListener("click", () => showPage("page-recipes"));
-      document.getElementById("nav-mealplan").addEventListener("click", () => showPage("page-mealplan"));
-      document.getElementById("nav-shopping").addEventListener("click", () => showPage("page-shopping"));
+      // Nav
+      document
+        .getElementById("nav-inventory")
+        .addEventListener("click", () =>
+          showPage("page-inventory")
+        );
+      document
+        .getElementById("nav-recipes")
+        .addEventListener("click", () =>
+          showPage("page-recipes")
+        );
+      document
+        .getElementById("nav-mealplan")
+        .addEventListener("click", () =>
+          showPage("page-mealplan")
+        );
+      document
+        .getElementById("nav-shopping")
+        .addEventListener("click", () =>
+          showPage("page-shopping")
+        );
+      showPage("page-inventory");
 
-      showPage("page-inventory"); // default
-
-      // inventory form
+      // Inventory events
       const invForm = document.getElementById("inventory-form");
-      const searchInput = document.getElementById("inventory-search");
-      const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
+      const searchInput =
+        document.getElementById("inventory-search");
+      const cancelInvEditBtn =
+        document.getElementById("inventory-cancel-edit");
       const fakeScanBtn = document.getElementById("fake-scan-btn");
 
-      invForm.addEventListener("submit", e => {
+      invForm.addEventListener("submit", (e) => {
         e.preventDefault();
-
-        const name = document.getElementById("inv-name").value.trim();
-        const qty = parseFloat(document.getElementById("inv-qty").value || "0");
-        const unit = (document.getElementById("inv-unit").value || "").trim();
+        const name =
+          document.getElementById("inv-name").value.trim();
+        const qty = parseFloat(
+          document.getElementById("inv-qty").value || "0"
+        );
+        const unit =
+          document.getElementById("inv-unit").value || "";
 
         if (!name || qty <= 0) {
           alert("Please enter a valid name and quantity.");
@@ -1239,7 +1191,12 @@
         }
 
         if (editingInventoryKey) {
-          setInventoryItemExact(editingInventoryKey, name, qty, unit);
+          setInventoryItemExact(
+            editingInventoryKey,
+            name,
+            qty,
+            unit
+          );
           clearInventoryEditState();
         } else {
           upsertInventoryItem(name, qty, unit);
@@ -1250,7 +1207,7 @@
 
         renderInventory();
         renderInventoryNameSuggestions();
-        saveAppState();
+        saveState();
       });
 
       cancelInvEditBtn.addEventListener("click", () => {
@@ -1263,19 +1220,26 @@
       });
 
       fakeScanBtn.addEventListener("click", () => {
-        fakeBarcodeScanFlow();
+        handleFakeBarcodeScan();
       });
 
-      // recipes
+      // Recipes events
       const startRecipeBtn = document.getElementById("start-recipe");
-      const ingSection = document.getElementById("recipe-ingredients-section");
-      const cancelRecipeEditBtn = document.getElementById("cancel-recipe-edit");
-      const importBtn = document.getElementById("import-ingredients-btn");
+      const ingSection = document.getElementById(
+        "recipe-ingredients-section"
+      );
+      const cancelRecipeEditBtn =
+        document.getElementById("cancel-recipe-edit");
+      const importBtn = document.getElementById(
+        "import-ingredients-btn"
+      );
 
       startRecipeBtn.addEventListener("click", () => {
-        const name = document.getElementById("recipe-name").value.trim();
-        const servings = parseFloat(document.getElementById("recipe-servings").value || "0");
-
+        const name =
+          document.getElementById("recipe-name").value.trim();
+        const servings = parseFloat(
+          document.getElementById("recipe-servings").value || "0"
+        );
         if (!name || servings <= 0) {
           alert("Please enter a recipe name and servings.");
           return;
@@ -1286,7 +1250,7 @@
             id: editingRecipeId || String(Date.now()),
             name: titleCase(name),
             servings,
-            ingredients: []
+            ingredients: [],
           };
         } else {
           currentRecipe.name = titleCase(name);
@@ -1308,19 +1272,23 @@
       });
 
       const ingForm = document.getElementById("ingredient-form");
-      ingForm.addEventListener("submit", e => {
+      ingForm.addEventListener("submit", (e) => {
         e.preventDefault();
         if (!currentRecipe) {
           alert("Start a recipe first.");
           return;
         }
 
-        const name = document.getElementById("ing-name").value.trim();
-        const qty = parseFloat(document.getElementById("ing-qty").value || "0");
-        const unit = document.getElementById("ing-unit").value.trim();
+        const name =
+          document.getElementById("ing-name").value.trim();
+        const qty = parseFloat(
+          document.getElementById("ing-qty").value || "0"
+        );
+        const unit =
+          document.getElementById("ing-unit").value.trim();
 
         if (!name || qty <= 0) {
-          alert("Please enter a valid ingredient name and quantity.");
+          alert("Please enter a valid ingredient name & quantity.");
           return;
         }
 
@@ -1330,223 +1298,115 @@
           currentRecipe.ingredients[editingIngredientIndex] = {
             name: cleanName,
             quantity: qty,
-            unit
+            unit,
           };
           clearIngredientEditState();
         } else {
           currentRecipe.ingredients.push({
             name: cleanName,
             quantity: qty,
-            unit
+            unit,
           });
         }
 
         renderCurrentRecipeIngredients();
       });
 
-      document.getElementById("cancel-ingredient-edit").addEventListener("click", () => {
-        clearIngredientEditState();
-      });
+      document
+        .getElementById("cancel-ingredient-edit")
+        .addEventListener("click", () => {
+          clearIngredientEditState();
+        });
 
       importBtn.addEventListener("click", () => {
         if (!currentRecipe) {
-          alert("Start a recipe first (enter name + servings, then click 'Start new recipe').");
+          alert(
+            "Start a recipe first (name + servings, then 'Start new recipe')."
+          );
           return;
         }
 
-        const textarea = document.getElementById("import-text");
+        const textarea =
+          document.getElementById("import-text");
         const raw = textarea.value || "";
         const lines = raw.split(/\r?\n/);
 
-        let requiredIngredients = [];
-        let optionalGroups = [];
-        let skipped = 0;
+        let imported = 0;
 
-        lines.forEach(lineRaw => {
-          let originalLine = lineRaw.trim();
-          if (!originalLine) { skipped++; return; }
-
-          const isOptional = /\boptional\b/i.test(originalLine);
-          let working = originalLine.replace(/\([^)]*\)/g, "").trim();
-          if (!working) { skipped++; return; }
-
-          if (isOptional && /\s+or\s+/i.test(working)) {
-            const parts = working.split(/\s+or\s+/i);
-            const options = [];
-            parts.forEach(p => {
-              const parsed = parseIngredientCore(p.trim());
-              if (parsed && parsed.name && parsed.quantity > 0) options.push(parsed);
-            });
-            if (options.length > 0) optionalGroups.push({ originalLine, options });
-            else skipped++;
-          } else {
-            const parsed = parseIngredientCore(working);
-            if (!parsed || !parsed.name || parsed.quantity <= 0) { skipped++; return; }
-            if (isOptional) optionalGroups.push({ originalLine, options: [parsed] });
-            else requiredIngredients.push(parsed);
+        lines.forEach((line) => {
+          const parsed = parseIngredientLine(line);
+          if (!parsed || !parsed.name || parsed.quantity <= 0) {
+            return;
           }
+          currentRecipe.ingredients.push(parsed);
+          imported++;
         });
 
-        requiredIngredients.forEach(ing => {
-          currentRecipe.ingredients.push(ing);
-        });
-
-        if (!optionalGroups.length) {
-          renderCurrentRecipeIngredients();
-          if (requiredIngredients.length || skipped) {
-            alert(`${requiredIngredients.length} ingredient(s) imported, ${skipped} line(s) skipped or empty.`);
-          } else {
-            alert("No valid ingredients found to import.");
-          }
-          if (requiredIngredients.length) textarea.value = "";
-          return;
-        }
-
-        const overlay = document.createElement("div");
-        overlay.className = "optional-overlay";
-
-        const modal = document.createElement("div");
-        modal.className = "optional-modal";
-
-        const heading = document.createElement("h3");
-        heading.textContent = "Optional ingredients";
-        modal.appendChild(heading);
-
-        const desc = document.createElement("p");
-        desc.textContent = 'Tick any optional ingredients you want to include, then press "Add selected".';
-        modal.appendChild(desc);
-
-        const form = document.createElement("form");
-        form.addEventListener("submit", e => e.preventDefault());
-
-        optionalGroups.forEach((group, gIndex) => {
-          const fs = document.createElement("fieldset");
-
-          const legend = document.createElement("legend");
-          legend.textContent = `From: "${group.originalLine}"`;
-          fs.appendChild(legend);
-
-          group.options.forEach((opt, oIndex) => {
-            const lbl = document.createElement("label");
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.dataset.groupIndex = String(gIndex);
-            cb.dataset.optionIndex = String(oIndex);
-
-            const text = document.createTextNode(
-              ` ${opt.name}: ${opt.quantity} ${opt.unit}`.trim()
-            );
-
-            lbl.appendChild(cb);
-            lbl.appendChild(text);
-            fs.appendChild(lbl);
-          });
-
-          form.appendChild(fs);
-        });
-
-        const buttonsDiv = document.createElement("div");
-        buttonsDiv.className = "optional-buttons";
-
-        const cancelBtn = document.createElement("button");
-        cancelBtn.type = "button";
-        cancelBtn.className = "secondary";
-        cancelBtn.textContent = "Skip all optional";
-        cancelBtn.addEventListener("click", () => {
-          document.body.removeChild(overlay);
-          renderCurrentRecipeIngredients();
-          const baseMsg = `${requiredIngredients.length} required ingredient(s) imported.`;
-          const skipMsg = optionalGroups.length ? ` ${optionalGroups.length} optional group(s) skipped.` : "";
-          const skipLinesMsg = skipped ? ` ${skipped} line(s) skipped or empty.` : "";
-          alert(baseMsg + skipMsg + skipLinesMsg);
-          if (requiredIngredients.length) textarea.value = "";
-        });
-
-        const addBtn = document.createElement("button");
-        addBtn.type = "button";
-        addBtn.textContent = "Add selected";
-        addBtn.addEventListener("click", () => {
-          const checkboxes = form.querySelectorAll('input[type="checkbox"][data-group-index]');
-          let addedOptional = 0;
-          checkboxes.forEach(cb => {
-            if (cb.checked) {
-              const g = parseInt(cb.dataset.groupIndex, 10);
-              const o = parseInt(cb.dataset.optionIndex, 10);
-              const opt = optionalGroups[g]?.options[o];
-              if (opt) {
-                currentRecipe.ingredients.push({
-                  name: opt.name,
-                  quantity: opt.quantity,
-                  unit: opt.unit
-                });
-                addedOptional++;
-              }
-            }
-          });
-
-          document.body.removeChild(overlay);
-          renderCurrentRecipeIngredients();
-
-          let msg = `${requiredIngredients.length} required ingredient(s) imported.`;
-          msg += ` ${addedOptional} optional ingredient(s) added.`;
-          if (skipped) msg += ` ${skipped} line(s) skipped or empty.`;
-          alert(msg);
-
-          if (requiredIngredients.length || addedOptional) textarea.value = "";
-        });
-
-        buttonsDiv.appendChild(cancelBtn);
-        buttonsDiv.appendChild(addBtn);
-        form.appendChild(buttonsDiv);
-        modal.appendChild(form);
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-      });
-
-      document.getElementById("save-recipe").addEventListener("click", () => {
-        if (!currentRecipe) {
-          alert("No recipe in progress.");
-          return;
-        }
-        if (!currentRecipe.ingredients || !currentRecipe.ingredients.length) {
-          alert("Add at least one ingredient.");
-          return;
-        }
-
-        if (editingRecipeId) {
-          const idx = recipes.findIndex(r => r.id === editingRecipeId);
-          if (idx !== -1) {
-            recipes[idx] = {
-              id: editingRecipeId,
-              name: currentRecipe.name,
-              servings: currentRecipe.servings,
-              ingredients: currentRecipe.ingredients
-            };
-          }
+        renderCurrentRecipeIngredients();
+        if (imported) {
+          alert(`Imported ${imported} ingredient(s).`);
+          textarea.value = "";
         } else {
-          recipes.push(currentRecipe);
+          alert("No valid ingredients found.");
         }
-
-        clearRecipeEditState();
-        renderRecipesList();
-        saveAppState();
       });
 
-      document.getElementById("generate-shopping-list").addEventListener("click", () => {
-        generateShoppingList();
-        showPage("page-shopping");
-      });
+      document
+        .getElementById("save-recipe")
+        .addEventListener("click", () => {
+          if (!currentRecipe) {
+            alert("No recipe in progress.");
+            return;
+          }
+          if (
+            !currentRecipe.ingredients ||
+            !currentRecipe.ingredients.length
+          ) {
+            alert("Add at least one ingredient.");
+            return;
+          }
 
-      // initial render
+          if (editingRecipeId) {
+            const idx = recipes.findIndex(
+              (r) => r.id === editingRecipeId
+            );
+            if (idx !== -1) {
+              recipes[idx] = {
+                id: editingRecipeId,
+                name: currentRecipe.name,
+                servings: currentRecipe.servings,
+                ingredients: currentRecipe.ingredients,
+              };
+            }
+          } else {
+            recipes.push(currentRecipe);
+          }
+
+          clearRecipeEditState();
+          renderRecipesList();
+          saveState();
+        });
+
+      // Meal plan & shopping
+      document
+        .getElementById("generate-shopping-list")
+        .addEventListener("click", () => {
+          generateShoppingList();
+          showPage("page-shopping");
+        });
+
+      // Initial renders
       renderInventory();
       renderInventoryNameSuggestions();
       renderRecipesList();
       renderMealPlan();
     });
 
-    // service worker (safe to leave as-is)
+    // Keep service worker registration small & safe
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js").catch(() => {});
+      navigator.serviceWorker
+        .register("./sw.js")
+        .catch(() => {});
     }
   </script>
 </body>
