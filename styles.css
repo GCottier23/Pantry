@@ -448,3 +448,44 @@ p {
     flex-wrap: wrap;
   }
 }
+
+/* (your existing CSS…) */
+
+
+/* -------------------------------------- */
+/* BBC Food Recipe Import styles (NEW)    */
+/* -------------------------------------- */
+.recipe-import {
+  margin-bottom: 1.4rem;
+}
+
+.recipe-import-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.recipe-import-row input {
+  flex: 1 1 auto;
+}
+
+.import-status {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #bbbbbb;
+}
+
+.import-status.error {
+  color: #ff8080;
+}
+
+.recipe-image-preview-wrapper {
+  margin-top: 0.75rem;
+}
+
+.recipe-image-preview {
+  max-width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: block;
+}
