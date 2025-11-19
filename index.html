@@ -960,7 +960,51 @@
     }
 
     // ---------- SHOPPING LIST ----------
+function roundUpForShopping(quantity, unit) {
+  if (!quantity || quantity <= 0) return 0;
+  unit = (unit || "").toLowerCase();
 
+  // g / ml → round up to nearest 50
+  if (unit === "g" || unit === "ml") {
+    return Math.ceil(quantity / 50) * 50; // e.g. 241.7 → 250
+  }
+
+  // kg / l → round up to nearest 0.1
+  if (unit === "kg" || unit === "l") {
+    return Math.ceil(quantity * 10) / 10; // e.g. 1.21 → 1.3
+  }
+
+  // tsp / tbsp → round up to nearest 0.5
+  if (
+    unit === "tsp" ||
+    unit === "teaspoon" ||
+    unit === "teaspoons" ||
+    unit === "tbsp" ||
+    unit === "tablespoon" ||
+    unit === "tablespoons"
+  ) {
+    return Math.ceil(quantity * 2) / 2; // e.g. 0.42 → 0.5
+  }
+
+  // cloves / sticks / packs / pieces → round to whole items
+  if (
+    unit === "clove" ||
+    unit === "cloves" ||
+    unit === "stick" ||
+    unit === "sticks" ||
+    unit === "pack" ||
+    unit === "packs" ||
+    unit === "pc" ||
+    unit === "pcs" ||
+    unit === "piece" ||
+    unit === "pieces"
+  ) {
+    return Math.ceil(quantity);
+  }
+
+  // Fallback: round up to 1 decimal place
+  return Math.ceil(quantity * 10) / 10;
+}
     function generateShoppingList() {
   const required = {};
 
@@ -1047,6 +1091,8 @@
         displayUnit = "ml";
       }
     }
+        // Round up to sensible shopping amounts
+    displayQty = roundUpForShopping(displayQty, displayUnit);
 
     // Build a nice string like "500g" or "1.5kg" or "2 packs"
     let qtyStr;
