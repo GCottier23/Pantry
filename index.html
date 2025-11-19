@@ -1512,55 +1512,6 @@ tdBuy.textContent = fixedQtyStr;
       renderInventoryNameSuggestions();
       renderRecipesList();
       renderMealPlan();
-
-        // --- BBC Food image import ---
-  const importUrlInput = document.getElementById("recipe-import-url");
-  const importBtn = document.getElementById("recipe-fetch-image");
-  const importStatus = document.getElementById("recipe-import-status");
-  const importImg = document.getElementById("recipe-image-preview");
-
-  if (importBtn && importUrlInput && importStatus && importImg) {
-    importBtn.addEventListener("click", async () => {
-      const rawUrl = importUrlInput.value.trim();
-      if (!rawUrl) {
-        importStatus.textContent = "Please paste a recipe URL first.";
-        importStatus.classList.add("error");
-        importImg.style.display = "none";
-        return;
-      }
-
-      importStatus.textContent = "Fetching image…";
-      importStatus.classList.remove("error");
-      importImg.style.display = "none";
-
-      try {
-        const endpoint =
-          WORKER_BASE + "?url=" + encodeURIComponent(rawUrl);
-        const res = await fetch(endpoint);
-        if (!res.ok) {
-          throw new Error("Proxy returned " + res.status);
-        }
-        const data = await res.json();
-
-        if (!data.image) {
-          importStatus.textContent = "No image found for that page.";
-          importStatus.classList.add("error");
-          importImg.style.display = "none";
-          return;
-        }
-
-        importImg.src = data.image;
-        importImg.style.display = "block";
-        importStatus.textContent = "Image loaded from page.";
-        importStatus.classList.remove("error");
-      } catch (err) {
-        console.error(err);
-        importStatus.textContent = "Could not fetch image.";
-        importStatus.classList.add("error");
-        importImg.style.display = "none";
-      }
-    });
-  }
     });
 
     // Keep service worker registration small & safe
