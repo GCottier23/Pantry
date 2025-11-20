@@ -834,7 +834,7 @@
     card.className = "recipe-card";
     card.dataset.recipeId = r.id;
 
-    // Thumbnail
+      // Thumbnail
     const thumb = document.createElement("div");
     thumb.className = "recipe-card-thumb";
     if (r.imageUrl) {
@@ -850,6 +850,11 @@
         .toUpperCase();
       thumb.appendChild(placeholder);
     }
+
+    // NEW: clicking the image/placeholder opens the detail view
+    thumb.style.cursor = "pointer";
+    thumb.addEventListener("click", () => openRecipeDetail(r.id));
+
     card.appendChild(thumb);
 
     // Body
@@ -870,15 +875,9 @@
 
     card.appendChild(body);
 
-    // Footer buttons
+    // Footer buttons (Edit + Delete only)
     const footer = document.createElement("div");
     footer.className = "recipe-card-footer";
-
-    const viewBtn = document.createElement("button");
-    viewBtn.type = "button";
-    viewBtn.className = "secondary";
-    viewBtn.textContent = "View";
-    viewBtn.addEventListener("click", () => openRecipeDetail(r.id));
 
     const editBtn = document.createElement("button");
     editBtn.type = "button";
@@ -907,7 +906,6 @@
       }
     });
 
-    footer.appendChild(viewBtn);
     footer.appendChild(editBtn);
     footer.appendChild(delBtn);
     card.appendChild(footer);
