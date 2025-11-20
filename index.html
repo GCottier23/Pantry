@@ -816,75 +816,210 @@
       clearIngredientEditState();
     }
 
-    function renderRecipesList() {
-      const container = document.getElementById("recipes-list");
-      if (!container) return;
-      container.innerHTML = "";
+        function renderRecipesList() {
+  const container = document.getElementById("recipes-list");
+  if (!container) return;
+  container.innerHTML = "";
 
-      if (!recipes.length) {
-        container.textContent = "No recipes saved yet.";
-        return;
-      }
+  if (!recipes.length) {
+    container.textContent = "No recipes saved yet.";
+    return;
+  }
 
-      recipes.forEach((r) => {
-        const wrapper = document.createElement("div");
-        wrapper.className = "subpanel";
+  const grid = document.createElement("div");
+  grid.className = "recipe-grid";
 
-        const header = document.createElement("div");
-        header.className = "recipe-header";
+  recipes.forEach((r) => {
+    const card = document.createElement("article");
+    card.className = "recipe-card";
+    card.dataset.recipeId = r.id;
 
-        const title = document.createElement("h3");
-        title.textContent = `${r.name} (serves ${r.servings})`;
+    // Thumbnail
+    const thumb = document.createElement("div");
+    thumb.className = "recipe-card-thumb";
+    if (r.imageUrl) {
+      const img = document.createElement("img");
+      img.src = r.imageUrl;
+      img.alt = r.name;
+      thumb.appendChild(img);
+    } else {
+      const placeholder = document.createElement("div");
+      placeholder.className = "recipe-card-placeholder";
+      placeholder.textContent = (r.name || "R")
+        .charAt(0)
+        .toUpperCase();
+      thumb.appendChild(placeholder);
+    }
+    card.appendChild(thumb);
 
-        const actions = document.createElement("div");
-        actions.className = "table-actions";
+    // Body
+    const body = document.createElement("div");
+    body.className = "recipe-card-body";
 
-        const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.className = "secondary";
-        editBtn.textContent = "Edit";
-        editBtn.addEventListener("click", () => {
-          startRecipeEdit(r.id);
-        });
+    const title = document.createElement("h3");
+    title.className = "recipe-card-title";
+    title.textContent = r.name;
+    body.appendChild(title);
 
-        const delBtn = document.createElement("button");
-        delBtn.type = "button";
-        delBtn.className = "secondary";
-        delBtn.textContent = "Delete";
-        delBtn.addEventListener("click", () => {
-          if (confirm(`Delete recipe "${r.name}"?`)) {
-            recipes = recipes.filter((x) => x.id !== r.id);
-            mealPlan.forEach((entry) => {
-              if (entry.recipeId === r.id) {
-                entry.recipeId = "";
-                entry.servings = 0;
-              }
-            });
-            renderRecipesList();
-            renderMealPlan();
-            saveState();
+    const meta = document.createElement("p");
+    meta.className = "recipe-card-meta";
+    meta.textContent = r.servings
+      ? `Serves ${r.servings}`
+      : "Servings not set";
+    body.appendChild(meta);
+
+    card.appendChild(body);
+
+    // Footer buttons
+    const footer = document.createElement("div");
+    footer.className = "recipe-card-footer";
+
+    const viewBtn = document.createElement("button");
+    viewBtn.type = "button";
+    viewBtn.className = "secondary";
+    viewBtn.textContent = "View";
+    viewBtn.addEventListener("click", () => openRecipeDetail(r.id));
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "secondary";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => {
+      startRecipeEdit(r.id);
+    });
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "secondary";
+    delBtn.textContent = "Delete";
+    delBtn.addEventListener("click", () => {
+      if (confirm(`Delete recipe "${r.name}"?`)) {
+        recipes = recipes.filter((x) => x.id !== r.id);
+        mealPlan.forEach((entry) => {
+          if (entry.recipeId === r.id) {
+            entry.recipeId = "";
+            entry.servings = 0;
           }
         });
+        renderRecipesList();
+        renderMealPlan();
+        saveState();
+      }
+    });
 
-        actions.appendChild(editBtn);
-        actions.appendChild(delBtn);
-        header.appendChild(title);
-        header.appendChild(actions);
-        wrapper.appendChild(header);
+    footer.appendChild(viewBtn);
+    footer.appendChild(editBtn);
+    footer.appendChild(delBtn);
+    card.appendChild(footer);
 
-        const ul = document.createElement("ul");
-        r.ingredients.forEach((ing) => {
-          const li = document.createElement("li");
-          li.textContent =
-            ing.name + ": " + ing.quantity + " " + (ing.unit || "");
-          ul.appendChild(li);
-        });
-        wrapper.appendChild(ul);
+    grid.appendChild(card);
+  });
 
-        container.appendChild(wrapper);
+  container.appendChild(grid);
+
+  // keep meal plan dropdowns in sync
+  renderMealPlan();
+}
+
+function openRecipeDetail(recipeId) {
+      const recipe = recipes.find((r) => r.id === recipeId);
+      if (!recipe) return;
+
+      const overlay = document.createElement("div");
+      overlay.className = "recipe-detail-overlay";
+
+      const panel = document.createElement("div");
+      panel.className = "recipe-detail-panel";
+
+      // Close button
+      const closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.className = "recipe-detail-close";
+      closeBtn.textContent = "Close";
+      closeBtn.addEventListener("click", () => overlay.remove());
+      panel.appendChild(closeBtn);
+
+      // Title
+      const title = document.createElement("h2");
+      title.className = "recipe-detail-title";
+      title.textContent = recipe.name;
+      panel.appendChild(title);
+
+      // Image
+      if (recipe.imageUrl) {
+        const imgWrap = document.createElement("div");
+        imgWrap.className = "recipe-detail-image-wrap";
+        const img = document.createElement("img");
+        img.src = recipe.imageUrl;
+        img.alt = recipe.name;
+        imgWrap.appendChild(img);
+        panel.appendChild(imgWrap);
+      }
+
+      // Meta
+      const meta = document.createElement("p");
+      meta.className = "recipe-detail-meta";
+      meta.textContent = recipe.servings
+        ? `Serves ${recipe.servings}`
+        : "";
+      panel.appendChild(meta);
+
+      // Ingredients
+      const ingTitle = document.createElement("h3");
+      ingTitle.textContent = "Ingredients";
+      panel.appendChild(ingTitle);
+
+      const ingList = document.createElement("ul");
+      ingList.className = "recipe-detail-ingredients";
+      (recipe.ingredients || []).forEach((ing) => {
+        const li = document.createElement("li");
+        li.textContent =
+          (ing.name || "") +
+          (ing.quantity
+            ? ` – ${ing.quantity} ${ing.unit || ""}`.trim()
+            : "");
+        ingList.appendChild(li);
       });
+      panel.appendChild(ingList);
 
-      renderMealPlan();
+      // Method
+      const instrTitle = document.createElement("h3");
+      instrTitle.textContent = "Method";
+      panel.appendChild(instrTitle);
+
+      const instrList = document.createElement("ol");
+      instrList.className = "recipe-detail-instructions";
+      if (Array.isArray(recipe.instructions) && recipe.instructions.length) {
+        recipe.instructions.forEach((step) => {
+          const li = document.createElement("li");
+          li.textContent = step;
+          instrList.appendChild(li);
+        });
+      } else {
+        const li = document.createElement("li");
+        li.textContent = "No method stored yet.";
+        instrList.appendChild(li);
+      }
+      panel.appendChild(instrList);
+
+      // Source link (if we have it)
+      if (recipe.sourceUrl) {
+        const link = document.createElement("a");
+        link.className = "recipe-detail-source";
+        link.href = recipe.sourceUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = "View original recipe on BBC";
+        panel.appendChild(link);
+      }
+
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+
+      // Close if you tap the dim background
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+      });
     }
 
     function startRecipeEdit(id) {
@@ -1512,6 +1647,19 @@ tdBuy.textContent = fixedQtyStr;
             currentRecipe.instructions = lastImportedRecipeMeta.instructions.slice();
           }
 
+                    // Attach image + source URL from BBC import if we have them
+          if (lastImportedRecipeMeta) {
+            if (!currentRecipe.imageUrl && lastImportedRecipeMeta.image) {
+              currentRecipe.imageUrl = lastImportedRecipeMeta.image;
+            }
+            if (
+              !currentRecipe.sourceUrl &&
+              lastImportedRecipeMeta.sourceUrl
+            ) {
+              currentRecipe.sourceUrl = lastImportedRecipeMeta.sourceUrl;
+            }
+          }
+
           if (editingRecipeId) {
             const idx = recipes.findIndex(
               (r) => r.id === editingRecipeId
@@ -1523,6 +1671,8 @@ tdBuy.textContent = fixedQtyStr;
                 servings: currentRecipe.servings,
                 ingredients: currentRecipe.ingredients,
                 instructions: currentRecipe.instructions || [],
+                imageUrl: currentRecipe.imageUrl || "",
+                sourceUrl: currentRecipe.sourceUrl || "",
               };
             }
           } else {
@@ -1610,14 +1760,23 @@ tdBuy.textContent = fixedQtyStr;
             }
 
             // --- Method / instructions -> remember for when we save ---
-            if (Array.isArray(data.instructions) && data.instructions.length) {
+                        if (Array.isArray(data.instructions) && data.instructions.length) {
               lastImportedRecipeMeta = {
                 instructions: data.instructions.slice(),
                 sourceUrl: data.source || rawUrl,
                 servingsText: data.servings || "",
+                image: data.image || "",
+                title: data.title || "",
               };
             } else {
-              lastImportedRecipeMeta = null;
+              // still remember image/title/source even if no instructions
+              lastImportedRecipeMeta = {
+                instructions: [],
+                sourceUrl: data.source || rawUrl,
+                servingsText: data.servings || "",
+                image: data.image || "",
+                title: data.title || "",
+              };
             }
 
             recipeImportStatus.textContent =
