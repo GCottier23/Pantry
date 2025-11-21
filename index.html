@@ -407,6 +407,14 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     qtyText = qtyText.split("/")[0].trim(); // "900g/2lb" -> "900g"
   }
 
+    // Normalise long-form units to short ones, like in parseIngredientLine
+  qtyText = qtyText
+    .replace(/grams?/gi, "g")
+    .replace(/millilitres?|milliliters?/gi, "ml")
+    .replace(/litres?|liters?/gi, "l")
+    .replace(/tablespoons?/gi, "tbsp")
+    .replace(/teaspoons?/gi, "tsp");
+
   // --- 2. Pattern: "2 x 400g tins" -> 800 g ---
   let m = qtyText.match(
     /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(g|kg|ml|l)\b/i
