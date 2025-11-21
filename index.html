@@ -387,24 +387,24 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     }
   });
 
-  // If we can’t find a clean name, fall back to the old generic parser
+  // If we can’t find a clean name, fall back to the generic parser
   if (!bestName) {
     return parseIngredientLine(line);
   }
 
-  const before = line.slice(0, bestIndex).trim(); // stuff before "beef mince"
-  const after  = line.slice(bestIndex + bestName.length).trim(); // stuff after
+  const before = line.slice(0, bestIndex).trim();          // text before "beef mince"
+  const after  = line.slice(bestIndex + bestName.length).trim(); // text after
 
   let quantity = 0;
   let unit = "";
 
-  // We only care about the *first* metric, so drop everything after a slash
+  // Only care about the *first* metric – drop anything after a slash
   let qtyText = before;
   if (qtyText.includes("/")) {
     qtyText = qtyText.split("/")[0].trim(); // "900g/2lb" -> "900g"
   }
 
-  // --- 2. Try pattern: 2 x 400g tins -> 800g ---
+  // --- 2. Pattern: "2 x 400g tins" -> 800 g ---
   let m = qtyText.match(
     /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(g|kg|ml|l)\b/i
   );
@@ -427,17 +427,12 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     quantity = baseQty;
     unit     = u;
   } else {
-    // --- 3. General case: grab first number + any metric unit anywhere ---
-    const numMatch  = qtyText.match(/(\d+(?:\.\d+)?)/);
-    const unitMatch = qtyText.match(/\b(g|kg|ml|l|tsp|tbsp)\b/i);
+    // --- 3. Metric stuck to the number, like "900g" or "150ml" ---
+    let m2 = qtyText.match(/(\d+(?:\.\d+)?)(g|kg|ml|l)\b/i);
+    if (m2) {
+      quantity = parseFloat(m2[1]);
+      unit = m2[2].toLowerCase();
 
-    if (numMatch) {
-      quantity = parseFloat(numMatch[1]);
-    }
-
-    if (unitMatch) {
-      unit = unitMatch[1].toLowerCase();
-      // Normalise kg/L to g/ml
       if (unit === "kg") {
         quantity *= 1000;
         unit = "g";
@@ -445,39 +440,56 @@ function parseBbcIngredient(rawLine, ingredientNames) {
         quantity *= 1000;
         unit = "ml";
       }
-    }
+    } else {
+      // --- 4. "number unit" with a space, like "2 tbsp" ---
+      const numMatch  = qtyText.match(/(\d+(?:\.\d+)?)/);
+      const unitMatch = qtyText.match(/\b(g|kg|ml|l|tsp|tbsp)\b/i);
 
-    // --- 4. Wordy units like "cloves", "sticks", "tins" ---
-    if (!unit && quantity > 0) {
-      const unitWords = [
-        "clove", "cloves",
-        "stick", "sticks",
-        "tin", "tins",
-        "packet", "packets",
-        "pack", "packs"
-      ];
-
-      if (after) {
-        const firstWord = after
-          .split(/[ ,()]/)
-          .filter(Boolean)[0]; // first token after the name
-
-        if (firstWord && unitWords.includes(firstWord.toLowerCase())) {
-          unit = firstWord.toLowerCase();
+      if (numMatch) {
+        quantity = parseFloat(numMatch[1]);
+      }
+      if (unitMatch) {
+        unit = unitMatch[1].toLowerCase();
+        if (unit === "kg") {
+          quantity *= 1000;
+          unit = "g";
+        } else if (unit === "l") {
+          quantity *= 1000;
+          unit = "ml";
         }
       }
-    }
 
-    // If no number at all (e.g. salt / pepper), assume "1"
-    if (!numMatch) {
-      quantity = 1;
+      // --- 5. Wordy units like "cloves", "sticks", "tins" ---
+      if (!unit && quantity > 0) {
+        const unitWords = [
+          "clove", "cloves",
+          "stick", "sticks",
+          "tin", "tins",
+          "packet", "packets",
+          "pack", "packs"
+        ];
+
+        if (after) {
+          const firstWord = after
+            .split(/[ ,()]/)
+            .filter(Boolean)[0]; // first token after the name
+          if (firstWord && unitWords.includes(firstWord.toLowerCase())) {
+            unit = firstWord.toLowerCase();
+          }
+        }
+      }
+
+      // No number at all (e.g. salt/pepper line) → assume 1
+      if (!numMatch) {
+        quantity = 1;
+      }
     }
   }
 
   return {
     name: titleCase(bestName),
     quantity,
-    unit
+    unit,
   };
 }
     
