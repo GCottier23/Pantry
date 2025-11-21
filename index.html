@@ -497,65 +497,104 @@ function parseBbcIngredient(rawLine, ingredientNames) {
 }
     
     function parseIngredientLine(line) {
-      let trimmed = line.trim();
-      if (!trimmed) return null;
+  let trimmed = line.trim();
+  if (!trimmed) return null;
 
-      // Strip trailing notes after comma
-      const commaIndex = trimmed.indexOf(",");
-      if (commaIndex !== -1) trimmed = trimmed.slice(0, commaIndex).trim();
+  // Strip trailing notes after comma (e.g. ", sliced", ", finely chopped")
+  const commaIndex = trimmed.indexOf(",");
+  if (commaIndex !== -1) trimmed = trimmed.slice(0, commaIndex).trim();
 
-      // Try: "500g beef mince" or "2 tbsp olive oil"
-      const parts = trimmed.split(/\s+/);
-      if (!parts.length) return null;
+  const parts = trimmed.split(/\s+/);
+  if (!parts.length) return null;
 
-      const qty = parseFloat(parts[0]);
-      if (isNaN(qty) || qty <= 0) {
-        return { name: titleCase(trimmed), quantity: 1, unit: "" };
-      }
+  // Map lots of unit spellings → short forms
+  const unitMap = {
+    g: "g",
+    gram: "g",
+    grams: "g",
 
-      if (parts.length === 1) {
-        return { name: "", quantity: qty, unit: "" };
-      }
+    kg: "kg",
+    kilogram: "kg",
+    kilograms: "kg",
 
-      let unit = "";
-      let nameWords = [];
+    ml: "ml",
+    millilitre: "ml",
+    millilitres: "ml",
+    milliliter: "ml",
+    milliliters: "ml",
 
-      // If second word looks like a unit
-      const knownUnit = parts[1].toLowerCase();
-      const unitMap = {
-        g: "g",
-        kg: "kg",
-        ml: "ml",
-        l: "l",
-        tsp: "tsp",
-        teaspoon: "tsp",
-        teaspoons: "tsp",
-        tbsp: "tbsp",
-        tablespoon: "tbsp",
-        tablespoons: "tbsp",
-        pack: "pack",
-        packs: "packs",
-        clove: "clove",
-        cloves: "cloves",
-        stick: "stick",
-        sticks: "sticks",
-      };
+    l: "l",
+    litre: "l",
+    litres: "l",
+    liter: "l",
+    liters: "l",
 
-      if (unitMap[knownUnit]) {
-        unit = unitMap[knownUnit];
-        nameWords = parts.slice(2);
-      } else {
-        // otherwise treat everything after qty as name
-        unit = "";
-        nameWords = parts.slice(1);
-      }
+    tsp: "tsp",
+    teaspoon: "tsp",
+    teaspoons: "tsp",
 
-      return {
-        name: titleCase(nameWords.join(" ")),
-        quantity: qty,
-        unit: unit,
-      };
+    tbsp: "tbsp",
+    tablespoon: "tbsp",
+    tablespoons: "tbsp",
+
+    pack: "pack",
+    packs: "packs",
+
+    clove: "clove",
+    cloves: "cloves",
+
+    stick: "stick",
+    sticks: "sticks",
+  };
+
+  let quantity;
+  let unit = "";
+  let nameWords = [];
+
+  const first = parts[0];
+
+  // 1) Try "inline unit" in first token, e.g. "150ml", "225g"
+  const inlineMatch = first.match(/^([\d.]+)([a-zA-Z]+)$/);
+  if (inlineMatch) {
+    quantity = parseFloat(inlineMatch[1]);
+    if (isNaN(quantity) || quantity <= 0) {
+      return { name: titleCase(trimmed), quantity: 1, unit: "" };
     }
+    const unitRaw = inlineMatch[2].toLowerCase();
+    const unitClean = unitRaw.replace(/[^a-z]/g, ""); // strip weird chars
+    unit = unitMap[unitClean] || "";
+    nameWords = parts.slice(1);
+  } else {
+    // 2) Normal case: first token is just the number, second is (maybe) the unit
+    quantity = parseFloat(first);
+    if (isNaN(quantity) || quantity <= 0) {
+      // No leading number → treat whole line as name
+      return { name: titleCase(trimmed), quantity: 1, unit: "" };
+    }
+
+    if (parts.length === 1) {
+      // Just "2" or "500" etc.
+      return { name: "", quantity, unit: "" };
+    }
+
+    const secondRaw = parts[1].toLowerCase();
+    const unitClean = secondRaw.replace(/[^a-z]/g, ""); // "litres/2" → "litres"
+
+    if (unitMap[unitClean]) {
+      unit = unitMap[unitClean];
+      nameWords = parts.slice(2);
+    } else {
+      unit = "";
+      nameWords = parts.slice(1);
+    }
+  }
+
+  return {
+    name: titleCase(nameWords.join(" ")),
+    quantity,
+    unit,
+  };
+}
 
     // ---------- STATE ----------
 
