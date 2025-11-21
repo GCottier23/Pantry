@@ -349,6 +349,19 @@
       return isCompact ? nStr + unit : nStr + " " + unit.toLowerCase();
     }
 
+    // Auto-compact g/ml to kg/l when quantity is 1000 or more
+function autoCompactQuantityUnit(quantity, unit) {
+  let q = quantity;
+  let u = (unit || "").toLowerCase();
+
+  if ((u === "g" || u === "ml") && q >= 1000) {
+    q = q / 1000;
+    u = u === "g" ? "kg" : "l";
+  }
+
+  return { quantity: q, unit: u };
+}
+
         function tidyRecipeTitle(str) {
       if (!str) return "";
       let t = str.trim();
@@ -373,7 +386,15 @@ function parseBbcIngredient(rawLine, ingredientNames) {
   const line = (rawLine || "").trim();
   if (!line) return null;
 
-  const lower = line.toLowerCase();
+  // Normalise long-form units so we can match them
+  let normLine = line
+    .replace(/grams?/gi, "g")
+    .replace(/millilitres?|milliliters?/gi, "ml")
+    .replace(/litres?|liters?/gi, "l")
+    .replace(/tablespoons?/gi, "tbsp")
+    .replace(/teaspoons?/gi, "tsp");
+
+  const lower = normLine.toLowerCase();
 
   // --- 1. Find the best matching ingredient name from ingredientNames ---
   let bestName = null;
@@ -392,11 +413,11 @@ function parseBbcIngredient(rawLine, ingredientNames) {
 
   // If we can’t find a clean name, fall back to the generic parser
   if (!bestName) {
-    return parseIngredientLine(line);
+    return parseIngredientLine(normLine);
   }
 
-  const before = line.slice(0, bestIndex).trim();          // text before "beef mince"
-  const after  = line.slice(bestIndex + bestName.length).trim(); // text after
+  const before = normLine.slice(0, bestIndex).trim(); // text before name
+  const after  = normLine.slice(bestIndex + bestName.length).trim(); // text after
 
   let quantity = 0;
   let unit = "";
@@ -404,16 +425,8 @@ function parseBbcIngredient(rawLine, ingredientNames) {
   // Only care about the *first* metric – drop anything after a slash
   let qtyText = before;
   if (qtyText.includes("/")) {
-    qtyText = qtyText.split("/")[0].trim(); // "900g/2lb" -> "900g"
+    qtyText = qtyText.split("/")[0].trim(); // "1.2 l/2 pints" -> "1.2 l"
   }
-
-    // Normalise long-form units to short ones, like in parseIngredientLine
-  qtyText = qtyText
-    .replace(/grams?/gi, "g")
-    .replace(/millilitres?|milliliters?/gi, "ml")
-    .replace(/litres?|liters?/gi, "l")
-    .replace(/tablespoons?/gi, "tbsp")
-    .replace(/teaspoons?/gi, "tsp");
 
   // --- 2. Pattern: "2 x 400g tins" -> 800 g ---
   let m = qtyText.match(
@@ -424,9 +437,8 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     const size  = parseFloat(m[2]);
     let u       = m[3].toLowerCase();
 
-    let baseQty = count * size; // 2 * 400 = 800
+    let baseQty = count * size; // e.g. 2 * 400 = 800
 
-    // Normalise kg/L to g/ml
     if (u === "kg") {
       baseQty *= 1000;
       u = "g";
@@ -452,7 +464,7 @@ function parseBbcIngredient(rawLine, ingredientNames) {
         unit = "ml";
       }
     } else {
-      // --- 4. "number unit" with a space, like "2 tbsp" ---
+      // --- 4. "number unit" with a space, like "2 tbsp" or "1.2 l" ---
       const numMatch  = qtyText.match(/(\d+(?:\.\d+)?)/);
       const unitMatch = qtyText.match(/\b(g|kg|ml|l|tsp|tbsp)\b/i);
 
@@ -483,7 +495,7 @@ function parseBbcIngredient(rawLine, ingredientNames) {
         if (after) {
           const firstWord = after
             .split(/[ ,()]/)
-            .filter(Boolean)[0]; // first token after the name
+            .filter(Boolean)[0];
           if (firstWord && unitWords.includes(firstWord.toLowerCase())) {
             unit = firstWord.toLowerCase();
           }
@@ -921,24 +933,27 @@ function parseBbcIngredient(rawLine, ingredientNames) {
       currentRecipe.ingredients.forEach((ing, index) => {
         const li = document.createElement("li");
 
-        const textSpan = document.createElement("span");
-   let label = ing.name || "";
+const li = document.createElement("li");
 
-if (ing.quantity && ing.quantity > 0) {
+const textSpan = document.createElement("span");
+let label = ing.name || "";
+
+let q = ing.quantity;
+let u = ing.unit || "";
+
+// auto-compact to kg/l where appropriate
+if (q && q > 0) {
+  ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+
   const compactUnits = ["g", "kg", "ml", "l"];
-  const unit = (ing.unit || "").toLowerCase();
+  const unitLower = (u || "").toLowerCase();
 
-  // compact formats like “900g”, “750ml”
-  if (compactUnits.includes(unit)) {
-    label += `: ${ing.quantity}${unit}`;
-  }
-  // word-units like “2 tbsp”, “3 cloves”
-  else if (unit) {
-    label += `: ${ing.quantity} ${unit}`;
-  }
-  // ingredient has number but no unit
-  else {
-    label += `: ${ing.quantity}`;
+  if (compactUnits.includes(unitLower)) {
+    label += `: ${q}${unitLower}`;
+  } else if (unitLower) {
+    label += `: ${q} ${unitLower}`;
+  } else {
+    label += `: ${q}`;
   }
 }
 
@@ -1166,26 +1181,25 @@ function openRecipeDetail(recipeId) {
 
       const ingList = document.createElement("ul");
       ingList.className = "recipe-detail-ingredients";
-    (recipe.ingredients || []).forEach((ing) => {
+(recipe.ingredients || []).forEach((ing) => {
   const li = document.createElement("li");
 
   let label = ing.name || "";
+  let q = ing.quantity;
+  let u = ing.unit || "";
 
-  if (ing.quantity && ing.quantity > 0) {
+  if (q && q > 0) {
+    ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+
     const compactUnits = ["g", "kg", "ml", "l"];
-    const unit = (ing.unit || "").toLowerCase();
+    const unitLower = (u || "").toLowerCase();
 
-    // Compact formats like “900g”, “750ml”
-    if (compactUnits.includes(unit)) {
-      label += `: ${ing.quantity}${unit}`;
-    }
-    // Word-units like “2 tbsp”, “3 cloves”
-    else if (unit) {
-      label += `: ${ing.quantity} ${unit}`;
-    }
-    // Number but no unit
-    else {
-      label += `: ${ing.quantity}`;
+    if (compactUnits.includes(unitLower)) {
+      label += `: ${q}${unitLower}`;
+    } else if (unitLower) {
+      label += `: ${q} ${unitLower}`;
+    } else {
+      label += `: ${q}`;
     }
   }
 
