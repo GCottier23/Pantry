@@ -1702,7 +1702,8 @@ tdBuy.textContent = fixedQtyStr;
           clearIngredientEditState();
         });
 
-    // Import ingredients from the big textarea
+// Import ingredients from the big textarea,
+// using BBC-aware parser if we have BBC metadata.
 importBtn.addEventListener("click", () => {
   if (!currentRecipe) {
     alert(
@@ -1713,28 +1714,33 @@ importBtn.addEventListener("click", () => {
 
   const textarea = document.getElementById("import-text");
   const raw = textarea.value || "";
-  const lines = raw.split(/\r?\n/);
+  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
   let imported = 0;
 
-  // If we have BBC ingredientNames from the last import, use the smart parser
-  const names =
+  // If we recently fetched from BBC, use their clean ingredient names
+  const bbcNames =
     lastImportedRecipeMeta &&
-    Array.isArray(lastImportedRecipeMeta.ingredientNames)
+    Array.isArray(lastImportedRecipeMeta.ingredientNames) &&
+    lastImportedRecipeMeta.ingredientNames.length
       ? lastImportedRecipeMeta.ingredientNames
       : null;
 
   lines.forEach((line) => {
-    if (!line.trim()) return;
-
     let parsed;
-    if (names && names.length) {
-      parsed = parseBbcIngredient(line, names);
+
+    if (bbcNames) {
+      parsed = parseBbcIngredient(line, bbcNames);
     } else {
       parsed = parseIngredientLine(line);
     }
 
     if (!parsed || !parsed.name) return;
+    // Allow 0/empty quantity as “just name”, but if we have a number,
+    // it must be positive
+    if (parsed.quantity !== null && parsed.quantity !== undefined) {
+      if (Number.isNaN(parsed.quantity) || parsed.quantity <= 0) return;
+    }
 
     currentRecipe.ingredients.push(parsed);
     imported++;
