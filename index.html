@@ -744,8 +744,11 @@
         const li = document.createElement("li");
 
         const textSpan = document.createElement("span");
-        textSpan.textContent =
-          ing.name + ": " + ing.quantity + " " + (ing.unit || "");
+        let label = ing.name || "";
+        if (ing.quantity && ing.quantity > 0) {
+          label += `: ${ing.quantity} ${ing.unit || ""}`.trim();
+        }
+        textSpan.textContent = label;
         li.appendChild(textSpan);
 
         const actions = document.createElement("div");
@@ -1205,7 +1208,12 @@ function roundUpForShopping(quantity, unit) {
 
     const scale = plannedServings / recipe.servings;
 
-    recipe.ingredients.forEach((ing) => {
+        recipe.ingredients.forEach((ing) => {
+      // Skip ingredients that don't have a usable quantity
+      if (!ing.quantity || ing.quantity <= 0) {
+        return;
+      }
+
       const key = ing.name.toLowerCase();
       const ingUnit = ing.unit || "";
       const baseUnit = required[key]
@@ -1604,10 +1612,16 @@ tdBuy.textContent = fixedQtyStr;
 
         lines.forEach((line) => {
           const parsed = parseIngredientLine(line);
-          if (!parsed || !parsed.name || parsed.quantity <= 0) {
+          if (!parsed || !parsed.name) {
             return;
           }
-          currentRecipe.ingredients.push(parsed);
+
+          // NEW: store only the ingredient name, no quantity/unit
+          currentRecipe.ingredients.push({
+            name: parsed.name,
+            quantity: null,
+            unit: ""
+          });
           imported++;
         });
 
