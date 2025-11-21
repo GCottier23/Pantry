@@ -1115,15 +1115,32 @@ function openRecipeDetail(recipeId) {
 
       const ingList = document.createElement("ul");
       ingList.className = "recipe-detail-ingredients";
-      (recipe.ingredients || []).forEach((ing) => {
-        const li = document.createElement("li");
-        li.textContent =
-          (ing.name || "") +
-          (ing.quantity
-            ? ` – ${ing.quantity} ${ing.unit || ""}`.trim()
-            : "");
-        ingList.appendChild(li);
-      });
+    (recipe.ingredients || []).forEach((ing) => {
+  const li = document.createElement("li");
+
+  let label = ing.name || "";
+
+  if (ing.quantity && ing.quantity > 0) {
+    const compactUnits = ["g", "kg", "ml", "l"];
+    const unit = (ing.unit || "").toLowerCase();
+
+    // Compact formats like “900g”, “750ml”
+    if (compactUnits.includes(unit)) {
+      label += `: ${ing.quantity}${unit}`;
+    }
+    // Word-units like “2 tbsp”, “3 cloves”
+    else if (unit) {
+      label += `: ${ing.quantity} ${unit}`;
+    }
+    // Number but no unit
+    else {
+      label += `: ${ing.quantity}`;
+    }
+  }
+
+  li.textContent = label;
+  ingList.appendChild(li);
+});
       panel.appendChild(ingList);
 
       // Method
