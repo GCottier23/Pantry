@@ -1628,8 +1628,7 @@ tdBuy.textContent = fixedQtyStr;
       );
       const cancelRecipeEditBtn =
         document.getElementById("cancel-recipe-edit");
-      const importBtn = document.getElementById(
-        "import-ingredients-btn"
+      const importBtn = document.getElementById("import-ingredients-btn"
       );
 
       startRecipeBtn.addEventListener("click", () => {
@@ -1708,6 +1707,39 @@ tdBuy.textContent = fixedQtyStr;
         }
 
         renderCurrentRecipeIngredients();
+      });
+
+            // Import ingredients from the big textarea using the simple parser
+      importBtn.addEventListener("click", () => {
+        if (!currentRecipe) {
+          alert(
+            "Start a recipe first (name + servings, then 'Start new recipe')."
+          );
+          return;
+        }
+
+        const textarea = document.getElementById("import-text");
+        const raw = textarea.value || "";
+        const lines = raw.split(/\r?\n/);
+
+        let imported = 0;
+
+        lines.forEach((line) => {
+          const parsed = parseIngredientLine(line);
+          if (!parsed || !parsed.name || parsed.quantity <= 0) {
+            return;
+          }
+          currentRecipe.ingredients.push(parsed);
+          imported++;
+        });
+
+        renderCurrentRecipeIngredients();
+        if (imported) {
+          alert(`Imported ${imported} ingredient(s).`);
+          textarea.value = "";
+        } else {
+          alert("No valid ingredients found.");
+        }
       });
 
       document
