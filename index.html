@@ -923,67 +923,65 @@ function parseBbcIngredient(rawLine, ingredientNames) {
 
     // ---------- RECIPES ----------
 
-    function renderCurrentRecipeIngredients() {
-      const ul = document.getElementById("current-recipe-ingredients");
-      if (!ul) return;
-      ul.innerHTML = "";
+function renderCurrentRecipeIngredients() {
+  const ul = document.getElementById("current-recipe-ingredients");
+  if (!ul) return;
+  ul.innerHTML = "";
 
-      if (!currentRecipe || !Array.isArray(currentRecipe.ingredients)) return;
+  if (!currentRecipe || !Array.isArray(currentRecipe.ingredients)) return;
 
-      currentRecipe.ingredients.forEach((ing, index) => {
-        const li = document.createElement("li");
+  currentRecipe.ingredients.forEach((ing, index) => {
+    const li = document.createElement("li");
 
-const li = document.createElement("li");
+    const textSpan = document.createElement("span");
+    let label = ing.name || "";
 
-const textSpan = document.createElement("span");
-let label = ing.name || "";
+    let q = ing.quantity;
+    let u = ing.unit || "";
 
-let q = ing.quantity;
-let u = ing.unit || "";
+    // auto-compact to kg/l where appropriate
+    if (q && q > 0) {
+      ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
 
-// auto-compact to kg/l where appropriate
-if (q && q > 0) {
-  ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+      const compactUnits = ["g", "kg", "ml", "l"];
+      const unitLower = (u || "").toLowerCase();
 
-  const compactUnits = ["g", "kg", "ml", "l"];
-  const unitLower = (u || "").toLowerCase();
-
-  if (compactUnits.includes(unitLower)) {
-    label += `: ${q}${unitLower}`;
-  } else if (unitLower) {
-    label += `: ${q} ${unitLower}`;
-  } else {
-    label += `: ${q}`;
-  }
-}
-
-textSpan.textContent = label;
-li.appendChild(textSpan);
-
-const actions = document.createElement("div");
-actions.className = "table-actions";
-
-const editBtn = document.createElement("button");
-editBtn.type = "button";
-editBtn.className = "secondary";
-editBtn.textContent = "Edit";
-editBtn.addEventListener("click", () => startIngredientEdit(index));
-
-const delBtn = document.createElement("button");
-delBtn.type = "button";
-delBtn.className = "secondary";
-delBtn.textContent = "Delete";
-delBtn.addEventListener("click", () => {
-  currentRecipe.ingredients.splice(index, 1);
-  renderCurrentRecipeIngredients();
-});
-
-actions.appendChild(editBtn);
-actions.appendChild(delBtn);
-li.appendChild(actions);
-ul.appendChild(li);
-      });
+      if (compactUnits.includes(unitLower)) {
+        label += `: ${q}${unitLower}`;
+      } else if (unitLower) {
+        label += `: ${q} ${unitLower}`;
+      } else {
+        label += `: ${q}`;
+      }
     }
+
+    textSpan.textContent = label;
+    li.appendChild(textSpan);
+
+    const actions = document.createElement("div");
+    actions.className = "table-actions";
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "secondary";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => startIngredientEdit(index));
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "secondary";
+    delBtn.textContent = "Delete";
+    delBtn.addEventListener("click", () => {
+      currentRecipe.ingredients.splice(index, 1);
+      renderCurrentRecipeIngredients();
+    });
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+    li.appendChild(actions);
+    ul.appendChild(li);
+  });
+}
 
     function startIngredientEdit(index) {
       if (!currentRecipe || !currentRecipe.ingredients[index]) return;
