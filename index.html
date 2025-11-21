@@ -871,35 +871,51 @@ function parseBbcIngredient(rawLine, ingredientNames) {
         const li = document.createElement("li");
 
         const textSpan = document.createElement("span");
-        let label = ing.name || "";
-        if (ing.quantity && ing.quantity > 0) {
-          label += `: ${ing.quantity} ${ing.unit || ""}`.trim();
-        }
-        textSpan.textContent = label;
-        li.appendChild(textSpan);
+   let label = ing.name || "";
 
-        const actions = document.createElement("div");
-        actions.className = "table-actions";
+if (ing.quantity && ing.quantity > 0) {
+  const compactUnits = ["g", "kg", "ml", "l"];
+  const unit = (ing.unit || "").toLowerCase();
 
-        const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.className = "secondary";
-        editBtn.textContent = "Edit";
-        editBtn.addEventListener("click", () => startIngredientEdit(index));
+  // compact formats like “900g”, “750ml”
+  if (compactUnits.includes(unit)) {
+    label += `: ${ing.quantity}${unit}`;
+  }
+  // word-units like “2 tbsp”, “3 cloves”
+  else if (unit) {
+    label += `: ${ing.quantity} ${unit}`;
+  }
+  // ingredient has number but no unit
+  else {
+    label += `: ${ing.quantity}`;
+  }
+}
 
-        const delBtn = document.createElement("button");
-        delBtn.type = "button";
-        delBtn.className = "secondary";
-        delBtn.textContent = "Delete";
-        delBtn.addEventListener("click", () => {
-          currentRecipe.ingredients.splice(index, 1);
-          renderCurrentRecipeIngredients();
-        });
+textSpan.textContent = label;
+li.appendChild(textSpan);
 
-        actions.appendChild(editBtn);
-        actions.appendChild(delBtn);
-        li.appendChild(actions);
-        ul.appendChild(li);
+const actions = document.createElement("div");
+actions.className = "table-actions";
+
+const editBtn = document.createElement("button");
+editBtn.type = "button";
+editBtn.className = "secondary";
+editBtn.textContent = "Edit";
+editBtn.addEventListener("click", () => startIngredientEdit(index));
+
+const delBtn = document.createElement("button");
+delBtn.type = "button";
+delBtn.className = "secondary";
+delBtn.textContent = "Delete";
+delBtn.addEventListener("click", () => {
+  currentRecipe.ingredients.splice(index, 1);
+  renderCurrentRecipeIngredients();
+});
+
+actions.appendChild(editBtn);
+actions.appendChild(delBtn);
+li.appendChild(actions);
+ul.appendChild(li);
       });
     }
 
