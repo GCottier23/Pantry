@@ -366,7 +366,7 @@
 
     // ---------- VERY SIMPLE PARSER FOR IMPORT ----------
 
-    function parseBbcIngredient(rawLine, ingredientNames) {
+function parseBbcIngredient(rawLine, ingredientNames) {
   const line = (rawLine || "").trim();
   if (!line) return null;
 
@@ -392,8 +392,8 @@
     return parseIngredientLine(line);
   }
 
-  const before = line.slice(0, bestIndex).trim(); // stuff before "Beef mince"
-  const after = line.slice(bestIndex + bestName.length).trim(); // stuff after
+  const before = line.slice(0, bestIndex).trim(); // stuff before "beef mince"
+  const after  = line.slice(bestIndex + bestName.length).trim(); // stuff after
 
   let quantity = 0;
   let unit = "";
@@ -410,12 +410,12 @@
   );
   if (m) {
     const count = parseFloat(m[1]);
-    const size = parseFloat(m[2]);
-    let u = m[3].toLowerCase();
+    const size  = parseFloat(m[2]);
+    let u       = m[3].toLowerCase();
 
     let baseQty = count * size; // 2 * 400 = 800
 
-    // Normalise kg/L to g/ml so it’s consistent
+    // Normalise kg/L to g/ml
     if (u === "kg") {
       baseQty *= 1000;
       u = "g";
@@ -425,15 +425,19 @@
     }
 
     quantity = baseQty;
-    unit = u;
+    unit     = u;
   } else {
-    // --- 3. Simple metric: 900g / 150ml / 3 tbsp etc ---
-    m = qtyText.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|tsp|tbsp)\b/i);
-    if (m) {
-      quantity = parseFloat(m[1]);
-      unit = m[2].toLowerCase();
+    // --- 3. General case: grab first number + any metric unit anywhere ---
+    const numMatch  = qtyText.match(/(\d+(?:\.\d+)?)/);
+    const unitMatch = qtyText.match(/\b(g|kg|ml|l|tsp|tbsp)\b/i);
 
-      // Again normalise kg/L to g/ml
+    if (numMatch) {
+      quantity = parseFloat(numMatch[1]);
+    }
+
+    if (unitMatch) {
+      unit = unitMatch[1].toLowerCase();
+      // Normalise kg/L to g/ml
       if (unit === "kg") {
         quantity *= 1000;
         unit = "g";
@@ -441,46 +445,36 @@
         quantity *= 1000;
         unit = "ml";
       }
-    } else {
-      // --- 4. Just a number: 2 onions / 2 garlic cloves ---
-      m = qtyText.match(/(\d+(?:\.\d+)?)/);
-      if (m) {
-        quantity = parseFloat(m[1]);
+    }
 
-        // See if we can grab a "wordy" unit from after the name
-        // e.g. "cloves", "sticks", "tins"
-        const unitWords = [
-          "clove",
-          "cloves",
-          "stick",
-          "sticks",
-          "tin",
-          "tins",
-          "packet",
-          "packets",
-          "pack",
-          "packs"
-        ];
-        if (after) {
-          const firstWord = after
-            .split(/[ ,()]/)
-            .filter(Boolean)[0]; // first real token after the name
-          if (
-            firstWord &&
-            unitWords.includes(firstWord.toLowerCase())
-          ) {
-            unit = firstWord.toLowerCase();
-          }
+    // --- 4. Wordy units like "cloves", "sticks", "tins" ---
+    if (!unit && quantity > 0) {
+      const unitWords = [
+        "clove", "cloves",
+        "stick", "sticks",
+        "tin", "tins",
+        "packet", "packets",
+        "pack", "packs"
+      ];
+
+      if (after) {
+        const firstWord = after
+          .split(/[ ,()]/)
+          .filter(Boolean)[0]; // first token after the name
+
+        if (firstWord && unitWords.includes(firstWord.toLowerCase())) {
+          unit = firstWord.toLowerCase();
         }
-      } else {
-        // No number at all? assume a single unit (rare, but safe)
-        quantity = 1;
       }
+    }
+
+    // If no number at all (e.g. salt / pepper), assume "1"
+    if (!numMatch) {
+      quantity = 1;
     }
   }
 
   return {
-    // Use the nice BBC ingredient name we got from ingredientNames
     name: titleCase(bestName),
     quantity,
     unit
@@ -1708,38 +1702,52 @@ tdBuy.textContent = fixedQtyStr;
           clearIngredientEditState();
         });
 
-      // Import ingredients from the big textarea using the simple parser
-      importBtn.addEventListener("click", () => {
-        if (!currentRecipe) {
-          alert(
-            "Start a recipe first (name + servings, then 'Start new recipe')."
-          );
-          return;
-        }
+    // Import ingredients from the big textarea
+importBtn.addEventListener("click", () => {
+  if (!currentRecipe) {
+    alert(
+      "Start a recipe first (name + servings, then 'Start new recipe')."
+    );
+    return;
+  }
 
-        const textarea = document.getElementById("import-text");
-        const raw = textarea.value || "";
-        const lines = raw.split(/\r?\n/);
+  const textarea = document.getElementById("import-text");
+  const raw = textarea.value || "";
+  const lines = raw.split(/\r?\n/);
 
-        let imported = 0;
+  let imported = 0;
 
-        lines.forEach((line) => {
-          const parsed = parseIngredientLine(line);
-          if (!parsed || !parsed.name || parsed.quantity <= 0) {
-            return;
-          }
-          currentRecipe.ingredients.push(parsed);
-          imported++;
-        });
+  // If we have BBC ingredientNames from the last import, use the smart parser
+  const names =
+    lastImportedRecipeMeta &&
+    Array.isArray(lastImportedRecipeMeta.ingredientNames)
+      ? lastImportedRecipeMeta.ingredientNames
+      : null;
 
-        renderCurrentRecipeIngredients();
-        if (imported) {
-          alert(`Imported ${imported} ingredient(s).`);
-          textarea.value = "";
-        } else {
-          alert("No valid ingredients found.");
-        }
-      });
+  lines.forEach((line) => {
+    if (!line.trim()) return;
+
+    let parsed;
+    if (names && names.length) {
+      parsed = parseBbcIngredient(line, names);
+    } else {
+      parsed = parseIngredientLine(line);
+    }
+
+    if (!parsed || !parsed.name) return;
+
+    currentRecipe.ingredients.push(parsed);
+    imported++;
+  });
+
+  renderCurrentRecipeIngredients();
+  if (imported) {
+    alert(`Imported ${imported} ingredient(s).`);
+    textarea.value = "";
+  } else {
+    alert("No valid ingredients found.");
+  }
+});
 
       document
         .getElementById("save-recipe")
@@ -1803,7 +1811,7 @@ tdBuy.textContent = fixedQtyStr;
           renderRecipesList();
           saveState();
         });
-        
+
           // BBC Food / Good Food recipe import (image + title + ingredients + method)
       const recipeImportUrlInput = document.getElementById("recipe-import-url");
       const recipeImageFetchBtn = document.getElementById("recipe-fetch-image");
@@ -1879,25 +1887,35 @@ tdBuy.textContent = fixedQtyStr;
               recipeImportTextarea.value = data.ingredients.join("\n");
             }
 
-            // --- Method / instructions -> remember for when we save ---
-                        if (Array.isArray(data.instructions) && data.instructions.length) {
-              lastImportedRecipeMeta = {
-                instructions: data.instructions.slice(),
-                sourceUrl: data.source || rawUrl,
-                servingsText: data.servings || "",
-                image: data.image || "",
-                title: data.title || "",
-              };
-            } else {
-              // still remember image/title/source even if no instructions
-              lastImportedRecipeMeta = {
-                instructions: [],
-                sourceUrl: data.source || rawUrl,
-                servingsText: data.servings || "",
-                image: data.image || "",
-                title: data.title || "",
-              };
-            }
+            /// --- Ingredients -> import textarea ---
+if (Array.isArray(data.ingredients) && data.ingredients.length) {
+  recipeImportTextarea.value = data.ingredients.join("\n");
+}
+
+const ingredientNames = Array.isArray(data.ingredientNames)
+  ? data.ingredientNames
+  : [];
+
+// --- Method / instructions -> remember for when we save ---
+if (Array.isArray(data.instructions) && data.instructions.length) {
+  lastImportedRecipeMeta = {
+    instructions: data.instructions.slice(),
+    sourceUrl: data.source || rawUrl,
+    servingsText: data.servings || "",
+    image: data.image || "",
+    title: data.title || "",
+    ingredientNames
+  };
+} else {
+  lastImportedRecipeMeta = {
+    instructions: [],
+    sourceUrl: data.source || rawUrl,
+    servingsText: data.servings || "",
+    image: data.image || "",
+    title: data.title || "",
+    ingredientNames
+  };
+}
 
             recipeImportStatus.textContent =
               "Recipe info loaded. Review, then click 'Import ingredients'.";
