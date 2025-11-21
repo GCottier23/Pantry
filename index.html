@@ -366,6 +366,127 @@
 
     // ---------- VERY SIMPLE PARSER FOR IMPORT ----------
 
+    function parseBbcIngredient(rawLine, ingredientNames) {
+  const line = (rawLine || "").trim();
+  if (!line) return null;
+
+  const lower = line.toLowerCase();
+
+  // --- 1. Find the best matching ingredient name from ingredientNames ---
+  let bestName = null;
+  let bestIndex = -1;
+  let bestLen = 0;
+
+  (ingredientNames || []).forEach((name) => {
+    const nLower = name.toLowerCase();
+    const idx = lower.indexOf(nLower);
+    if (idx !== -1 && nLower.length > bestLen) {
+      bestName = name;
+      bestIndex = idx;
+      bestLen = nLower.length;
+    }
+  });
+
+  // If we can’t find a clean name, fall back to the old generic parser
+  if (!bestName) {
+    return parseIngredientLine(line);
+  }
+
+  const before = line.slice(0, bestIndex).trim(); // stuff before "Beef mince"
+  const after = line.slice(bestIndex + bestName.length).trim(); // stuff after
+
+  let quantity = 0;
+  let unit = "";
+
+  // We only care about the *first* metric, so drop everything after a slash
+  let qtyText = before;
+  if (qtyText.includes("/")) {
+    qtyText = qtyText.split("/")[0].trim(); // "900g/2lb" -> "900g"
+  }
+
+  // --- 2. Try pattern: 2 x 400g tins -> 800g ---
+  let m = qtyText.match(
+    /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(g|kg|ml|l)\b/i
+  );
+  if (m) {
+    const count = parseFloat(m[1]);
+    const size = parseFloat(m[2]);
+    let u = m[3].toLowerCase();
+
+    let baseQty = count * size; // 2 * 400 = 800
+
+    // Normalise kg/L to g/ml so it’s consistent
+    if (u === "kg") {
+      baseQty *= 1000;
+      u = "g";
+    } else if (u === "l") {
+      baseQty *= 1000;
+      u = "ml";
+    }
+
+    quantity = baseQty;
+    unit = u;
+  } else {
+    // --- 3. Simple metric: 900g / 150ml / 3 tbsp etc ---
+    m = qtyText.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|tsp|tbsp)\b/i);
+    if (m) {
+      quantity = parseFloat(m[1]);
+      unit = m[2].toLowerCase();
+
+      // Again normalise kg/L to g/ml
+      if (unit === "kg") {
+        quantity *= 1000;
+        unit = "g";
+      } else if (unit === "l") {
+        quantity *= 1000;
+        unit = "ml";
+      }
+    } else {
+      // --- 4. Just a number: 2 onions / 2 garlic cloves ---
+      m = qtyText.match(/(\d+(?:\.\d+)?)/);
+      if (m) {
+        quantity = parseFloat(m[1]);
+
+        // See if we can grab a "wordy" unit from after the name
+        // e.g. "cloves", "sticks", "tins"
+        const unitWords = [
+          "clove",
+          "cloves",
+          "stick",
+          "sticks",
+          "tin",
+          "tins",
+          "packet",
+          "packets",
+          "pack",
+          "packs"
+        ];
+        if (after) {
+          const firstWord = after
+            .split(/[ ,()]/)
+            .filter(Boolean)[0]; // first real token after the name
+          if (
+            firstWord &&
+            unitWords.includes(firstWord.toLowerCase())
+          ) {
+            unit = firstWord.toLowerCase();
+          }
+        }
+      } else {
+        // No number at all? assume a single unit (rare, but safe)
+        quantity = 1;
+      }
+    }
+  }
+
+  return {
+    // Use the nice BBC ingredient name we got from ingredientNames
+    name: titleCase(bestName),
+    quantity,
+    unit
+  };
+}
+    
     function parseIngredientLine(line) {
       let trimmed = line.trim();
       if (!trimmed) return null;
@@ -1610,11 +1731,16 @@ tdBuy.textContent = fixedQtyStr;
 
         let imported = 0;
 
-        lines.forEach((line) => {
-          const parsed = parseIngredientLine(line);
-          if (!parsed || !parsed.name) {
-            return;
-          }
+      const names = Array.isArray(data.ingredientNames)
+  ? data.ingredientNames
+  : [];
+
+data.ingredients.forEach((line) => {
+  const parsed = parseBbcIngredient(line, names);
+  if (parsed && parsed.name && parsed.quantity > 0) {
+    currentRecipe.ingredients.push(parsed);
+  }
+});
 
           // NEW: store only the ingredient name, no quantity/unit
           currentRecipe.ingredients.push({
