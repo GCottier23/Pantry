@@ -1621,19 +1621,14 @@ tdBuy.textContent = fixedQtyStr;
         handleFakeBarcodeScan();
       });
 
-      // Recipes events
+            // Recipes events
       const startRecipeBtn = document.getElementById("start-recipe");
-      const ingSection = document.getElementById(
-        "recipe-ingredients-section"
-      );
-      const cancelRecipeEditBtn =
-        document.getElementById("cancel-recipe-edit");
-      const importBtn = document.getElementById("import-ingredients-btn"
-      );
+      const ingSection = document.getElementById("recipe-ingredients-section");
+      const cancelRecipeEditBtn = document.getElementById("cancel-recipe-edit");
+      const importBtn = document.getElementById("import-ingredients-btn");
 
       startRecipeBtn.addEventListener("click", () => {
-        const name =
-          document.getElementById("recipe-name").value.trim();
+        const name = document.getElementById("recipe-name").value.trim();
         const servings = parseFloat(
           document.getElementById("recipe-servings").value || "0"
         );
@@ -1676,13 +1671,11 @@ tdBuy.textContent = fixedQtyStr;
           return;
         }
 
-        const name =
-          document.getElementById("ing-name").value.trim();
+        const name = document.getElementById("ing-name").value.trim();
         const qty = parseFloat(
           document.getElementById("ing-qty").value || "0"
         );
-        const unit =
-          document.getElementById("ing-unit").value.trim();
+        const unit = document.getElementById("ing-unit").value.trim();
 
         if (!name || qty <= 0) {
           alert("Please enter a valid ingredient name & quantity.");
@@ -1709,7 +1702,13 @@ tdBuy.textContent = fixedQtyStr;
         renderCurrentRecipeIngredients();
       });
 
-            // Import ingredients from the big textarea using the simple parser
+      document
+        .getElementById("cancel-ingredient-edit")
+        .addEventListener("click", () => {
+          clearIngredientEditState();
+        });
+
+      // Import ingredients from the big textarea using the simple parser
       importBtn.addEventListener("click", () => {
         if (!currentRecipe) {
           alert(
@@ -1743,56 +1742,6 @@ tdBuy.textContent = fixedQtyStr;
       });
 
       document
-        .getElementById("cancel-ingredient-edit")
-        .addEventListener("click", () => {
-          clearIngredientEditState();
-        });
-
-      importBtn.addEventListener("click", () => {
-        if (!currentRecipe) {
-          alert(
-            "Start a recipe first (name + servings, then 'Start new recipe')."
-          );
-          return;
-        }
-
-        const textarea =
-          document.getElementById("import-text");
-        const raw = textarea.value || "";
-        const lines = raw.split(/\r?\n/);
-
-        let imported = 0;
-
-      const names = Array.isArray(data.ingredientNames)
-  ? data.ingredientNames
-  : [];
-
-data.ingredients.forEach((line) => {
-  const parsed = parseBbcIngredient(line, names);
-  if (parsed && parsed.name && parsed.quantity > 0) {
-    currentRecipe.ingredients.push(parsed);
-  }
-});
-
-          // NEW: store only the ingredient name, no quantity/unit
-          currentRecipe.ingredients.push({
-            name: parsed.name,
-            quantity: null,
-            unit: ""
-          });
-          imported++;
-        });
-
-        renderCurrentRecipeIngredients();
-        if (imported) {
-          alert(`Imported ${imported} ingredient(s).`);
-          textarea.value = "";
-        } else {
-          alert("No valid ingredients found.");
-        }
-      });
-
-      document
         .getElementById("save-recipe")
         .addEventListener("click", () => {
           if (!currentRecipe) {
@@ -1807,17 +1756,18 @@ data.ingredients.forEach((line) => {
             return;
           }
 
-                    // If we imported from BBC and have method steps, attach them
+          // If we imported from BBC and have method steps, attach them
           if (
             lastImportedRecipeMeta &&
             Array.isArray(lastImportedRecipeMeta.instructions) &&
             (!currentRecipe.instructions ||
               !currentRecipe.instructions.length)
           ) {
-            currentRecipe.instructions = lastImportedRecipeMeta.instructions.slice();
+            currentRecipe.instructions =
+              lastImportedRecipeMeta.instructions.slice();
           }
 
-                    // Attach image + source URL from BBC import if we have them
+          // Attach image + source URL from BBC import if we have them
           if (lastImportedRecipeMeta) {
             if (!currentRecipe.imageUrl && lastImportedRecipeMeta.image) {
               currentRecipe.imageUrl = lastImportedRecipeMeta.image;
@@ -1853,7 +1803,7 @@ data.ingredients.forEach((line) => {
           renderRecipesList();
           saveState();
         });
-
+        
           // BBC Food / Good Food recipe import (image + title + ingredients + method)
       const recipeImportUrlInput = document.getElementById("recipe-import-url");
       const recipeImageFetchBtn = document.getElementById("recipe-fetch-image");
