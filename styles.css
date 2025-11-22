@@ -659,3 +659,40 @@ p {
   font-size: 0.85rem;
   text-decoration: underline;
 }
+
+/* ---------- BARCODE SCANNER OVERLAY ---------- */
+
+.barcode-scanner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.barcode-scanner-panel {
+  background: #121212;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  width: min(500px, 100% - 2rem);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+
+#barcode-video {
+  width: 100%;
+  max-height: 60vh;
+  border-radius: 0.5rem;
+  margin-block: 0.75rem;
+}
+
+.barcode-scanner-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.barcode-scanner-actions button {
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+}

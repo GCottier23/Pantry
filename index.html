@@ -93,11 +93,14 @@
     <section class="panel">
       <h2>Inventory</h2>
 
-      <div class="barcode-tools">
-        <button id="fake-scan-btn" type="button" class="secondary">
-          Fake barcode scan
-        </button>
-      </div>
+    <div class="barcode-tools">
+  <button id="fake-scan-btn" type="button" class="secondary">
+    Fake barcode scan
+  </button>
+  <button id="real-scan-btn" type="button">
+    📷 Scan barcode
+  </button>
+</div>
 
       <form id="inventory-form">
         <label>
@@ -298,6 +301,9 @@
       </table>
     </section>
   </section>
+
+    <!-- Barcode scanner library -->
+  <script src="https://unpkg.com/@zxing/browser@latest"></script>
 
   <!-- =============== JAVASCRIPT =============== -->
   <script>
@@ -825,53 +831,57 @@ function parseBbcIngredient(rawLine, ingredientNames) {
 
     // ---------- FAKE BARCODE (SIMPLE) ----------
 
-    function handleFakeBarcodeScan() {
-      let code = prompt("Fake barcode scan: enter a code.", "");
-      if (!code) return;
-      code = String(code).trim();
-      if (!code) return;
+    function handleBarcodeCode(code) {
+  if (!code) return;
+  code = String(code).trim();
+  if (!code) return;
 
-      const existing = barcodeMap[code];
+  const existing = barcodeMap[code];
 
-      if (existing) {
-        const answer = confirm(
-          `Barcode ${code} is ${existing.name}.\nIs that correct?`
-        );
-        if (!answer) {
-          // treat as new item
-          createBarcodeMapping(code);
-          return;
-        }
-
-        const defaultQty =
-          existing.baseQty && existing.baseQty > 0
-            ? String(existing.baseQty)
-            : "1";
-        const unitText = existing.unit ? " in " + existing.unit : "";
-        const qtyStr = prompt(
-          `How much did you buy${unitText}?`,
-          defaultQty
-        );
-        if (!qtyStr) return;
-        const qty = parseFloat(qtyStr);
-        if (isNaN(qty) || qty <= 0) return;
-
-        upsertInventoryItem(existing.name, qty, existing.unit || "");
-        renderInventory();
-        renderInventoryNameSuggestions();
-        saveState();
-        alert(
-          "Added " +
-            formatQuantityWithUnit(qty, existing.unit || "") +
-            " of " +
-            existing.name
-        );
-        return;
-      }
-
-      // new barcode
+  if (existing) {
+    const answer = confirm(
+      `Barcode ${code} is ${existing.name}.\nIs that correct?`
+    );
+    if (!answer) {
+      // treat as new item
       createBarcodeMapping(code);
+      return;
     }
+
+    const defaultQty =
+      existing.baseQty && existing.baseQty > 0
+        ? String(existing.baseQty)
+        : "1";
+    const unitText = existing.unit ? " in " + existing.unit : "";
+    const qtyStr = prompt(
+      `How much did you buy${unitText}?`,
+      defaultQty
+    );
+    if (!qtyStr) return;
+    const qty = parseFloat(qtyStr);
+    if (isNaN(qty) || qty <= 0) return;
+
+    upsertInventoryItem(existing.name, qty, existing.unit || "");
+    renderInventory();
+    renderInventoryNameSuggestions();
+    saveState();
+    alert(
+      "Added " +
+        formatQuantityWithUnit(qty, existing.unit || "") +
+        " of " +
+        existing.name
+    );
+    return;
+  }
+
+  // brand-new barcode → go through mapping flow
+  createBarcodeMapping(code);
+}
+    
+function handleFakeBarcodeScan() {
+  let code = prompt("Fake barcode scan: enter a code.", "");
+  handleBarcodeCode(code);
+}
 
     function createBarcodeMapping(code) {
       let name = prompt("What is this item called?", "");
@@ -1595,6 +1605,102 @@ tdBuy.textContent = fixedQtyStr;
   });
 }
 
+// ---------- BARCODE CAMERA SCANNER ----------
+
+let activeBarcodeReader = null;
+
+function closeBarcodeScannerOverlay() {
+  const overlay = document.getElementById("barcode-scanner-overlay");
+  if (overlay) overlay.remove();
+
+  if (activeBarcodeReader) {
+    try {
+      activeBarcodeReader.reset();
+    } catch (e) {
+      console.error(e);
+    }
+    activeBarcodeReader = null;
+  }
+}
+
+function openBarcodeScanner() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert("Camera access is not supported on this device / browser.");
+    return;
+  }
+
+  // Create overlay if it doesn't exist yet
+  let overlay = document.getElementById("barcode-scanner-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "barcode-scanner-overlay";
+    overlay.className = "barcode-scanner-overlay";
+
+    const panel = document.createElement("div");
+    panel.className = "barcode-scanner-panel";
+
+    const title = document.createElement("h2");
+    title.textContent = "Scan barcode";
+    panel.appendChild(title);
+
+    const video = document.createElement("video");
+    video.id = "barcode-video";
+    video.autoplay = true;
+    video.playsInline = true;
+    panel.appendChild(video);
+
+    const btnRow = document.createElement("div");
+    btnRow.className = "barcode-scanner-actions";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.className = "secondary";
+    cancelBtn.addEventListener("click", () => {
+      closeBarcodeScannerOverlay();
+    });
+
+    btnRow.appendChild(cancelBtn);
+    panel.appendChild(btnRow);
+
+    overlay.appendChild(panel);
+
+    // Close if you tap the dim background
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeBarcodeScannerOverlay();
+    });
+
+    document.body.appendChild(overlay);
+  }
+
+  if (!window.ZXing || !ZXing.BrowserMultiFormatReader) {
+    alert("Barcode scanner library not loaded.");
+    return;
+  }
+
+  activeBarcodeReader = new ZXing.BrowserMultiFormatReader();
+
+  activeBarcodeReader
+    .decodeFromVideoDevice(null, "barcode-video", (result, err) => {
+      if (result) {
+        const text =
+          result.text || (typeof result.getText === "function"
+            ? result.getText()
+            : "");
+        if (text) {
+          closeBarcodeScannerOverlay();
+          handleBarcodeCode(text);
+        }
+      }
+      // ignore errors; the reader keeps trying
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("Could not start camera for barcode scanning.");
+      closeBarcodeScannerOverlay();
+    });
+}
+
     // ---------- NAVIGATION ----------
 
     function showPage(pageId) {
@@ -1667,23 +1773,32 @@ tdBuy.textContent = fixedQtyStr;
 
   showPage("page-inventory");
 
-      // Inventory events
+        // Inventory events
       const invForm = document.getElementById("inventory-form");
-      const searchInput =
-        document.getElementById("inventory-search");
-      const cancelInvEditBtn =
-        document.getElementById("inventory-cancel-edit");
+      const searchInput = document.getElementById("inventory-search");
+      const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
       const fakeScanBtn = document.getElementById("fake-scan-btn");
+      const realScanBtn = document.getElementById("real-scan-btn");
+
+      if (fakeScanBtn) {
+        fakeScanBtn.addEventListener("click", () => {
+          handleFakeBarcodeScan();
+        });
+      }
+
+      if (realScanBtn) {
+        realScanBtn.addEventListener("click", () => {
+          openBarcodeScanner();
+        });
+      }
 
       invForm.addEventListener("submit", (e) => {
         e.preventDefault();
-        const name =
-          document.getElementById("inv-name").value.trim();
+        const name = document.getElementById("inv-name").value.trim();
         const qty = parseFloat(
           document.getElementById("inv-qty").value || "0"
         );
-        const unit =
-          document.getElementById("inv-unit").value || "";
+        const unit = document.getElementById("inv-unit").value || "";
 
         if (!name || qty <= 0) {
           alert("Please enter a valid name and quantity.");
@@ -1691,12 +1806,7 @@ tdBuy.textContent = fixedQtyStr;
         }
 
         if (editingInventoryKey) {
-          setInventoryItemExact(
-            editingInventoryKey,
-            name,
-            qty,
-            unit
-          );
+          setInventoryItemExact(editingInventoryKey, name, qty, unit);
           clearInventoryEditState();
         } else {
           upsertInventoryItem(name, qty, unit);
@@ -1717,10 +1827,6 @@ tdBuy.textContent = fixedQtyStr;
       searchInput.addEventListener("input", () => {
         inventoryFilter = searchInput.value || "";
         renderInventory();
-      });
-
-      fakeScanBtn.addEventListener("click", () => {
-        handleFakeBarcodeScan();
       });
 
             // Recipes events
