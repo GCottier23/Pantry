@@ -302,11 +302,8 @@
     </section>
   </section>
 
-<!-- Barcode scanner library (ES module → expose as global ZXing) -->
-<script type="module">
-  import { BrowserMultiFormatReader } from "https://unpkg.com/@zxing/browser@latest";
-  window.ZXing = { BrowserMultiFormatReader };
-</script>
+<!-- Barcode scanner library (UMD build, exposes global ZXingBrowser) -->
+<script src="https://unpkg.com/@zxing/browser@latest/umd/zxing-browser.min.js"></script>
 
   <!-- =============== JAVASCRIPT =============== -->
   <script>
@@ -1676,12 +1673,15 @@ function openBarcodeScanner() {
     document.body.appendChild(overlay);
   }
 
-  if (!window.ZXing || !ZXing.BrowserMultiFormatReader) {
+  // Support either ZXingBrowser (UMD) or ZXing (if we ever change loader again)
+  const ZX = window.ZXingBrowser || window.ZXing;
+
+  if (!ZX || !ZX.BrowserMultiFormatReader) {
     alert("Barcode scanner library not loaded.");
     return;
   }
 
-  activeBarcodeReader = new ZXing.BrowserMultiFormatReader();
+  activeBarcodeReader = new ZX.BrowserMultiFormatReader();
 
   activeBarcodeReader
     .decodeFromVideoDevice(null, "barcode-video", (result, err) => {
