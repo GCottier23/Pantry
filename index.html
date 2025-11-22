@@ -1859,25 +1859,16 @@ function openBarcodeScanner() {
   barcodeScanHandled = false; // reset for this new scan session
   activeBarcodeReader = new ZX.BrowserMultiFormatReader();
 
-  activeBarcodeReader
-    .decodeFromVideoDevice(null, "barcode-video", (result, err) => {
-      if (barcodeScanHandled) {
-        return; // we've already processed a successful scan
-      }
+ activeBarcodeReader.decodeFromVideoDevice(null, "barcode-video", (result, err) => {
+    if (barcodeScanHandled) return;
 
-      if (result) {
-        const text =
-          result.text ||
-          (typeof result.getText === "function" ? result.getText() : "");
-
-        if (text) {
-          barcodeScanHandled = true;   // lock it
-          closeBarcodeScannerOverlay(); // this will reset the reader
-          handleBarcodeCode(text);      // run your prompt + add item flow
-        }
-      }
-      // ignore errors; the reader keeps trying until we mark handled/reset
-    });
+    if (result && result.text && result.text.trim() !== "") {
+        const text = result.text.trim();
+        barcodeScanHandled = true;
+        closeBarcodeScannerOverlay();
+        handleBarcodeCode(text);
+    }
+});
 }
 
     // ---------- NAVIGATION ----------
