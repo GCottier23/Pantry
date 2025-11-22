@@ -659,25 +659,40 @@ function parseBbcIngredient(rawLine, ingredientNames) {
       }));
     }
 
-    function loadState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) {
-          initDefaultMealPlan();
-          return;
-        }
-        const data = JSON.parse(raw);
-        if (Array.isArray(data.inventory)) inventory = data.inventory;
-        if (Array.isArray(data.recipes)) recipes = data.recipes;
-        if (Array.isArray(data.mealPlan)) mealPlan = data.mealPlan;
-        if (data.barcodeMap && typeof data.barcodeMap === "object") {
-          barcodeMap = data.barcodeMap;
-        }
-        if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
-      } catch {
-        initDefaultMealPlan();
-      }
+  function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      initDefaultMealPlan();
+      return;
     }
+    const data = JSON.parse(raw);
+    if (Array.isArray(data.inventory)) inventory = data.inventory;
+    if (Array.isArray(data.recipes)) recipes = data.recipes;
+    if (Array.isArray(data.mealPlan)) mealPlan = data.mealPlan;
+
+    // --- migrate barcodeMap into the new "array of names" shape ---
+    barcodeMap = {};
+    if (data.barcodeMap && typeof data.barcodeMap === "object") {
+      Object.keys(data.barcodeMap).forEach((code) => {
+        const entry = data.barcodeMap[code];
+
+        if (Array.isArray(entry)) {
+          // already new-style
+          barcodeMap[code] = entry.slice();
+        } else if (entry && typeof entry === "object" && entry.name) {
+          // old-style { name, baseQty, unit }
+          barcodeMap[code] = [titleCase(entry.name)];
+        }
+        // anything else is ignored
+      });
+    }
+
+    if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
+  } catch {
+    initDefaultMealPlan();
+  }
+}
 
     function saveState() {
       try {
@@ -989,7 +1004,7 @@ function parseBbcIngredient(rawLine, ingredientNames) {
       addBtn.type = "button";
       addBtn.textContent = "Add to inventory";
 
-      addBtn.addEventListener("click", () => {
+        addBtn.addEventListener("click", () => {
         let name = "";
 
         if (existing.length >= 2) {
@@ -1017,13 +1032,26 @@ function parseBbcIngredient(rawLine, ingredientNames) {
 
         const cleanName = titleCase(name);
 
-        // Save mapping for this barcode
-        if (!barcodeMap[barcode]) {
-          barcodeMap[barcode] = [];
+        // ---- SAFE barcodeMap update (handles old shapes) ----
+        let existingEntry = barcodeMap[barcode];
+        let names = [];
+
+        if (Array.isArray(existingEntry)) {
+          names = existingEntry.slice();
+        } else if (
+          existingEntry &&
+          typeof existingEntry === "object" &&
+          existingEntry.name
+        ) {
+          // migrate one last time if somehow still old style
+          names = [titleCase(existingEntry.name)];
         }
-        if (!barcodeMap[barcode].includes(cleanName)) {
-          barcodeMap[barcode].push(cleanName);
+
+        if (!names.includes(cleanName)) {
+          names.push(cleanName);
         }
+        barcodeMap[barcode] = names;
+        // ---- end barcodeMap update ----
 
         // Add to inventory
         upsertInventoryItem(cleanName, qty, unit);
