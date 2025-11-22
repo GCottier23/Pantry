@@ -1607,11 +1607,16 @@ tdBuy.textContent = fixedQtyStr;
 
 // ---------- BARCODE CAMERA SCANNER ----------
 
+// ---------- BARCODE CAMERA SCANNER ----------
+
 let activeBarcodeReader = null;
+let barcodeScanHandled = false; // prevents multiple runs for one scan
 
 function closeBarcodeScannerOverlay() {
   const overlay = document.getElementById("barcode-scanner-overlay");
   if (overlay) overlay.remove();
+
+  barcodeScanHandled = true; // ensure no further callbacks do anything
 
   if (activeBarcodeReader) {
     try {
@@ -1681,26 +1686,27 @@ function openBarcodeScanner() {
     return;
   }
 
+  barcodeScanHandled = false; // reset for this new scan session
   activeBarcodeReader = new ZX.BrowserMultiFormatReader();
 
   activeBarcodeReader
     .decodeFromVideoDevice(null, "barcode-video", (result, err) => {
+      if (barcodeScanHandled) {
+        return; // we've already processed a successful scan
+      }
+
       if (result) {
         const text =
-          result.text || (typeof result.getText === "function"
-            ? result.getText()
-            : "");
+          result.text ||
+          (typeof result.getText === "function" ? result.getText() : "");
+
         if (text) {
-          closeBarcodeScannerOverlay();
-          handleBarcodeCode(text);
+          barcodeScanHandled = true;   // lock it
+          closeBarcodeScannerOverlay(); // this will reset the reader
+          handleBarcodeCode(text);      // run your prompt + add item flow
         }
       }
-      // ignore errors; the reader keeps trying
-    })
-    .catch((err) => {
-      console.error(err);
-      alert("Could not start camera for barcode scanning.");
-      closeBarcodeScannerOverlay();
+      // ignore errors; the reader keeps trying until we mark handled/reset
     });
 }
 
