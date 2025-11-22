@@ -1777,18 +1777,13 @@ tdBuy.textContent = fixedQtyStr;
 
 // ---------- BARCODE CAMERA SCANNER ----------
 
-// ---------- BARCODE CAMERA SCANNER ----------
+// ---------- BARCODE CAMERA SCANNER WITH CONFIRMATION ----------
 
 let activeBarcodeReader = null;
-let barcodeScanHandled = false; // prevents multiple runs for one scan
-let barcodeScanStartedAt = 0;   // when this scan session began
+let barcodeScanHandled = false;
+let barcodeScanStartedAt = 0;
 
-function closeBarcodeScannerOverlay() {
-  const overlay = document.getElementById("barcode-scanner-overlay");
-  if (overlay) overlay.remove();
-
-  barcodeScanHandled = true;
-
+function destroyZXingReader() {
   if (activeBarcodeReader) {
     try {
       activeBarcodeReader.reset();
@@ -1799,82 +1794,146 @@ function closeBarcodeScannerOverlay() {
   }
 }
 
-function openBarcodeScanner() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert("Camera access is not supported on this device / browser.");
-    return;
-  }
+function closeBarcodeScannerOverlay() {
+  const overlay = document.getElementById("barcode-scanner-overlay");
+  if (overlay) overlay.remove();
+  barcodeScanHandled = true;
+  destroyZXingReader();
+}
 
-  // Create overlay if it doesn't exist yet
-  let overlay = document.getElementById("barcode-scanner-overlay");
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "barcode-scanner-overlay";
-    overlay.className = "barcode-scanner-overlay";
+// Build the "live camera" panel and start scanning
+function buildScannerPanelContents(panel) {
+  panel.innerHTML = "";
 
-    const panel = document.createElement("div");
-    panel.className = "barcode-scanner-panel";
+  const title = document.createElement("h2");
+  title.textContent = "Scan barcode";
+  panel.appendChild(title);
 
-    const title = document.createElement("h2");
-    title.textContent = "Scan barcode";
-    panel.appendChild(title);
+  const video = document.createElement("video");
+  video.id = "barcode-video";
+  video.autoplay = true;
+  video.playsInline = true;
+  panel.appendChild(video);
 
-    const video = document.createElement("video");
-    video.id = "barcode-video";
-    video.autoplay = true;
-    video.playsInline = true;
-    panel.appendChild(video);
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
 
-    const btnRow = document.createElement("div");
-    btnRow.className = "barcode-scanner-actions";
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.className = "secondary";
+  cancelBtn.addEventListener("click", () => {
+    closeBarcodeScannerOverlay();
+  });
 
-    const cancelBtn = document.createElement("button");
-    cancelBtn.type = "button";
-    cancelBtn.textContent = "Cancel";
-    cancelBtn.className = "secondary";
-    cancelBtn.addEventListener("click", () => {
-      closeBarcodeScannerOverlay();
-    });
+  btnRow.appendChild(cancelBtn);
+  panel.appendChild(btnRow);
 
-    btnRow.appendChild(cancelBtn);
-    panel.appendChild(btnRow);
+  startZXingOnVideo(video);
+}
 
-    overlay.appendChild(panel);
+// Show "we found this barcode" and ask what to do
+function showBarcodeConfirmation(panel, code) {
+  panel.innerHTML = "";
 
-    // Close if you tap the dim background
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) closeBarcodeScannerOverlay();
-    });
+  const title = document.createElement("h2");
+  title.textContent = "Barcode found";
+  panel.appendChild(title);
 
-    document.body.appendChild(overlay);
-  }
+  const codeP = document.createElement("p");
+  codeP.textContent = code;
+  panel.appendChild(codeP);
 
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  const rescanBtn = document.createElement("button");
+  rescanBtn.type = "button";
+  rescanBtn.textContent = "Scan again";
+  rescanBtn.className = "secondary";
+  rescanBtn.addEventListener("click", () => {
+    buildScannerPanelContents(panel); // rebuild camera UI & restart scanner
+  });
+
+  const useBtn = document.createElement("button");
+  useBtn.type = "button";
+  useBtn.textContent = "Use this barcode";
+  useBtn.addEventListener("click", () => {
+    closeBarcodeScannerOverlay();
+    handleBarcodeCode(code); // this opens your "Add item from barcode" form
+  });
+
+  btnRow.appendChild(rescanBtn);
+  btnRow.appendChild(useBtn);
+  panel.appendChild(btnRow);
+}
+
+function startZXingOnVideo(videoElement) {
   const ZX = window.ZXingBrowser || window.ZXing;
   if (!ZX || !ZX.BrowserMultiFormatReader) {
     alert("Barcode scanner library not loaded.");
     return;
   }
 
-  barcodeScanHandled = false;
-  barcodeScanStartedAt = Date.now();   // mark start time for this session
+  destroyZXingReader();
 
+  barcodeScanHandled = false;
+  barcodeScanStartedAt = Date.now();
   activeBarcodeReader = new ZX.BrowserMultiFormatReader();
 
-  activeBarcodeReader.decodeFromVideoDevice(null, "barcode-video", (result, err) => {
+  // You can pass the element directly here
+  activeBarcodeReader.decodeFromVideoDevice(null, videoElement, (result, err) => {
     if (barcodeScanHandled) return;
 
-    // Ignore any results in the first 500ms – lets the camera settle
+    // Give the camera a tiny bit of time to "wake up"
     if (Date.now() - barcodeScanStartedAt < 500) return;
 
-    // Only act on real, non-empty text
     if (!result || !result.text || !result.text.trim()) return;
 
-    const text = result.text.trim();
-
+    const code = result.text.trim();
     barcodeScanHandled = true;
-    closeBarcodeScannerOverlay();
-    handleBarcodeCode(text);
+    destroyZXingReader();
+
+    const overlay = document.getElementById("barcode-scanner-overlay");
+    if (!overlay) return;
+    const panel = overlay.querySelector(".barcode-scanner-panel");
+    if (!panel) return;
+
+    // Instead of jumping straight to Add Item, show confirmation
+    showBarcodeConfirmation(panel, code);
   });
+}
+
+function openBarcodeScanner() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert("Camera access is not supported on this device / browser.");
+    return;
+  }
+
+  let overlay = document.getElementById("barcode-scanner-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "barcode-scanner-overlay";
+    overlay.className = "barcode-scanner-overlay";
+
+    // Tap the dimmed background to cancel
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        closeBarcodeScannerOverlay();
+      }
+    });
+
+    document.body.appendChild(overlay);
+  }
+
+  // (Re)build contents fresh each time we open
+  overlay.innerHTML = "";
+
+  const panel = document.createElement("div");
+  panel.className = "barcode-scanner-panel";
+  overlay.appendChild(panel);
+
+  buildScannerPanelContents(panel);
 }
 
     // ---------- NAVIGATION ----------
