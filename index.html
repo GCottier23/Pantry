@@ -302,8 +302,11 @@
     </section>
   </section>
 
-    <!-- Barcode scanner library -->
-  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+<!-- Barcode scanner library (ES module → expose as global ZXing) -->
+<script type="module">
+  import { BrowserMultiFormatReader } from "https://unpkg.com/@zxing/browser@latest";
+  window.ZXing = { BrowserMultiFormatReader };
+</script>
 
   <!-- =============== JAVASCRIPT =============== -->
   <script>
