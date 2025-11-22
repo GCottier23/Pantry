@@ -1781,12 +1781,13 @@ tdBuy.textContent = fixedQtyStr;
 
 let activeBarcodeReader = null;
 let barcodeScanHandled = false; // prevents multiple runs for one scan
+let barcodeScanStartedAt = 0;   // when this scan session began
 
 function closeBarcodeScannerOverlay() {
   const overlay = document.getElementById("barcode-scanner-overlay");
   if (overlay) overlay.remove();
 
-  barcodeScanHandled = true; // ensure no further callbacks do anything
+  barcodeScanHandled = true;
 
   if (activeBarcodeReader) {
     try {
@@ -1848,27 +1849,32 @@ function openBarcodeScanner() {
     document.body.appendChild(overlay);
   }
 
-  // Support either ZXingBrowser (UMD) or ZXing (if we ever change loader again)
   const ZX = window.ZXingBrowser || window.ZXing;
-
   if (!ZX || !ZX.BrowserMultiFormatReader) {
     alert("Barcode scanner library not loaded.");
     return;
   }
 
-  barcodeScanHandled = false; // reset for this new scan session
+  barcodeScanHandled = false;
+  barcodeScanStartedAt = Date.now();   // mark start time for this session
+
   activeBarcodeReader = new ZX.BrowserMultiFormatReader();
 
- activeBarcodeReader.decodeFromVideoDevice(null, "barcode-video", (result, err) => {
+  activeBarcodeReader.decodeFromVideoDevice(null, "barcode-video", (result, err) => {
     if (barcodeScanHandled) return;
 
-    if (result && result.text && result.text.trim() !== "") {
-        const text = result.text.trim();
-        barcodeScanHandled = true;
-        closeBarcodeScannerOverlay();
-        handleBarcodeCode(text);
-    }
-});
+    // Ignore any results in the first 500ms – lets the camera settle
+    if (Date.now() - barcodeScanStartedAt < 500) return;
+
+    // Only act on real, non-empty text
+    if (!result || !result.text || !result.text.trim()) return;
+
+    const text = result.text.trim();
+
+    barcodeScanHandled = true;
+    closeBarcodeScannerOverlay();
+    handleBarcodeCode(text);
+  });
 }
 
     // ---------- NAVIGATION ----------
