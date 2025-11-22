@@ -829,106 +829,248 @@ function parseBbcIngredient(rawLine, ingredientNames) {
       editingInventoryKey = null;
     }
 
-    // ---------- FAKE BARCODE (SIMPLE) ----------
+        // ---------- BARCODE → ITEM MAPPINGS (SIMPLE NAMES ONLY) ----------
 
-    function handleBarcodeCode(code) {
-  if (!code) return;
-  code = String(code).trim();
-  if (!code) return;
+    // barcodeMap[barcode] = ["Sausages", "Beef", ...]
+  
 
-  const existing = barcodeMap[code];
+    // Open a dialog asking:
+    // 1) What is the item?
+    // 2) What is the quantity?
+    // 3) What is the unit?
+    // It works for both new & known barcodes.
+    function openBarcodeItemDialog(barcode) {
+      const existing = Array.isArray(barcodeMap[barcode])
+        ? Array.from(new Set(barcodeMap[barcode])) // unique
+        : [];
 
-  if (existing) {
-    const answer = confirm(
-      `Barcode ${code} is ${existing.name}.\nIs that correct?`
-    );
-    if (!answer) {
-      // treat as new item
-      createBarcodeMapping(code);
-      return;
+      // Create overlay
+      let overlay = document.getElementById("barcode-input-overlay");
+      if (overlay) overlay.remove(); // ensure clean slate
+
+      overlay = document.createElement("div");
+      overlay.id = "barcode-input-overlay";
+      overlay.className = "barcode-scanner-overlay"; // reuse same dim style
+
+      const panel = document.createElement("div");
+      panel.className = "barcode-scanner-panel";
+
+      const title = document.createElement("h2");
+      title.textContent = "Add item from barcode";
+      panel.appendChild(title);
+
+      // --- Item selection row ---
+      const itemRow = document.createElement("div");
+      itemRow.className = "barcode-input-row";
+
+      const itemLabel = document.createElement("label");
+      itemLabel.textContent = "What is the item?";
+      itemLabel.style.display = "block";
+
+      // We will either show a TEXT input, or a SELECT + optional TEXT
+      const itemTextInput = document.createElement("input");
+      itemTextInput.type = "text";
+      itemTextInput.id = "barcode-item-name-input";
+      itemTextInput.placeholder = "e.g. Sausages";
+
+      const itemSelect = document.createElement("select");
+      itemSelect.id = "barcode-item-select";
+
+      const customNameInput = document.createElement("input");
+      customNameInput.type = "text";
+      customNameInput.id = "barcode-item-custom-name";
+      customNameInput.placeholder = "Type item name…";
+      customNameInput.style.display = "none";
+
+      if (existing.length === 0) {
+        // Brand new barcode → just text box
+        itemLabel.appendChild(itemTextInput);
+      } else if (existing.length === 1) {
+        // One known item → text box prefilled
+        itemTextInput.value = existing[0];
+        itemLabel.appendChild(itemTextInput);
+      } else {
+        // Several known items → dropdown + "Something else"
+        const defaultOpt = document.createElement("option");
+        defaultOpt.value = "";
+        defaultOpt.textContent = "Select item…";
+        itemSelect.appendChild(defaultOpt);
+
+        existing.forEach((name) => {
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = name;
+          itemSelect.appendChild(opt);
+        });
+
+        const otherOpt = document.createElement("option");
+        otherOpt.value = "__other";
+        otherOpt.textContent = "Something else…";
+        itemSelect.appendChild(otherOpt);
+
+        itemSelect.addEventListener("change", () => {
+          if (itemSelect.value === "__other") {
+            customNameInput.style.display = "block";
+            customNameInput.focus();
+          } else {
+            customNameInput.style.display = "none";
+            customNameInput.value = "";
+          }
+        });
+
+        itemLabel.appendChild(itemSelect);
+        itemLabel.appendChild(customNameInput);
+      }
+
+      itemRow.appendChild(itemLabel);
+      panel.appendChild(itemRow);
+
+      // --- Quantity row ---
+      const qtyRow = document.createElement("div");
+      qtyRow.className = "barcode-input-row";
+
+      const qtyLabel = document.createElement("label");
+      qtyLabel.textContent = "What is the quantity?";
+      qtyLabel.style.display = "block";
+
+      const qtyInput = document.createElement("input");
+      qtyInput.type = "number";
+      qtyInput.min = "0";
+      qtyInput.step = "0.1";
+      qtyInput.value = "1";
+
+      qtyLabel.appendChild(qtyInput);
+      qtyRow.appendChild(qtyLabel);
+      panel.appendChild(qtyRow);
+
+      // --- Unit row ---
+      const unitRow = document.createElement("div");
+      unitRow.className = "barcode-input-row";
+
+      const unitLabel = document.createElement("label");
+      unitLabel.textContent = "What is the unit?";
+      unitLabel.style.display = "block";
+
+      const unitSelect = document.createElement("select");
+      const units = [
+        { value: "", label: "(none)" },
+        { value: "g", label: "g" },
+        { value: "kg", label: "kg" },
+        { value: "ml", label: "ml" },
+        { value: "l", label: "l" },
+        { value: "pack", label: "pack" },
+        { value: "packs", label: "packs" },
+        { value: "pcs", label: "pcs" },
+      ];
+      units.forEach((u) => {
+        const opt = document.createElement("option");
+        opt.value = u.value;
+        opt.textContent = u.label;
+        unitSelect.appendChild(opt);
+      });
+
+      unitLabel.appendChild(unitSelect);
+      unitRow.appendChild(unitLabel);
+      panel.appendChild(unitRow);
+
+      // --- Buttons ---
+      const btnRow = document.createElement("div");
+      btnRow.className = "barcode-scanner-actions";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.type = "button";
+      cancelBtn.textContent = "Cancel";
+      cancelBtn.className = "secondary";
+      cancelBtn.addEventListener("click", () => {
+        overlay.remove();
+      });
+
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.textContent = "Add to inventory";
+
+      addBtn.addEventListener("click", () => {
+        let name = "";
+
+        if (existing.length >= 2) {
+          const sel = itemSelect.value;
+          if (sel === "__other") {
+            name = customNameInput.value.trim();
+          } else {
+            name = sel.trim();
+          }
+        } else {
+          name = itemTextInput.value.trim();
+        }
+
+        const qty = parseFloat(qtyInput.value || "0");
+        const unit = unitSelect.value || "";
+
+        if (!name) {
+          alert("Please enter an item name.");
+          return;
+        }
+        if (!qty || qty <= 0 || Number.isNaN(qty)) {
+          alert("Please enter a valid quantity.");
+          return;
+        }
+
+        const cleanName = titleCase(name);
+
+        // Save mapping for this barcode
+        if (!barcodeMap[barcode]) {
+          barcodeMap[barcode] = [];
+        }
+        if (!barcodeMap[barcode].includes(cleanName)) {
+          barcodeMap[barcode].push(cleanName);
+        }
+
+        // Add to inventory
+        upsertInventoryItem(cleanName, qty, unit);
+        renderInventory();
+        renderInventoryNameSuggestions();
+        saveState();
+
+        overlay.remove();
+        alert(
+          "Added " + formatQuantityWithUnit(qty, unit || "") + " of " + cleanName
+        );
+      });
+
+      btnRow.appendChild(cancelBtn);
+      btnRow.appendChild(addBtn);
+      panel.appendChild(btnRow);
+
+      overlay.appendChild(panel);
+
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+      });
+
+      document.body.appendChild(overlay);
+
+      // Focus first sensible field
+      if (existing.length >= 2) {
+        itemSelect.focus();
+      } else {
+        itemTextInput.focus();
+      }
     }
 
-    const defaultQty =
-      existing.baseQty && existing.baseQty > 0
-        ? String(existing.baseQty)
-        : "1";
-    const unitText = existing.unit ? " in " + existing.unit : "";
-    const qtyStr = prompt(
-      `How much did you buy${unitText}?`,
-      defaultQty
-    );
-    if (!qtyStr) return;
-    const qty = parseFloat(qtyStr);
-    if (isNaN(qty) || qty <= 0) return;
+    // For real barcode scans
+    function handleBarcodeCode(code) {
+      if (!code) return;
+      code = String(code).trim();
+      if (!code) return;
 
-    upsertInventoryItem(existing.name, qty, existing.unit || "");
-    renderInventory();
-    renderInventoryNameSuggestions();
-    saveState();
-    alert(
-      "Added " +
-        formatQuantityWithUnit(qty, existing.unit || "") +
-        " of " +
-        existing.name
-    );
-    return;
-  }
+      openBarcodeItemDialog(code);
+    }
 
-  // brand-new barcode → go through mapping flow
-  createBarcodeMapping(code);
-}
-    
-function handleFakeBarcodeScan() {
-  let code = prompt("Fake barcode scan: enter a code.", "");
-  handleBarcodeCode(code);
-}
-
-    function createBarcodeMapping(code) {
-      let name = prompt("What is this item called?", "");
-      if (!name) return;
-      const cleanName = titleCase(name);
-
-      let baseQtyStr = prompt(
-        `For one 'typical' amount of ${cleanName}, what quantity? (e.g. 500 for 500g)`,
-        "500"
-      );
-      if (!baseQtyStr) return;
-      const baseQty = parseFloat(baseQtyStr);
-      if (isNaN(baseQty) || baseQty <= 0) return;
-
-      let unit = prompt(
-        "What is the unit? (e.g. g, kg, ml, l, pack, pcs)",
-        "g"
-      );
-      unit = (unit || "").trim();
-
-      barcodeMap[code] = {
-        name: cleanName,
-        baseQty: baseQty,
-        unit: unit,
-      };
-
-      let nowQtyStr = prompt(
-        `How much did you buy now in ${unit || "units"}?`,
-        String(baseQty)
-      );
-      if (!nowQtyStr) {
-        saveState();
-        return;
-      }
-      const nowQty = parseFloat(nowQtyStr);
-      if (isNaN(nowQty) || nowQty <= 0) {
-        saveState();
-        return;
-      }
-
-      upsertInventoryItem(cleanName, nowQty, unit);
-      renderInventory();
-      renderInventoryNameSuggestions();
-      saveState();
-      alert(
-        "Added " + formatQuantityWithUnit(nowQty, unit) + " of " + cleanName
-      );
+    // For the fake scan button
+    function handleFakeBarcodeScan() {
+      let code = prompt("Fake barcode scan: enter a code.", "");
+      if (!code) return;
+      handleBarcodeCode(code);
     }
 
     // ---------- RECIPES ----------

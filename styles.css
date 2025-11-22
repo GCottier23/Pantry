@@ -696,3 +696,60 @@ p {
   padding: 0.6rem 1rem;
   font-size: 1rem;
 }
+
+/* ===========================
+   Barcode item dialog styling
+   =========================== */
+
+/* Make the item dialog panel a nice narrow card */
+#barcode-input-overlay .barcode-scanner-panel {
+  max-width: 420px;
+  width: 90%;
+}
+
+/* Spacing between rows in the dialog */
+.barcode-input-row {
+  margin-top: 0.75rem;
+}
+
+/* Labels inside the dialog */
+#barcode-input-overlay label {
+  font-size: 0.95rem;
+}
+
+/* Inputs + dropdowns: full width, modern look */
+#barcode-input-overlay input[type="text"],
+#barcode-input-overlay input[type="number"],
+#barcode-input-overlay select {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--border-color, #333);
+  background: var(--surface-color, #111);
+  color: inherit;
+  font-size: 1rem;
+}
+
+/* Focus outline to match your accent colour */
+#barcode-input-overlay input:focus,
+#barcode-input-overlay select:focus {
+  outline: 2px solid var(--accent-color, #ff7a00);
+  outline-offset: 1px;
+}
+
+/* Button row at the bottom */
+#barcode-input-overlay .barcode-scanner-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* On very small screens, give the panel a bit more breathing room */
+@media (max-width: 480px) {
+  #barcode-input-overlay .barcode-scanner-panel {
+    margin: 1.5rem;
+  }
+}
