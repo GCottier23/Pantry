@@ -423,8 +423,23 @@ function isStapleIngredient(name) {
   // 1) Exact phrase from ALWAYS_IN_CUPBOARD (your hard-coded combos)
   if (ALWAYS_IN_CUPBOARD.includes(lower)) return true;
 
-  // 2) Contains one of the staple keywords
+  // 2) User-defined staples (exact match)
+  if (customStaples.includes(lower)) return true;
+
+  // 3) Contains one of the staple keywords (salt, pepper, nutmeg, oil, flour, etc.)
   return STAPLE_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+function toggleCustomStaple(name) {
+  if (!name) return;
+  const lower = name.toLowerCase().trim();
+  const idx = customStaples.indexOf(lower);
+  if (idx === -1) {
+    customStaples.push(lower);
+  } else {
+    customStaples.splice(idx, 1);
+  }
+  saveState();
 }
 
 // Split a list into { staples, regular }
@@ -705,6 +720,7 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     let recipes = [];
     let mealPlan = [];
     let barcodeMap = {}; // barcode -> {name, baseQty, unit}
+    let customStaples = []; // user-defined staple ingredient names (lowercase)
 
     let inventoryFilter = "";
     let editingInventoryKey = null;
@@ -744,6 +760,11 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     if (Array.isArray(data.inventory)) inventory = data.inventory;
     if (Array.isArray(data.recipes)) recipes = data.recipes;
     if (Array.isArray(data.mealPlan)) mealPlan = data.mealPlan;
+    if (Array.isArray(data.customStaples)) {
+  customStaples = data.customStaples
+    .map((s) => String(s).toLowerCase().trim())
+    .filter(Boolean);
+}
 
     // --- migrate barcodeMap into the new "array of names" shape ---
     barcodeMap = {};
@@ -772,7 +793,7 @@ function parseBbcIngredient(rawLine, ingredientNames) {
       try {
         localStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({ inventory, recipes, mealPlan, barcodeMap })
+          JSON.stringify({ inventory, recipes, mealPlan, barcodeMap, customStaples })
         );
       } catch (e) {
         console.error("Failed to save", e);
@@ -1421,6 +1442,33 @@ function openRecipeDetail(recipeId) {
       const recipe = recipes.find((r) => r.id === recipeId);
       if (!recipe) return;
 
+      const recipeIdActual = recipe.id; // for re-opening overlay later
+
+// Work on a copy so we don't mutate the underlying recipe
+const ingForDisplay = (recipe.ingredients || []).slice();
+
+// If any ingredient mentions black pepper but none mentions salt,
+// add a synthetic "Salt" line to the staples display.
+const hasBlackPepper = ingForDisplay.some(
+  (ing) =>
+    ing.name &&
+    ing.name.toLowerCase().includes("black pepper")
+);
+
+const hasAnySalt = ingForDisplay.some(
+  (ing) =>
+    ing.name &&
+    ing.name.toLowerCase().includes("salt")
+);
+
+if (hasBlackPepper && !hasAnySalt) {
+  ingForDisplay.push({
+    name: "Salt",
+    quantity: null,
+    unit: ""
+  });
+}
+
       const overlay = document.createElement("div");
       overlay.className = "recipe-detail-overlay";
 
@@ -1465,54 +1513,101 @@ function openRecipeDetail(recipeId) {
       ingTitle.textContent = "Ingredients";
       panel.appendChild(ingTitle);
 
-      const { staples, regular } = splitIngredientsByStaples(
-        recipe.ingredients || []
-      );
+      const { staples, regular } = splitIngredientsByStaples(ingForDisplay);
 
       // helper: format one ingredient as an <li>
-      function addIngredientLi(ul, ing) {
-        const li = document.createElement("li");
+function addIngredientLi(ul, ing, isStapleList) {
+  const li = document.createElement("li");
 
-        let label = ing.name || "";
-        let q = ing.quantity;
-        let u = ing.unit || "";
+  let q = ing.quantity;
+  let u = ing.unit || "";
 
-        if (q && q > 0) {
-          ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+  // Name part (we'll always show this)
+  const nameSpan = document.createElement("span");
+  nameSpan.textContent = ing.name || "";
+  li.appendChild(nameSpan);
 
-          const compactUnits = ["g", "kg", "ml", "l"];
-          const unitLower = (u || "").toLowerCase();
+  // Decide how to show quantity
+  let hasNumericQty = q && q > 0;
 
-          if (compactUnits.includes(unitLower)) {
-            label += `: ${q}${unitLower}`;
-          } else if (unitLower) {
-            label += `: ${q} ${unitLower}`;
-          } else {
-            label += `: ${q}`;
-          }
-        }
+  if (hasNumericQty) {
+    ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
 
-        li.textContent = label;
-        ul.appendChild(li);
-      }
+    const compactUnits = ["g", "kg", "ml", "l"];
+    const unitLower = (u || "").toLowerCase();
+    const qtySpan = document.createElement("span");
 
-      // Non-staple ingredients
-      const ingList = document.createElement("ul");
-      ingList.className = "recipe-detail-ingredients";
-      regular.forEach((ing) => addIngredientLi(ingList, ing));
-      panel.appendChild(ingList);
+    let label = ": ";
+    if (compactUnits.includes(unitLower)) {
+      label += `${q}${unitLower}`;
+    } else if (unitLower) {
+      label += `${q} ${unitLower}`;
+    } else {
+      label += `${q}`;
+    }
 
-      // "Make sure you have" section for staples
-      if (staples.length) {
-        const staplesTitle = document.createElement("h3");
-        staplesTitle.textContent = "Make sure you have";
-        panel.appendChild(staplesTitle);
+    qtySpan.textContent = label;
+    li.appendChild(qtySpan);
+  } else if (isStapleList) {
+    // No numeric quantity + this is in the staples section →
+    // show “: to taste” (in italics)
+    const sep = document.createTextNode(": ");
+    const em = document.createElement("em");
+    em.textContent = "to taste";
+    li.appendChild(sep);
+    li.appendChild(em);
+  }
 
-        const staplesList = document.createElement("ul");
-        staplesList.className = "recipe-detail-ingredients";
-        staples.forEach((ing) => addIngredientLi(staplesList, ing));
-        panel.appendChild(staplesList);
-      }
+  // ----- Staple toggle ("Make staple" slider) -----
+  const isStapleNow = isStapleIngredient(ing.name);
+  const toggleLabel = document.createElement("label");
+  toggleLabel.className = "staple-toggle"; // style this as a slider in CSS if you like
+
+  const toggleInput = document.createElement("input");
+  toggleInput.type = "checkbox";
+  toggleInput.checked = isStapleNow;
+
+  const toggleText = document.createElement("span");
+  toggleText.textContent = " staple";
+
+  toggleLabel.appendChild(toggleInput);
+  toggleLabel.appendChild(toggleText);
+
+  // little spacing
+  toggleLabel.style.marginLeft = "0.75rem";
+  toggleLabel.style.fontSize = "0.85rem";
+
+  toggleInput.addEventListener("change", () => {
+    // Flip this ingredient in/out of customStaples
+    toggleCustomStaple(ing.name);
+
+    // Close and reopen to refresh which section this ingredient is in
+    const currentOverlay = li.closest(".recipe-detail-overlay");
+    if (currentOverlay) currentOverlay.remove();
+    openRecipeDetail(recipeIdActual);
+  });
+
+  li.appendChild(toggleLabel);
+
+  ul.appendChild(li);
+}
+   // Non-staple ingredients
+const ingList = document.createElement("ul");
+ingList.className = "recipe-detail-ingredients";
+regular.forEach((ing) => addIngredientLi(ingList, ing, false));
+panel.appendChild(ingList);
+
+// "Make sure you have" section for staples
+if (staples.length) {
+  const staplesTitle = document.createElement("h3");
+  staplesTitle.innerHTML = "<em>Make sure you have</em>";
+  panel.appendChild(staplesTitle);
+
+  const staplesList = document.createElement("ul");
+  staplesList.className = "recipe-detail-ingredients";
+  staples.forEach((ing) => addIngredientLi(staplesList, ing, true));
+  panel.appendChild(staplesList);
+}
 
       // Method
       const instrTitle = document.createElement("h3");
