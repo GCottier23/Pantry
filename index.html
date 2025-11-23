@@ -368,6 +368,29 @@ function autoCompactQuantityUnit(quantity, unit) {
   return { quantity: q, unit: u };
 }
 
+// Ingredients that we never want in shopping lists / inventory logic
+// (case-insensitive exact matches)
+const ALWAYS_IN_CUPBOARD = [
+  "salt",
+  "fine sea salt",
+  "sea salt",
+  "sea salt flakes",
+  "maldon sea salt flakes",
+  "black pepper",
+  "freshly ground black pepper",
+  "pepper",
+  "salt and freshly ground black pepper",
+  "salt and black pepper",
+  "salt & freshly ground black pepper",
+  "salt & pepper"
+];
+
+function isAlwaysInCupboard(name) {
+  if (!name) return false;
+  const n = name.toLowerCase().trim();
+  return ALWAYS_IN_CUPBOARD.includes(n);
+}
+
         function tidyRecipeTitle(str) {
       if (!str) return "";
       let t = str.trim();
@@ -1574,9 +1597,14 @@ function openCookDialog(dayId) {
     const baseServings = recipe.servings && recipe.servings > 0 ? recipe.servings : 1;
     const scale = cookServings / baseServings;
 
-    recipe.ingredients.forEach((ing) => {
-      const li = document.createElement("li");
+        recipe.ingredients.forEach((ing) => {
+      // Skip “always in cupboard” items – you don't deduct salt / pepper
+      if (isAlwaysInCupboard(ing.name)) {
+        return;
+      }
 
+      const li = document.createElement("li");
+    
       const row = document.createElement("div");
       row.style.display = "flex";
       row.style.alignItems = "center";
@@ -1916,7 +1944,12 @@ function roundUpForShopping(quantity, unit) {
 
     const scale = plannedServings / recipe.servings;
 
-        recipe.ingredients.forEach((ing) => {
+       recipe.ingredients.forEach((ing) => {
+      // Skip “always in cupboard” stuff like salt / pepper
+      if (isAlwaysInCupboard(ing.name)) {
+        return;
+      }
+
       // Skip ingredients that don't have a usable quantity
       if (!ing.quantity || ing.quantity <= 0) {
         return;
