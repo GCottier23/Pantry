@@ -1777,13 +1777,18 @@ tdBuy.textContent = fixedQtyStr;
 
 // ---------- BARCODE CAMERA SCANNER ----------
 
-// ---------- BARCODE CAMERA SCANNER WITH CONFIRMATION ----------
+// ---------- BARCODE CAMERA SCANNER ----------
 
 let activeBarcodeReader = null;
-let barcodeScanHandled = false;
-let barcodeScanStartedAt = 0;
+let barcodeScanHandled = false;     // prevents multiple runs for one scan
+let lastScannedCode = null;         // remember the last successful barcode
 
-function destroyZXingReader() {
+function closeBarcodeScannerOverlay() {
+  const overlay = document.getElementById("barcode-scanner-overlay");
+  if (overlay) overlay.remove();
+
+  barcodeScanHandled = true;
+
   if (activeBarcodeReader) {
     try {
       activeBarcodeReader.reset();
@@ -1794,16 +1799,24 @@ function destroyZXingReader() {
   }
 }
 
-function closeBarcodeScannerOverlay() {
-  const overlay = document.getElementById("barcode-scanner-overlay");
-  if (overlay) overlay.remove();
-  barcodeScanHandled = true;
-  destroyZXingReader();
-}
+function openBarcodeScanner() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert("Camera access is not supported on this device / browser.");
+    return;
+  }
 
-// Build the "live camera" panel and start scanning
-function buildScannerPanelContents(panel) {
-  panel.innerHTML = "";
+  // Always start with a fresh overlay
+  let overlay = document.getElementById("barcode-scanner-overlay");
+  if (overlay) {
+    overlay.remove();
+  }
+
+  overlay = document.createElement("div");
+  overlay.id = "barcode-scanner-overlay";
+  overlay.className = "barcode-scanner-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "barcode-scanner-panel";
 
   const title = document.createElement("h2");
   title.textContent = "Scan barcode";
@@ -1829,111 +1842,45 @@ function buildScannerPanelContents(panel) {
   btnRow.appendChild(cancelBtn);
   panel.appendChild(btnRow);
 
-  startZXingOnVideo(video);
-}
+  overlay.appendChild(panel);
 
-// Show "we found this barcode" and ask what to do
-function showBarcodeConfirmation(panel, code) {
-  panel.innerHTML = "";
-
-  const title = document.createElement("h2");
-  title.textContent = "Barcode found";
-  panel.appendChild(title);
-
-  const codeP = document.createElement("p");
-  codeP.textContent = code;
-  panel.appendChild(codeP);
-
-  const btnRow = document.createElement("div");
-  btnRow.className = "barcode-scanner-actions";
-
-  const rescanBtn = document.createElement("button");
-  rescanBtn.type = "button";
-  rescanBtn.textContent = "Scan again";
-  rescanBtn.className = "secondary";
-  rescanBtn.addEventListener("click", () => {
-    buildScannerPanelContents(panel); // rebuild camera UI & restart scanner
+  // Close if you tap the dim background
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeBarcodeScannerOverlay();
   });
 
-  const useBtn = document.createElement("button");
-  useBtn.type = "button";
-  useBtn.textContent = "Use this barcode";
-  useBtn.addEventListener("click", () => {
-    closeBarcodeScannerOverlay();
-    handleBarcodeCode(code); // this opens your "Add item from barcode" form
-  });
+  document.body.appendChild(overlay);
 
-  btnRow.appendChild(rescanBtn);
-  btnRow.appendChild(useBtn);
-  panel.appendChild(btnRow);
-}
-
-function startZXingOnVideo(videoElement) {
   const ZX = window.ZXingBrowser || window.ZXing;
   if (!ZX || !ZX.BrowserMultiFormatReader) {
     alert("Barcode scanner library not loaded.");
     return;
   }
 
-  destroyZXingReader();
-
   barcodeScanHandled = false;
-  barcodeScanStartedAt = Date.now();
+
   activeBarcodeReader = new ZX.BrowserMultiFormatReader();
 
-  // You can pass the element directly here
-  activeBarcodeReader.decodeFromVideoDevice(null, videoElement, (result, err) => {
+  activeBarcodeReader.decodeFromVideoDevice(null, "barcode-video", (result, err) => {
     if (barcodeScanHandled) return;
 
-    // Give the camera a tiny bit of time to "wake up"
-    if (Date.now() - barcodeScanStartedAt < 500) return;
-
-    if (!result || !result.text || !result.text.trim()) return;
+    if (!result || !result.text) return;
 
     const code = result.text.trim();
+    if (!code) return;
+
+    // 👇 KEY BIT: if it’s the same barcode as the previous successful scan,
+    // completely ignore it. This stops the “auto reusing 123” issue.
+    if (code === lastScannedCode) {
+      return; // keep scanning, waiting for a different code
+    }
+
+    lastScannedCode = code;
+
     barcodeScanHandled = true;
-    destroyZXingReader();
-
-    const overlay = document.getElementById("barcode-scanner-overlay");
-    if (!overlay) return;
-    const panel = overlay.querySelector(".barcode-scanner-panel");
-    if (!panel) return;
-
-    // Instead of jumping straight to Add Item, show confirmation
-    showBarcodeConfirmation(panel, code);
+    closeBarcodeScannerOverlay();
+    handleBarcodeCode(code); // opens your “Add item from barcode” dialog
   });
-}
-
-function openBarcodeScanner() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert("Camera access is not supported on this device / browser.");
-    return;
-  }
-
-  let overlay = document.getElementById("barcode-scanner-overlay");
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "barcode-scanner-overlay";
-    overlay.className = "barcode-scanner-overlay";
-
-    // Tap the dimmed background to cancel
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) {
-        closeBarcodeScannerOverlay();
-      }
-    });
-
-    document.body.appendChild(overlay);
-  }
-
-  // (Re)build contents fresh each time we open
-  overlay.innerHTML = "";
-
-  const panel = document.createElement("div");
-  panel.className = "barcode-scanner-panel";
-  overlay.appendChild(panel);
-
-  buildScannerPanelContents(panel);
 }
 
     // ---------- NAVIGATION ----------
