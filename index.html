@@ -385,14 +385,8 @@ const ALWAYS_IN_CUPBOARD = [
   "salt & pepper"
 ];
 
-function isAlwaysInCupboard(name) {
-  if (!name) return false;
-  const n = name.toLowerCase().trim();
-  return ALWAYS_IN_CUPBOARD.includes(n);
-}
-
-// Broader "staples" list for things you usually have in the cupboard.
-// You can edit this list any time.
+// "Default" staple keywords you ship with the app.
+// You can tweak these in code.
 const STAPLE_KEYWORDS = [
   "salt",
   "pepper",
@@ -415,6 +409,9 @@ const STAPLE_KEYWORDS = [
   "self-raising flour"
 ];
 
+// User-added staples (by ingredient name, lower-cased). Persisted in localStorage.
+let userStaples = [];
+
 // True if this ingredient should be treated as a staple
 function isStapleIngredient(name) {
   if (!name) return false;
@@ -423,36 +420,36 @@ function isStapleIngredient(name) {
   // 1) Exact phrase from ALWAYS_IN_CUPBOARD (your hard-coded combos)
   if (ALWAYS_IN_CUPBOARD.includes(lower)) return true;
 
-  // 2) User-defined staples (exact match)
-  if (customStaples.includes(lower)) return true;
+  // 2) User-added staples (via long-press → "Mark as staple")
+  if (userStaples.includes(lower)) return true;
 
-  // 3) Contains one of the staple keywords (salt, pepper, nutmeg, oil, flour, etc.)
+  // 3) Contains one of the default staple keywords
   return STAPLE_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
-function toggleCustomStaple(name) {
+// Toggle user staple on/off for this device
+function toggleUserStaple(name) {
   if (!name) return;
   const lower = name.toLowerCase().trim();
-  const idx = customStaples.indexOf(lower);
+  if (!lower) return;
+
+  const idx = userStaples.indexOf(lower);
   if (idx === -1) {
-    customStaples.push(lower);
+    userStaples.push(lower);
   } else {
-    customStaples.splice(idx, 1);
+    userStaples.splice(idx, 1);
   }
   saveState();
 }
 
-// Split a list into { staples, regular }
+// Split a list into { staples, regular }, keeping the original index
 function splitIngredientsByStaples(ingredients) {
   const staples = [];
   const regular = [];
-  (ingredients || []).forEach((ing) => {
+  (ingredients || []).forEach((ing, index) => {
     if (!ing || !ing.name) return;
-    if (isStapleIngredient(ing.name)) {
-      staples.push(ing);
-    } else {
-      regular.push(ing);
-    }
+    const bucket = isStapleIngredient(ing.name) ? staples : regular;
+    bucket.push({ ing, index });
   });
   return { staples, regular };
 }
@@ -749,7 +746,7 @@ function parseBbcIngredient(rawLine, ingredientNames) {
       }));
     }
 
-  function loadState() {
+ function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
@@ -760,11 +757,15 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     if (Array.isArray(data.inventory)) inventory = data.inventory;
     if (Array.isArray(data.recipes)) recipes = data.recipes;
     if (Array.isArray(data.mealPlan)) mealPlan = data.mealPlan;
-    if (Array.isArray(data.customStaples)) {
-  customStaples = data.customStaples
-    .map((s) => String(s).toLowerCase().trim())
-    .filter(Boolean);
-}
+
+    // user staples
+    if (Array.isArray(data.userStaples)) {
+      userStaples = data.userStaples
+        .map((n) => String(n).toLowerCase().trim())
+        .filter(Boolean);
+    } else {
+      userStaples = [];
+    }
 
     // --- migrate barcodeMap into the new "array of names" shape ---
     barcodeMap = {};
@@ -789,16 +790,22 @@ function parseBbcIngredient(rawLine, ingredientNames) {
   }
 }
 
-    function saveState() {
-      try {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({ inventory, recipes, mealPlan, barcodeMap, customStaples })
-        );
-      } catch (e) {
-        console.error("Failed to save", e);
-      }
-    }
+function saveState() {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        inventory,
+        recipes,
+        mealPlan,
+        barcodeMap,
+        userStaples      // ⬅️ persist user staples
+      })
+    );
+  } catch (e) {
+    console.error("Failed to save", e);
+  }
+}
 
     // ---------- INVENTORY ----------
 
@@ -1438,216 +1445,288 @@ function renderCurrentRecipeIngredients() {
   renderMealPlan();
 }
 
-function openRecipeDetail(recipeId) {
-      const recipe = recipes.find((r) => r.id === recipeId);
-      if (!recipe) return;
+// Simple long-press helper
+function attachIngredientLongPress(li, recipeId, ingredientIndex, ingredientName) {
+  let pressTimer = null;
 
-      const recipeIdActual = recipe.id; // for re-opening overlay later
+  const start = (event) => {
+    // prevent text selection on long press
+    event.preventDefault();
+    if (pressTimer !== null) return;
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      openIngredientContextMenu(recipeId, ingredientIndex, ingredientName);
+    }, 450); // ~0.45s long press
+  };
 
-// Work on a copy so we don't mutate the underlying recipe
-const ingForDisplay = (recipe.ingredients || []).slice();
+  const cancel = () => {
+    if (pressTimer !== null) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
 
-// If any ingredient mentions black pepper but none mentions salt,
-// add a synthetic "Salt" line to the staples display.
-const hasBlackPepper = ingForDisplay.some(
-  (ing) =>
-    ing.name &&
-    ing.name.toLowerCase().includes("black pepper")
-);
-
-const hasAnySalt = ingForDisplay.some(
-  (ing) =>
-    ing.name &&
-    ing.name.toLowerCase().includes("salt")
-);
-
-if (hasBlackPepper && !hasAnySalt) {
-  ingForDisplay.push({
-    name: "Salt",
-    quantity: null,
-    unit: ""
-  });
+  li.addEventListener("pointerdown", start);
+  li.addEventListener("pointerup", cancel);
+  li.addEventListener("pointerleave", cancel);
+  li.addEventListener("pointercancel", cancel);
 }
 
-      const overlay = document.createElement("div");
-      overlay.className = "recipe-detail-overlay";
+// Small popup for "Staple / Edit / Delete"
+function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
+  const recipe = recipes.find((r) => r.id === recipeId);
+  if (!recipe) return;
 
-      const panel = document.createElement("div");
-      panel.className = "recipe-detail-panel";
+  const overlay = document.createElement("div");
+  overlay.className = "recipe-detail-overlay"; // reuse dim background
 
-      // Close button
-      const closeBtn = document.createElement("button");
-      closeBtn.type = "button";
-      closeBtn.className = "recipe-detail-close";
-      closeBtn.textContent = "Close";
-      closeBtn.addEventListener("click", () => overlay.remove());
-      panel.appendChild(closeBtn);
+  const panel = document.createElement("div");
+  panel.className = "recipe-detail-panel";
+  panel.style.maxWidth = "320px";
 
-      // Title
-      const title = document.createElement("h2");
-      title.className = "recipe-detail-title";
-      title.textContent = recipe.name;
-      panel.appendChild(title);
+  const title = document.createElement("h3");
+  title.textContent = ingredientName;
+  panel.appendChild(title);
 
-      // Image
-      if (recipe.imageUrl) {
-        const imgWrap = document.createElement("div");
-        imgWrap.className = "recipe-detail-image-wrap";
-        const img = document.createElement("img");
-        img.src = recipe.imageUrl;
-        img.alt = recipe.name;
-        imgWrap.appendChild(img);
-        panel.appendChild(imgWrap);
-      }
+  const stapleBtn = document.createElement("button");
+  stapleBtn.type = "button";
 
-      // Meta
-      const meta = document.createElement("p");
-      meta.className = "recipe-detail-meta";
-      meta.textContent = recipe.servings
-        ? `Serves ${recipe.servings}`
-        : "";
-      panel.appendChild(meta);
+  const currentlyStaple = isStapleIngredient(ingredientName);
+  stapleBtn.textContent = currentlyStaple
+    ? "Remove from staples"
+    : "Mark as staple";
 
-        // Ingredients
-      const ingTitle = document.createElement("h3");
-      ingTitle.textContent = "Ingredients";
-      panel.appendChild(ingTitle);
+  stapleBtn.addEventListener("click", () => {
+    toggleUserStaple(ingredientName);
+    overlay.remove();
+    // Re-open the detail view so the ingredient jumps into / out of
+    // the "Make sure you have" section and updates everywhere.
+    openRecipeDetail(recipeId);
+  });
 
-      const { staples, regular } = splitIngredientsByStaples(ingForDisplay);
+  const editBtn = document.createElement("button");
+  editBtn.type = "button";
+  editBtn.className = "secondary";
+  editBtn.textContent = "Edit ingredient";
+  editBtn.addEventListener("click", () => {
+    overlay.remove();
+    showPage("page-recipes");
+    // Open recipe editor; you can then tweak that ingredient there.
+    startRecipeEdit(recipeId);
+  });
 
-      // helper: format one ingredient as an <li>
-function addIngredientLi(ul, ing, isStapleList) {
-  const li = document.createElement("li");
-
-  let q = ing.quantity;
-  let u = ing.unit || "";
-
-  // Name part (we'll always show this)
-  const nameSpan = document.createElement("span");
-  nameSpan.textContent = ing.name || "";
-  li.appendChild(nameSpan);
-
-  // Decide how to show quantity
-  let hasNumericQty = q && q > 0;
-
-  if (hasNumericQty) {
-    ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
-
-    const compactUnits = ["g", "kg", "ml", "l"];
-    const unitLower = (u || "").toLowerCase();
-    const qtySpan = document.createElement("span");
-
-    let label = ": ";
-    if (compactUnits.includes(unitLower)) {
-      label += `${q}${unitLower}`;
-    } else if (unitLower) {
-      label += `${q} ${unitLower}`;
-    } else {
-      label += `${q}`;
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "secondary";
+  deleteBtn.textContent = "Delete ingredient";
+  deleteBtn.addEventListener("click", () => {
+    const ok = confirm(`Remove "${ingredientName}" from this recipe?`);
+    if (!ok) return;
+    if (
+      Array.isArray(recipe.ingredients) &&
+      ingredientIndex >= 0 &&
+      ingredientIndex < recipe.ingredients.length
+    ) {
+      recipe.ingredients.splice(ingredientIndex, 1);
+      saveState();
     }
+    overlay.remove();
+    openRecipeDetail(recipeId);
+  });
 
-    qtySpan.textContent = label;
-    li.appendChild(qtySpan);
-  } else if (isStapleList) {
-    // No numeric quantity + this is in the staples section →
-    // show “: to taste” (in italics)
-    const sep = document.createTextNode(": ");
-    const em = document.createElement("em");
-    em.textContent = "to taste";
-    li.appendChild(sep);
-    li.appendChild(em);
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "secondary";
+  closeBtn.textContent = "Cancel";
+  closeBtn.addEventListener("click", () => overlay.remove());
+
+  panel.appendChild(stapleBtn);
+  panel.appendChild(editBtn);
+  panel.appendChild(deleteBtn);
+  panel.appendChild(closeBtn);
+
+  overlay.appendChild(panel);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  document.body.appendChild(overlay);
+}
+
+function openRecipeDetail(recipeId) {
+  const recipe = recipes.find((r) => r.id === recipeId);
+  if (!recipe) return;
+
+  const recipeIdActual = recipe.id;
+
+  // Work on a copy so we don't mutate the underlying recipe
+  const ingForDisplay = (recipe.ingredients || []).slice();
+
+  // If any ingredient mentions black pepper but none mentions salt,
+  // add a synthetic "Salt" line (staple, shown as "to taste").
+  const hasBlackPepper = ingForDisplay.some(
+    (ing) => ing.name && ing.name.toLowerCase().includes("black pepper")
+  );
+  const hasAnySalt = ingForDisplay.some(
+    (ing) => ing.name && ing.name.toLowerCase().includes("salt")
+  );
+
+  if (hasBlackPepper && !hasAnySalt) {
+    ingForDisplay.push({
+      name: "Salt",
+      quantity: null,
+      unit: ""
+    });
   }
 
-  // ----- Staple toggle ("Make staple" slider) -----
-  const isStapleNow = isStapleIngredient(ing.name);
-  const toggleLabel = document.createElement("label");
-  toggleLabel.className = "staple-toggle"; // style this as a slider in CSS if you like
+  const overlay = document.createElement("div");
+  overlay.className = "recipe-detail-overlay";
 
-  const toggleInput = document.createElement("input");
-  toggleInput.type = "checkbox";
-  toggleInput.checked = isStapleNow;
+  const panel = document.createElement("div");
+  panel.className = "recipe-detail-panel";
 
-  const toggleText = document.createElement("span");
-  toggleText.textContent = " staple";
+  // Close button
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "recipe-detail-close";
+  closeBtn.textContent = "Close";
+  closeBtn.addEventListener("click", () => overlay.remove());
+  panel.appendChild(closeBtn);
 
-  toggleLabel.appendChild(toggleInput);
-  toggleLabel.appendChild(toggleText);
+  // Title
+  const title = document.createElement("h2");
+  title.className = "recipe-detail-title";
+  title.textContent = recipe.name;
+  panel.appendChild(title);
 
-  // little spacing
-  toggleLabel.style.marginLeft = "0.75rem";
-  toggleLabel.style.fontSize = "0.85rem";
+  // Image
+  if (recipe.imageUrl) {
+    const imgWrap = document.createElement("div");
+    imgWrap.className = "recipe-detail-image-wrap";
+    const img = document.createElement("img");
+    img.src = recipe.imageUrl;
+    img.alt = recipe.name;
+    imgWrap.appendChild(img);
+    panel.appendChild(imgWrap);
+  }
 
-  toggleInput.addEventListener("change", () => {
-    // Flip this ingredient in/out of customStaples
-    toggleCustomStaple(ing.name);
+  // Meta
+  const meta = document.createElement("p");
+  meta.className = "recipe-detail-meta";
+  meta.textContent = recipe.servings ? `Serves ${recipe.servings}` : "";
+  panel.appendChild(meta);
 
-    // Close and reopen to refresh which section this ingredient is in
-    const currentOverlay = li.closest(".recipe-detail-overlay");
-    if (currentOverlay) currentOverlay.remove();
-    openRecipeDetail(recipeIdActual);
-  });
+  // ---- Ingredients section ----
+  const ingTitle = document.createElement("h3");
+  ingTitle.textContent = "Ingredients";
+  panel.appendChild(ingTitle);
 
-  li.appendChild(toggleLabel);
+  // Use the indexed split so we know which ingredient to edit/delete
+  const { staples, regular } = splitIngredientsByStaples(ingForDisplay);
 
-  ul.appendChild(li);
-}
-   // Non-staple ingredients
-const ingList = document.createElement("ul");
-ingList.className = "recipe-detail-ingredients";
-regular.forEach((ing) => addIngredientLi(ingList, ing, false));
-panel.appendChild(ingList);
+  function addIngredientLi(ul, obj, isStapleList) {
+    const { ing, index } = obj;
+    const li = document.createElement("li");
 
-// "Make sure you have" section for staples
-if (staples.length) {
-  const staplesTitle = document.createElement("h3");
-  staplesTitle.innerHTML = "<em>Make sure you have</em>";
-  panel.appendChild(staplesTitle);
+    // Name
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = ing.name || "";
+    li.appendChild(nameSpan);
 
-  const staplesList = document.createElement("ul");
-  staplesList.className = "recipe-detail-ingredients";
-  staples.forEach((ing) => addIngredientLi(staplesList, ing, true));
-  panel.appendChild(staplesList);
-}
+    let q = ing.quantity;
+    let u = ing.unit || "";
+    const hasNumericQty = q && q > 0;
 
-      // Method
-      const instrTitle = document.createElement("h3");
-      instrTitle.textContent = "Method";
-      panel.appendChild(instrTitle);
+    if (hasNumericQty) {
+      ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
 
-      const instrList = document.createElement("ol");
-      instrList.className = "recipe-detail-instructions";
-      if (Array.isArray(recipe.instructions) && recipe.instructions.length) {
-        recipe.instructions.forEach((step) => {
-          const li = document.createElement("li");
-          li.textContent = step;
-          instrList.appendChild(li);
-        });
+      const compactUnits = ["g", "kg", "ml", "l"];
+      const unitLower = (u || "").toLowerCase();
+      const qtySpan = document.createElement("span");
+
+      let label = ": ";
+      if (compactUnits.includes(unitLower)) {
+        label += `${q}${unitLower}`;
+      } else if (unitLower) {
+        label += `${q} ${unitLower}`;
       } else {
-        const li = document.createElement("li");
-        li.textContent = "No method stored yet.";
-        instrList.appendChild(li);
-      }
-      panel.appendChild(instrList);
-
-      // Source link (if we have it)
-      if (recipe.sourceUrl) {
-        const link = document.createElement("a");
-        link.className = "recipe-detail-source";
-        link.href = recipe.sourceUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = "View original recipe on BBC";
-        panel.appendChild(link);
+        label += `${q}`;
       }
 
-      overlay.appendChild(panel);
-      document.body.appendChild(overlay);
-
-      // Close if you tap the dim background
-      overlay.addEventListener("click", (e) => {
-        if (e.target === overlay) overlay.remove();
-      });
+      qtySpan.textContent = label;
+      li.appendChild(qtySpan);
+    } else if (isStapleList) {
+      // No numeric quantity, and it's in the staples section → "to taste" in italics
+      const sep = document.createTextNode(": ");
+      const em = document.createElement("em");
+      em.textContent = "to taste";
+      li.appendChild(sep);
+      li.appendChild(em);
     }
+
+    // Attach long-press menu (Staple / Edit / Delete)
+    attachIngredientLongPress(li, recipeIdActual, index, ing.name);
+
+    ul.appendChild(li);
+  }
+
+  // Non-staple ingredients
+  const ingList = document.createElement("ul");
+  ingList.className = "recipe-detail-ingredients";
+  regular.forEach((obj) => addIngredientLi(ingList, obj, false));
+  panel.appendChild(ingList);
+
+  // Staples: "Make sure you have" (italic heading)
+  if (staples.length) {
+    const staplesTitle = document.createElement("h3");
+    staplesTitle.innerHTML = "<em>Make sure you have</em>";
+    panel.appendChild(staplesTitle);
+
+    const staplesList = document.createElement("ul");
+    staplesList.className = "recipe-detail-ingredients";
+    staples.forEach((obj) => addIngredientLi(staplesList, obj, true));
+    panel.appendChild(staplesList);
+  }
+
+  // ---- Method ----
+  const instrTitle = document.createElement("h3");
+  instrTitle.textContent = "Method";
+  panel.appendChild(instrTitle);
+
+  const instrList = document.createElement("ol");
+  instrList.className = "recipe-detail-instructions";
+  if (Array.isArray(recipe.instructions) && recipe.instructions.length) {
+    recipe.instructions.forEach((step) => {
+      const li = document.createElement("li");
+      li.textContent = step;
+      instrList.appendChild(li);
+    });
+  } else {
+    const li = document.createElement("li");
+    li.textContent = "No method stored yet.";
+    instrList.appendChild(li);
+  }
+  panel.appendChild(instrList);
+
+  // Source link (if we have it)
+  if (recipe.sourceUrl) {
+    const link = document.createElement("a");
+    link.className = "recipe-detail-source";
+    link.href = recipe.sourceUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "View original recipe on BBC";
+    panel.appendChild(link);
+  }
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  // Close if you tap the dim background
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+}
 
     // ----- COOK MODE: tick ingredients to deduct from inventory -----
 
