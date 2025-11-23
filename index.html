@@ -743,6 +743,40 @@ function parseBbcIngredient(rawLine, ingredientNames) {
       }
     }
 
+    // Deduct a quantity of an ingredient from inventory by name.
+// qtyBase is in baseUnit (g/ml/whatever chooseBaseUnit returned).
+function deductInventoryForCooking(name, qtyBase, baseUnit) {
+  if (!name || !qtyBase || qtyBase <= 0) return;
+
+  const key = name.toLowerCase();
+  const item = inventory.find((i) => i.name.toLowerCase() === key);
+  if (!item) {
+    // Caller handles "not found" confirmation
+    return false;
+  }
+
+  // Decide a common base unit between ingredient + inventory
+  const invUnit = item.unit || "";
+  const base = baseUnit || chooseBaseUnit(invUnit);
+
+  // Current inventory in base units
+  let invQtyBase = convertToUnit(item.quantity, invUnit, base);
+
+  // Deduct
+  let newBase = invQtyBase - qtyBase;
+  if (newBase <= 0.0001) {
+    // Effectively used it all up → remove item
+    deleteInventoryItem(item.key);
+  } else {
+    // Convert back into the item's original unit
+    const newQty = convertToUnit(newBase, base, invUnit || "");
+    item.quantity = newQty;
+    normalizeInventoryItem(item);
+  }
+
+  return true;
+}
+
     function deleteInventoryItem(key) {
       inventory = inventory.filter((i) => i.key !== key);
     }
@@ -1426,6 +1460,254 @@ function openRecipeDetail(recipeId) {
       });
     }
 
+    // ----- COOK MODE: tick ingredients to deduct from inventory -----
+
+function openCookDialog(dayId) {
+  const entry = mealPlan.find((d) => d.dayId === dayId);
+  if (!entry || !entry.recipeId) {
+    alert("No recipe selected for this day.");
+    return;
+  }
+
+  const recipe = recipes.find((r) => r.id === entry.recipeId);
+  if (!recipe) {
+    alert("Recipe not found.");
+    return;
+  }
+  if (!recipe.ingredients || !recipe.ingredients.length) {
+    alert("This recipe has no ingredients saved yet.");
+    return;
+  }
+
+  // Default servings = planned servings, or recipe base if 0
+  const defaultServings =
+    entry.servings && entry.servings > 0 ? entry.servings : recipe.servings || 1;
+
+  // Build overlay
+  const overlay = document.createElement("div");
+  overlay.className = "recipe-detail-overlay cook-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "recipe-detail-panel";
+
+  // Close button
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "recipe-detail-close";
+  closeBtn.textContent = "Close";
+  closeBtn.addEventListener("click", () => overlay.remove());
+  panel.appendChild(closeBtn);
+
+  // Title
+  const title = document.createElement("h2");
+  title.textContent = `Cook: ${recipe.name}`;
+  panel.appendChild(title);
+
+  // Servings chooser
+  const servingsLabel = document.createElement("label");
+  servingsLabel.textContent = "How many servings are you cooking?";
+  servingsLabel.style.display = "block";
+
+  const servingsInput = document.createElement("input");
+  servingsInput.type = "number";
+  servingsInput.min = "1";
+  servingsInput.step = "1";
+  servingsInput.value = String(defaultServings);
+  servingsInput.style.marginTop = "0.5rem";
+
+  servingsLabel.appendChild(servingsInput);
+  panel.appendChild(servingsLabel);
+
+  // Container for ingredient checklist
+  const ingSection = document.createElement("div");
+  ingSection.className = "subpanel";
+  ingSection.style.marginTop = "1rem";
+
+  const ingHeading = document.createElement("h3");
+  ingHeading.textContent = "Ingredients to use";
+  ingSection.appendChild(ingHeading);
+
+  const ingHelp = document.createElement("p");
+  ingHelp.textContent =
+    "Tick each ingredient as you get it out. Ticking will deduct it from your inventory.";
+  ingSection.appendChild(ingHelp);
+
+  const ingList = document.createElement("ul");
+  ingList.className = "recipe-detail-ingredients";
+  ingSection.appendChild(ingList);
+
+  panel.appendChild(ingSection);
+
+  // Bottom buttons
+  const footer = document.createElement("div");
+  footer.className = "barcode-scanner-actions"; // reuse nice flex styling if you have it
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "secondary";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => overlay.remove());
+
+  const finishBtn = document.createElement("button");
+  finishBtn.type = "button";
+  finishBtn.textContent = "Finish cooking";
+
+  footer.appendChild(cancelBtn);
+  footer.appendChild(finishBtn);
+
+  panel.appendChild(footer);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  // Close by tapping dark background
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  // Helper to render scaled ingredient list
+  function renderCookIngredients() {
+    ingList.innerHTML = "";
+
+    const cookServings = parseFloat(servingsInput.value || "0");
+    if (!cookServings || cookServings <= 0) return;
+
+    const baseServings = recipe.servings && recipe.servings > 0 ? recipe.servings : 1;
+    const scale = cookServings / baseServings;
+
+    recipe.ingredients.forEach((ing) => {
+      const li = document.createElement("li");
+
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.alignItems = "center";
+      row.style.gap = "0.5rem";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+
+      // Work out scaled quantity + baseUnit for deduction
+      let q = ing.quantity || 0;
+      let u = ing.unit || "";
+      let scaledQty = q * scale;
+
+      const baseUnit = chooseBaseUnit(u);
+      const qtyBase = convertToUnit(scaledQty, u, baseUnit);
+
+      // Nicely formatted label
+      let displayQty = scaledQty;
+      let displayUnit = u;
+
+      if (displayQty && (u === "g" || u === "ml") && displayQty >= 1000) {
+        displayQty = displayQty / 1000;
+        displayUnit = u === "g" ? "kg" : "l";
+      }
+
+      const compactUnits = ["g", "kg", "ml", "l"];
+      const niceNum = Number.isInteger(displayQty)
+        ? String(displayQty)
+        : (Math.round(displayQty * 10) / 10).toString();
+      let qtyStr = "";
+      if (displayQty > 0) {
+        if (!displayUnit) {
+          qtyStr = niceNum;
+        } else if (compactUnits.includes(displayUnit)) {
+          qtyStr = niceNum + displayUnit;
+        } else {
+          qtyStr = niceNum + " " + displayUnit;
+        }
+      }
+
+      const labelSpan = document.createElement("span");
+      labelSpan.textContent = qtyStr
+        ? `${ing.name}: ${qtyStr}`
+        : ing.name;
+
+      // Attach metadata for deduction
+      cb.dataset.ingName = ing.name;
+      cb.dataset.qtyBase = String(qtyBase);
+      cb.dataset.baseUnit = baseUnit || "";
+
+      cb.addEventListener("change", () => {
+        if (!cb.checked || cb.dataset.applied === "true") return;
+
+        const name = cb.dataset.ingName;
+        const qtyBaseNum = parseFloat(cb.dataset.qtyBase || "0");
+        const base = cb.dataset.baseUnit || "";
+
+        // Check exists in inventory first
+        const invItem = inventory.find(
+          (i) => i.name.toLowerCase() === name.toLowerCase()
+        );
+
+        if (!invItem) {
+          const ok = confirm(
+            `"${name}" is not currently in your inventory.\n\n` +
+              "Did you forget to add it, or are you happy to continue without deducting anything?"
+          );
+          if (!ok) {
+            cb.checked = false;
+            return;
+          }
+          // If they are happy → do nothing to inventory, just mark as applied
+          cb.dataset.applied = "true";
+          cb.disabled = true;
+          return;
+        }
+
+        // Deduct from inventory
+        const success = deductInventoryForCooking(name, qtyBaseNum, base);
+        if (!success) {
+          alert("Could not update inventory for " + name);
+          cb.checked = false;
+          return;
+        }
+
+        cb.dataset.applied = "true";
+        cb.disabled = true;
+
+        renderInventory();
+        saveState();
+      });
+
+      row.appendChild(cb);
+      row.appendChild(labelSpan);
+      li.appendChild(row);
+      ingList.appendChild(li);
+    });
+  }
+
+  // Initial render
+  renderCookIngredients();
+
+  // If servings change, regenerate checklist
+  servingsInput.addEventListener("change", () => {
+    const val = parseFloat(servingsInput.value || "0");
+    if (!val || val <= 0) {
+      servingsInput.value = "1";
+    }
+    renderCookIngredients();
+  });
+
+  // Finish cooking: warn if some ingredients not ticked
+  finishBtn.addEventListener("click", () => {
+    const unchecked = Array.from(
+      ingList.querySelectorAll('input[type="checkbox"]:not(:checked)')
+    ).map((cb) => cb.dataset.ingName);
+
+    if (unchecked.length) {
+      const ok = confirm(
+        "You haven't ticked these ingredients:\n\n" +
+          unchecked.map((n) => "• " + n).join("\n") +
+          "\n\nIs that because you didn't use them or couldn't buy them?"
+      );
+      if (!ok) return;
+      // We don't change inventory here – it's just a safety check
+    }
+
+    overlay.remove();
+  });
+}
+
     function startRecipeEdit(id) {
       const recipe = recipes.find((r) => r.id === id);
       if (!recipe) return;
@@ -1505,19 +1787,20 @@ function openRecipeDetail(recipeId) {
 
         select.value = entry.recipeId || "";
         select.addEventListener("change", (e) => {
-          const id = e.target.dataset.dayId;
-          const planEntry = mealPlan.find((p) => p.dayId === id);
-          if (!planEntry) return;
-          planEntry.recipeId = e.target.value;
-          if (!planEntry.recipeId) {
-            planEntry.servings = 0;
-            const sInput = document.querySelector(
-              `input[data-day-id="${id}"]`
-            );
-            if (sInput) sInput.value = "0";
-          }
-          saveState();
-        });
+         const id = e.target.dataset.dayId;
+         const planEntry = mealPlan.find((p) => p.dayId === id);
+         if (!planEntry) return;
+         planEntry.recipeId = e.target.value;
+         if (!planEntry.recipeId) {
+          planEntry.servings = 0;
+          const sInput = document.querySelector(
+            `input[data-day-id="${id}"]`
+          );
+          if (sInput) sInput.value = "0";
+        }
+        saveState();
+        updateCookBtnState();
+      });
 
         recipeLabel.appendChild(select);
         row.appendChild(recipeLabel);
@@ -1534,18 +1817,40 @@ function openRecipeDetail(recipeId) {
           entry.servings && entry.servings > 0 ? entry.servings : "0";
 
         servingsInput.addEventListener("change", (e) => {
-          const id = e.target.dataset.dayId;
-          const planEntry = mealPlan.find((p) => p.dayId === id);
-          if (!planEntry) return;
-          let val = parseFloat(e.target.value || "0");
-          if (isNaN(val) || val < 0) val = 0;
-          planEntry.servings = val;
-          e.target.value = val === 0 ? "0" : String(val);
-          saveState();
-        });
+  const id = e.target.dataset.dayId;
+  const planEntry = mealPlan.find((p) => p.dayId === id);
+  if (!planEntry) return;
+  let val = parseFloat(e.target.value || "0");
+  if (isNaN(val) || val < 0) val = 0;
+  planEntry.servings = val;
+  e.target.value = val === 0 ? "0" : String(val);
+  saveState();
+  updateCookBtnState();
+});
 
         servingsLabel.appendChild(servingsInput);
         row.appendChild(servingsLabel);
+
+                // "I'm cooking this" button
+        const cookBtn = document.createElement("button");
+        cookBtn.type = "button";
+        cookBtn.textContent = "I'm cooking this";
+        cookBtn.className = "secondary";
+        cookBtn.style.marginTop = "0.5rem";
+
+        // Enable only if recipe + servings selected
+        function updateCookBtnState() {
+          const hasRecipe = !!entry.recipeId;
+          const hasServings = entry.servings && entry.servings > 0;
+          cookBtn.disabled = !(hasRecipe && hasServings);
+        }
+
+        cookBtn.addEventListener("click", () => {
+          openCookDialog(entry.dayId);
+        });
+
+        updateCookBtnState();
+        row.appendChild(cookBtn);
 
         container.appendChild(row);
       });
@@ -1810,6 +2115,8 @@ function openBarcodeScanner() {
   if (overlay) {
     overlay.remove();
   }
+
+  lastScannedCode = null;
 
   overlay = document.createElement("div");
   overlay.id = "barcode-scanner-overlay";
