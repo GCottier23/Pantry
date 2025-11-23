@@ -391,6 +391,57 @@ function isAlwaysInCupboard(name) {
   return ALWAYS_IN_CUPBOARD.includes(n);
 }
 
+// Broader "staples" list for things you usually have in the cupboard.
+// You can edit this list any time.
+const STAPLE_KEYWORDS = [
+  "salt",
+  "pepper",
+  "black pepper",
+  "white pepper",
+  "nutmeg",
+  "mixed spice",
+  "mixed herbs",
+  "oil",
+  "olive oil",
+  "vegetable oil",
+  "sunflower oil",
+  "rapeseed oil",
+  "cooking oil",
+  "butter",
+  "unsalted butter",
+  "salted butter",
+  "flour",
+  "plain flour",
+  "self-raising flour"
+];
+
+// True if this ingredient should be treated as a staple
+function isStapleIngredient(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase().trim();
+
+  // 1) Exact phrase from ALWAYS_IN_CUPBOARD (your hard-coded combos)
+  if (ALWAYS_IN_CUPBOARD.includes(lower)) return true;
+
+  // 2) Contains one of the staple keywords
+  return STAPLE_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+// Split a list into { staples, regular }
+function splitIngredientsByStaples(ingredients) {
+  const staples = [];
+  const regular = [];
+  (ingredients || []).forEach((ing) => {
+    if (!ing || !ing.name) return;
+    if (isStapleIngredient(ing.name)) {
+      staples.push(ing);
+    } else {
+      regular.push(ing);
+    }
+  });
+  return { staples, regular };
+}
+
         function tidyRecipeTitle(str) {
       if (!str) return "";
       let t = str.trim();
@@ -1409,39 +1460,59 @@ function openRecipeDetail(recipeId) {
         : "";
       panel.appendChild(meta);
 
-      // Ingredients
+        // Ingredients
       const ingTitle = document.createElement("h3");
       ingTitle.textContent = "Ingredients";
       panel.appendChild(ingTitle);
 
+      const { staples, regular } = splitIngredientsByStaples(
+        recipe.ingredients || []
+      );
+
+      // helper: format one ingredient as an <li>
+      function addIngredientLi(ul, ing) {
+        const li = document.createElement("li");
+
+        let label = ing.name || "";
+        let q = ing.quantity;
+        let u = ing.unit || "";
+
+        if (q && q > 0) {
+          ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+
+          const compactUnits = ["g", "kg", "ml", "l"];
+          const unitLower = (u || "").toLowerCase();
+
+          if (compactUnits.includes(unitLower)) {
+            label += `: ${q}${unitLower}`;
+          } else if (unitLower) {
+            label += `: ${q} ${unitLower}`;
+          } else {
+            label += `: ${q}`;
+          }
+        }
+
+        li.textContent = label;
+        ul.appendChild(li);
+      }
+
+      // Non-staple ingredients
       const ingList = document.createElement("ul");
       ingList.className = "recipe-detail-ingredients";
-(recipe.ingredients || []).forEach((ing) => {
-  const li = document.createElement("li");
-
-  let label = ing.name || "";
-  let q = ing.quantity;
-  let u = ing.unit || "";
-
-  if (q && q > 0) {
-    ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
-
-    const compactUnits = ["g", "kg", "ml", "l"];
-    const unitLower = (u || "").toLowerCase();
-
-    if (compactUnits.includes(unitLower)) {
-      label += `: ${q}${unitLower}`;
-    } else if (unitLower) {
-      label += `: ${q} ${unitLower}`;
-    } else {
-      label += `: ${q}`;
-    }
-  }
-
-  li.textContent = label;
-  ingList.appendChild(li);
-});
+      regular.forEach((ing) => addIngredientLi(ingList, ing));
       panel.appendChild(ingList);
+
+      // "Make sure you have" section for staples
+      if (staples.length) {
+        const staplesTitle = document.createElement("h3");
+        staplesTitle.textContent = "Make sure you have";
+        panel.appendChild(staplesTitle);
+
+        const staplesList = document.createElement("ul");
+        staplesList.className = "recipe-detail-ingredients";
+        staples.forEach((ing) => addIngredientLi(staplesList, ing));
+        panel.appendChild(staplesList);
+      }
 
       // Method
       const instrTitle = document.createElement("h3");
@@ -1594,12 +1665,12 @@ function openCookDialog(dayId) {
     const cookServings = parseFloat(servingsInput.value || "0");
     if (!cookServings || cookServings <= 0) return;
 
-    const baseServings = recipe.servings && recipe.servings > 0 ? recipe.servings : 1;
+        const baseServings = recipe.servings && recipe.servings > 0 ? recipe.servings : 1;
     const scale = cookServings / baseServings;
 
-        recipe.ingredients.forEach((ing) => {
-      // Skip “always in cupboard” items – you don't deduct salt / pepper
-      if (isAlwaysInCupboard(ing.name)) {
+    recipe.ingredients.forEach((ing) => {
+      // Skip cupboard staples – you don't deduct salt / pepper / oil / nutmeg, etc.
+      if (isStapleIngredient(ing.name)) {
         return;
       }
 
@@ -1944,9 +2015,9 @@ function roundUpForShopping(quantity, unit) {
 
     const scale = plannedServings / recipe.servings;
 
-       recipe.ingredients.forEach((ing) => {
-      // Skip “always in cupboard” stuff like salt / pepper
-      if (isAlwaysInCupboard(ing.name)) {
+          recipe.ingredients.forEach((ing) => {
+      // Skip cupboard staples (salt, pepper, oil, nutmeg, etc.)
+      if (isStapleIngredient(ing.name)) {
         return;
       }
 
