@@ -22,20 +22,11 @@
 </head>
 <body>
   <!-- TOP BAR -->
-<button
-  id="menu-toggle"
-  class="menu-toggle"
-  aria-label="Navigation"
-  aria-controls="app-nav"
-  aria-expanded="false"
-  type="button"
->
-  <span class="hamburger"></span>
-</button>
+  <header class="top-bar">
     <span class="top-bar-title">Pantry App</span>
   </header>
 
-  <!-- NAV BAR (kept simple & always visible) -->
+  <!-- NAV BAR (simple, always visible) -->
   <nav
     id="app-nav"
     class="app-nav"
@@ -2952,51 +2943,28 @@ function openBarcodeScanner() {
 
     // ---------- INIT ----------
 
- document.addEventListener("DOMContentLoaded", () => {
-  loadState();
-
-  // Hamburger + nav panel
-  const menuToggle = document.getElementById("menu-toggle");
-  const appNav = document.getElementById("app-nav");
-
-  if (menuToggle && appNav) {
-    menuToggle.addEventListener("click", () => {
-      const isOpen = appNav.classList.toggle("nav-open");
-      menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
-    });
-  }
-  
-   // Nav
-  document
+   document
     .getElementById("nav-inventory")
     .addEventListener("click", () => {
       showPage("page-inventory");
-      if (appNav) appNav.classList.remove("nav-open");
-      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
     });
 
   document
     .getElementById("nav-recipes")
     .addEventListener("click", () => {
       showPage("page-recipes");
-      if (appNav) appNav.classList.remove("nav-open");
-      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
     });
 
   document
     .getElementById("nav-mealplan")
     .addEventListener("click", () => {
       showPage("page-mealplan");
-      if (appNav) appNav.classList.remove("nav-open");
-      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
     });
 
   document
     .getElementById("nav-shopping")
     .addEventListener("click", () => {
       showPage("page-shopping");
-      if (appNav) appNav.classList.remove("nav-open");
-      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
     });
 
   showPage("page-inventory");
