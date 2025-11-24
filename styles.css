@@ -56,17 +56,56 @@ body {
 .menu-toggle {
   border: none;
   outline: none;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.07);
   color: var(--text-main);
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--radius-pill);
+
+  /* iOS-y size */
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 50%;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+
   cursor: pointer;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 8px 18px rgba(0, 0, 0, 0.7);
+
+  transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.menu-toggle:active {
+  transform: scale(0.96);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+}
+
+.hamburger {
+  width: 22px;
+  height: 2px;
+  background: var(--text-main);
+  border-radius: 999px;
+  position: relative;
+}
+
+.hamburger::before,
+.hamburger::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 22px;
+  height: 2px;
+  background: var(--text-main);
+  border-radius: 999px;
+}
+
+.hamburger::before {
+  top: -6px;
+}
+
+.hamburger::after {
+  top: 6px;
 }
 
 /* ---------- Navigation bar (always visible under top bar) ---------- */
