@@ -717,7 +717,7 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     let recipes = [];
     let mealPlan = [];
     let barcodeMap = {}; // barcode -> {name, baseQty, unit}
-    
+
     let inventoryFilter = "";
     let editingInventoryKey = null;
 
@@ -1448,10 +1448,14 @@ function renderCurrentRecipeIngredients() {
 function attachIngredientLongPress(li, recipeId, ingredientIndex, ingredientName) {
   let pressTimer = null;
 
+  // ❌ Stop the browser selecting text on long-press
+  li.style.userSelect = "none";
+  li.style.webkitUserSelect = "none";
+
   const start = (event) => {
-    // prevent text selection on long press
     event.preventDefault();
     if (pressTimer !== null) return;
+
     pressTimer = setTimeout(() => {
       pressTimer = null;
       openIngredientContextMenu(recipeId, ingredientIndex, ingredientName);
@@ -1487,6 +1491,7 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   title.textContent = ingredientName;
   panel.appendChild(title);
 
+  // --- Staple toggle button ---
   const stapleBtn = document.createElement("button");
   stapleBtn.type = "button";
 
@@ -1498,11 +1503,11 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   stapleBtn.addEventListener("click", () => {
     toggleUserStaple(ingredientName);
     overlay.remove();
-    // Re-open the detail view so the ingredient jumps into / out of
-    // the "Make sure you have" section and updates everywhere.
+    // Re-open the detail view so the ingredient jumps into / out of the staples section
     openRecipeDetail(recipeId);
   });
 
+  // --- Edit ingredient button ---
   const editBtn = document.createElement("button");
   editBtn.type = "button";
   editBtn.className = "secondary";
@@ -1510,9 +1515,10 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   editBtn.addEventListener("click", () => {
     overlay.remove();
     showPage("page-recipes");
-    startRecipeEdit(recipeId, ingredientIndex); // ✅ jump to this ingredient
+    startRecipeEdit(recipeId, ingredientIndex); // jump straight to that ingredient
   });
 
+  // --- Delete ingredient button ---
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
   deleteBtn.className = "secondary";
@@ -1520,6 +1526,7 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   deleteBtn.addEventListener("click", () => {
     const ok = confirm(`Remove "${ingredientName}" from this recipe?`);
     if (!ok) return;
+
     if (
       Array.isArray(recipe.ingredients) &&
       ingredientIndex >= 0 &&
@@ -1532,6 +1539,7 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
     openRecipeDetail(recipeId);
   });
 
+  // --- Cancel button ---
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
   closeBtn.className = "secondary";
@@ -1544,6 +1552,8 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   panel.appendChild(closeBtn);
 
   overlay.appendChild(panel);
+
+  // Close if you tap outside the panel
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.remove();
   });
