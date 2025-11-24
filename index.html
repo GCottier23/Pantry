@@ -1568,7 +1568,7 @@ function openRecipeDetail(recipeId) {
   const recipeIdActual = recipe.id;
 
   // Work on a copy so we don't mutate the underlying recipe
-  let ingForDisplay = (recipe.ingredients || []).slice();
+  const ingForDisplay = (recipe.ingredients || []).slice();
 
   // If any ingredient mentions black pepper but none mentions salt,
   // add a synthetic "Salt" line (staple, shown as "to taste").
@@ -1634,69 +1634,66 @@ function openRecipeDetail(recipeId) {
   let staples = split.staples;
   const regular = split.regular;
 
-  // --- Detect "to taste" style salt / pepper and collapse to one line ---
-  function isToTasteSaltPepper(ing) {
-    if (!ing || !ing.name) return false;
-    const nameLower = ing.name.toLowerCase();
-    const isSalt = nameLower.includes("salt");
-    const isPepper = nameLower.includes("pepper");
-    if (!isSalt && !isPepper) return false;
+  // --- SPECIAL CASE: merge salt/pepper "to taste" into one line ---
+  // We only merge when there is NO real quantity/unit
+  // (so things like "2 tbsp black peppercorns" are left alone).
+  let mergedStaples = [];
+  let saltPepperAdded = false;
 
-    const qty = ing.quantity;
-    const unit = (ing.unit || "").trim();
+  staples.forEach(({ ing, index }) => {
+    const nameLower = (ing.name || "").toLowerCase();
+    const hasSalt = nameLower.includes("salt");
+    const hasPepper = nameLower.includes("pepper");
 
-    const hasNumericQty =
-      typeof qty === "number" && !Number.isNaN(qty);
+    const noRealQty =
+      (!ing.unit || !ing.unit.trim()) &&
+      (!ing.quantity || ing.quantity === 1);
 
-    // We treat "no proper amount" as:
-    //  - no numeric quantity at all, OR
-    //  - quantity <= 1 and no unit.
-    const noRealAmount =
-      (!hasNumericQty || qty <= 1) && !unit;
+    const isSaltPepperLine = hasSalt && hasPepper && noRealQty;
+    const isSaltOnlyLine = hasSalt && !hasPepper && noRealQty;
+    const isPepperOnlyLine = hasPepper && !hasSalt && noRealQty;
 
-    return noRealAmount;
-  }
+    const candidate =
+      isSaltPepperLine || isSaltOnlyLine || isPepperOnlyLine;
 
-  // First pass: see if we have a pepper "to taste" candidate.
-  let hasPepperToTaste = staples.some(({ ing }) => isToTasteSaltPepper(ing) &&
-    (ing.name.toLowerCase().includes("pepper"))
-  );
-
-  // Only collapse to "Salt and Pepper: to taste" if we have a pepper candidate.
-  const showSaltPepperCombined = hasPepperToTaste;
-
-  // Second pass: filter staples, removing individual salt/pepper
-  // "to taste" lines when we are going to show the combined line instead.
-  const filteredStaples = [];
-  staples.forEach((obj) => {
-    if (!showSaltPepperCombined) {
-      filteredStaples.push(obj);
+    if (candidate) {
+      if (!saltPepperAdded) {
+        mergedStaples.push({
+          ing: { name: "Salt and Pepper", quantity: null, unit: "" },
+          index: -1
+        });
+        saltPepperAdded = true;
+      }
+      // Skip the original salt/pepper lines
       return;
     }
 
-    const ing = obj.ing;
-    if (!isToTasteSaltPepper(ing)) {
-      filteredStaples.push(obj);
-      return;
-    }
-
-    // If it's a salt/pepper "to taste" line and we ARE combining,
-    // skip it here – it'll be represented by the single combined bullet.
+    mergedStaples.push({ ing, index });
   });
-  staples = filteredStaples;
+
+  staples = mergedStaples;
 
   function addIngredientLi(ul, obj, isStapleList) {
     const { ing, index } = obj;
     const li = document.createElement("li");
 
-    // Name
     const nameSpan = document.createElement("span");
     nameSpan.textContent = ing.name || "";
     li.appendChild(nameSpan);
 
     let q = ing.quantity;
     let u = ing.unit || "";
-    const hasNumericQty = q && q > 0;
+    const nameLower = (ing.name || "").toLowerCase();
+
+    // --- SPECIAL CASE: nutmeg "pinch" ---
+    // If it's nutmeg, no unit, and quantity is the default 1,
+    // treat it as "pinch" instead of "1".
+    const isNutmegFallback =
+      nameLower.includes("nutmeg") &&
+      (!u || !u.trim()) &&
+      (q === 1 || !q);
+
+    const hasNumericQty = q && q > 0 && !isNutmegFallback;
 
     if (hasNumericQty) {
       ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
@@ -1716,11 +1713,12 @@ function openRecipeDetail(recipeId) {
 
       qtySpan.textContent = label;
       li.appendChild(qtySpan);
-    } else if (isStapleList) {
-      // No numeric quantity, and it's in the staples section → "to taste" in italics
+    } else if (isNutmegFallback || isStapleList) {
+      // For nutmeg fallback → "pinch"
+      // For staple ingredients with no usable quantity → "to taste"
       const sep = document.createTextNode(": ");
       const em = document.createElement("em");
-      em.textContent = "to taste";
+      em.textContent = isNutmegFallback ? "pinch" : "to taste";
       li.appendChild(sep);
       li.appendChild(em);
     }
@@ -1738,35 +1736,13 @@ function openRecipeDetail(recipeId) {
   panel.appendChild(ingList);
 
   // Staples: "Make sure you have" (italic heading)
-  const hasAnyStaplesToShow =
-    staples.length > 0 || showSaltPepperCombined;
-
-  if (hasAnyStaplesToShow) {
+  if (staples.length) {
     const staplesTitle = document.createElement("h3");
     staplesTitle.innerHTML = "<em>Make sure you have</em>";
     panel.appendChild(staplesTitle);
 
     const staplesList = document.createElement("ul");
     staplesList.className = "recipe-detail-ingredients";
-
-    // Our combined Salt & Pepper line if appropriate
-    if (showSaltPepperCombined) {
-      const li = document.createElement("li");
-      const nameSpan = document.createElement("span");
-      nameSpan.textContent = "Salt and Pepper";
-      li.appendChild(nameSpan);
-
-      const sep = document.createTextNode(": ");
-      const em = document.createElement("em");
-      em.textContent = "to taste";
-      li.appendChild(sep);
-      li.appendChild(em);
-
-      // No long-press here – it's a synthetic line
-      staplesList.appendChild(li);
-    }
-
-    // All the other staples
     staples.forEach((obj) => addIngredientLi(staplesList, obj, true));
     panel.appendChild(staplesList);
   }
