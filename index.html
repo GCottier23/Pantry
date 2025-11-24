@@ -449,7 +449,7 @@ function splitIngredientsByStaples(ingredients) {
   (ingredients || []).forEach((ing, index) => {
     if (!ing || !ing.name) return;
     const bucket = isStapleIngredient(ing.name) ? staples : regular;
-    bucket.push({ ing, index });
+    bucket.push({ ing, index }); // remember which ingredient it was
   });
   return { staples, regular };
 }
@@ -717,8 +717,7 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     let recipes = [];
     let mealPlan = [];
     let barcodeMap = {}; // barcode -> {name, baseQty, unit}
-    let customStaples = []; // user-defined staple ingredient names (lowercase)
-
+    
     let inventoryFilter = "";
     let editingInventoryKey = null;
 
@@ -1511,8 +1510,7 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   editBtn.addEventListener("click", () => {
     overlay.remove();
     showPage("page-recipes");
-    // Open recipe editor; you can then tweak that ingredient there.
-    startRecipeEdit(recipeId);
+    startRecipeEdit(recipeId, ingredientIndex); // ✅ jump to this ingredient
   });
 
   const deleteBtn = document.createElement("button");
@@ -1981,36 +1979,46 @@ function openCookDialog(dayId) {
   });
 }
 
-    function startRecipeEdit(id) {
-      const recipe = recipes.find((r) => r.id === id);
-      if (!recipe) return;
+  function startRecipeEdit(id, ingredientIndexToEdit) {
+  const recipe = recipes.find((r) => r.id === id);
+  if (!recipe) return;
 
-      editingRecipeId = id;
-      currentRecipe = {
-        id: recipe.id,
-        name: recipe.name,
-        servings: recipe.servings,
-        ingredients: recipe.ingredients.map((ing) => ({
-          name: ing.name,
-          quantity: ing.quantity,
-          unit: ing.unit,
-        })),
-      };
+  editingRecipeId = id;
+  currentRecipe = {
+    id: recipe.id,
+    name: recipe.name,
+    servings: recipe.servings,
+    ingredients: recipe.ingredients.map((ing) => ({
+      name: ing.name,
+      quantity: ing.quantity,
+      unit: ing.unit,
+    })),
+  };
 
-      document.getElementById("recipe-name").value = currentRecipe.name;
-      document.getElementById("recipe-servings").value =
-        currentRecipe.servings;
+  document.getElementById("recipe-name").value = currentRecipe.name;
+  document.getElementById("recipe-servings").value =
+    currentRecipe.servings;
 
-      document
-        .getElementById("recipe-ingredients-section")
-        .classList.remove("hidden");
-      document
-        .getElementById("cancel-recipe-edit")
-        .classList.remove("hidden");
+  document
+    .getElementById("recipe-ingredients-section")
+    .classList.remove("hidden");
+  document
+    .getElementById("cancel-recipe-edit")
+    .classList.remove("hidden");
 
-      renderCurrentRecipeIngredients();
-      clearIngredientEditState();
-    }
+  renderCurrentRecipeIngredients();
+
+  // If we came from the long-press popup, drop straight into that ingredient
+  if (
+    typeof ingredientIndexToEdit === "number" &&
+    ingredientIndexToEdit >= 0 &&
+    ingredientIndexToEdit < currentRecipe.ingredients.length
+  ) {
+    startIngredientEdit(ingredientIndexToEdit);
+  } else {
+    clearIngredientEditState();
+  }
+}
 
     // ---------- MEAL PLAN ----------
 
@@ -2822,8 +2830,8 @@ importBtn.addEventListener("click", () => {
             recipeImagePreview.style.display = "none";
             return;
           }
-          // --- Clear button ---
-if (recipeClearBtn) {
+
+          if (recipeClearBtn) {
   recipeClearBtn.addEventListener("click", () => {
     recipeImportUrlInput.value = "";
     recipeImportStatus.textContent = "";

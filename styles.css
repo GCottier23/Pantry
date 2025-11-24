@@ -660,6 +660,13 @@ p {
   text-decoration: underline;
 }
 
+/* Don't allow text selection on recipe ingredients (stops iOS highlight) */
+.recipe-detail-ingredients li,
+.recipe-detail-ingredients li span {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* ---------- BARCODE SCANNER OVERLAY ---------- */
 
 .barcode-scanner-overlay {
