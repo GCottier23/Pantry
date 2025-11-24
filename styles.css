@@ -31,14 +31,15 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
 }
 
-/* ---------- Top bar + hamburger (reset) ---------- */
+/* ---------- Top bar + hamburger ---------- */
 
 .top-bar {
   position: sticky;
   top: 0;
   z-index: 50;
   display: flex;
-  align-items: center;
+  flex-direction: row;
+  align-items: center;            /* keep icon + title on same line */
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   background: rgba(10, 10, 10, 0.96);
@@ -49,52 +50,49 @@ body {
 .top-bar-title {
   font-weight: 600;
   letter-spacing: 0.03em;
+  line-height: 1;                 /* stops it pushing up/down */
 }
 
-/* BUTTON ITSELF */
+/* The hamburger button itself */
 .menu-toggle {
-  flex: 0 0 auto;
   border: none;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  margin-right: 0.75rem;
-
-  width: 40px;          /* size of the tappable area */
+  outline: none;
+  background: transparent;        /* no grey background */
+  width: 40px;                    /* bigger tap target */
   height: 40px;
-
-  display: flex;
+  border-radius: 999px;
+  display: flex;                  /* centre the three bars */
   align-items: center;
   justify-content: center;
+  padding: 0;
+  margin: 0;
 }
 
-/* THREE WHITE BARS */
-.menu-toggle .hamburger {
-  position: relative;
+/* Three white bars */
+.hamburger {
   width: 22px;
-  height: 3px;
+  height: 2px;
   background: #ffffff !important;
   border-radius: 999px;
-  opacity: 1 !important;
+  position: relative;
 }
 
-.menu-toggle .hamburger::before,
-.menu-toggle .hamburger::after {
+.hamburger::before,
+.hamburger::after {
   content: "";
   position: absolute;
   left: 0;
   width: 22px;
-  height: 3px;
+  height: 2px;
   background: #ffffff !important;
   border-radius: 999px;
-  opacity: 1 !important;
 }
 
-.menu-toggle .hamburger::before {
+.hamburger::before {
   top: -6px;
 }
 
-.menu-toggle .hamburger::after {
+.hamburger::after {
   top: 6px;
 }
 
