@@ -65,61 +65,62 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
-  cursor: default;
+  cursor: pointer;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 /* ---------- Navigation bar (always visible under top bar) ---------- */
 
+/* ---------- Navigation drawer (slides in from left) ---------- */
+
 .app-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+
+  width: 260px;
+  padding: 4rem 1rem 1.5rem;   /* leaves space under the top bar */
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.5rem;
-  padding: 0.5rem 0.9rem 0.75rem;
-  background: rgba(12, 12, 12, 0.96);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  background: rgba(10, 10, 10, 0.97);
+  backdrop-filter: blur(16px);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.8);
   z-index: 40;
+
+  /* start hidden off-screen */
+  transform: translateX(-100%);
+  transition: transform 0.25s ease-out;
 }
 
+/* when JS adds .nav-open, slide it in */
+.app-nav.nav-open {
+  transform: translateX(0);
+}
+
+/* nav buttons inside drawer */
 .app-nav button {
-  flex: 1 1 calc(50% - 0.5rem);
-  min-width: 7rem;
-  padding: 0.55rem 0.9rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 1rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: radial-gradient(circle at top left, #262626 0, #121212 60%, #101010 100%);
-  color: var(--text-main);
-  font-size: 0.85rem;
-  font-weight: 500;
+  border: none;
+  background: radial-gradient(circle at top, #ff9c3a 0, #ff7a00 40%, #d95e00 100%);
+  color: #1b0a00;
+  font-size: 0.9rem;
+  font-weight: 600;
   letter-spacing: 0.03em;
-  text-align: center;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.7);
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 10px 24px rgba(0, 0, 0, 0.9);
 }
 
 .app-nav button[aria-selected="true"] {
-  border-color: rgba(255, 122, 0, 0.7);
-  box-shadow:
-    0 0 0 1px rgba(255, 122, 0, 0.5),
-    0 10px 24px rgba(255, 122, 0, 0.35);
-  background:
-    radial-gradient(circle at top, rgba(255, 122, 0, 0.35), transparent 55%),
-    radial-gradient(circle at bottom, #1b1b1b 0, #101010 60%, #050505 100%);
-}
-
-/* Larger screens: nav buttons shrink a bit, hamburger not really needed */
-
-@media (min-width: 768px) {
-  .app-nav {
-    justify-content: flex-start;
-    padding-inline: 1.5rem;
-  }
-
-  .app-nav button {
-    flex: 0 0 auto;
-  }
+  outline: 2px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 0;
 }
 
 /* ---------- Page layout ---------- */
