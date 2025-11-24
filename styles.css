@@ -31,16 +31,19 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
 }
 
-/* ---------- Top bar + hamburger ---------- */
+/* ---------- Top bar + hamburger (CLEAN) ---------- */
 
 .top-bar {
   position: sticky;
   top: 0;
   z-index: 50;
+
   display: flex;
   flex-direction: row;
-  align-items: center;            /* keep icon + title on same line */
+  align-items: center;       /* keeps icon + title on same line */
+  justify-content: flex-start;
   gap: 0.75rem;
+
   padding: 0.75rem 1rem;
   background: rgba(10, 10, 10, 0.96);
   backdrop-filter: blur(14px);
@@ -50,49 +53,53 @@ body {
 .top-bar-title {
   font-weight: 600;
   letter-spacing: 0.03em;
-  line-height: 1;                 /* stops it pushing up/down */
+  line-height: 1;
+  margin: 0;                /* no extra spacing pushing it down */
 }
 
-/* The hamburger button itself */
-.menu-toggle {
+/* The hamburger button */
+#menu-toggle {
+  flex: 0 0 auto;
   border: none;
-  outline: none;
-  background: transparent;        /* no grey background */
-  width: 40px;                    /* bigger tap target */
-  height: 40px;
-  border-radius: 999px;
-  display: flex;                  /* centre the three bars */
-  align-items: center;
-  justify-content: center;
+  background: transparent;
   padding: 0;
   margin: 0;
+
+  width: 40px;              /* iOS-size tap target */
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Three white bars */
-.hamburger {
-  width: 22px;
-  height: 2px;
-  background: #ffffff !important;
-  border-radius: 999px;
+/* The three white bars */
+#menu-toggle .hamburger {
   position: relative;
+  width: 24px;
+  height: 3px;
+  background-color: #ffffff !important;
+  border-radius: 999px;
+  opacity: 1 !important;
 }
 
-.hamburger::before,
-.hamburger::after {
+#menu-toggle .hamburger::before,
+#menu-toggle .hamburger::after {
   content: "";
   position: absolute;
   left: 0;
-  width: 22px;
-  height: 2px;
-  background: #ffffff !important;
+  width: 24px;
+  height: 3px;
+  background-color: #ffffff !important;
   border-radius: 999px;
+  opacity: 1 !important;
 }
 
-.hamburger::before {
+#menu-toggle .hamburger::before {
   top: -6px;
 }
 
-.hamburger::after {
+#menu-toggle .hamburger::after {
   top: 6px;
 }
 
@@ -785,59 +792,4 @@ p {
   #barcode-input-overlay .barcode-scanner-panel {
     margin: 1.5rem;
   }
-}
-
-/* ===== FINAL HAMBURGER FIX – KEEP AT BOTTOM ===== */
-
-.top-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-/* Button area */
-#menu-toggle {
-  flex: 0 0 auto;
-  border: none;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  margin-right: 0.75rem;
-
-  width: 40px;
-  height: 40px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Bars */
-#menu-toggle .hamburger {
-  position: relative;
-  width: 24px;
-  height: 3px;
-  background-color: #ffffff !important;
-  border-radius: 999px;
-  opacity: 1 !important;
-}
-
-#menu-toggle .hamburger::before,
-#menu-toggle .hamburger::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  width: 24px;
-  height: 3px;
-  background-color: #ffffff !important;
-  border-radius: 999px;
-  opacity: 1 !important;
-}
-
-#menu-toggle .hamburger::before {
-  top: -6px;
-}
-
-#menu-toggle .hamburger::after {
-  top: 6px;
 }
