@@ -1568,7 +1568,7 @@ function openRecipeDetail(recipeId) {
   const recipeIdActual = recipe.id;
 
   // Work on a copy so we don't mutate the underlying recipe
-  const ingForDisplay = (recipe.ingredients || []).slice();
+  let ingForDisplay = (recipe.ingredients || []).slice();
 
   // If any ingredient mentions black pepper but none mentions salt,
   // add a synthetic "Salt" line (staple, shown as "to taste").
@@ -1630,7 +1630,60 @@ function openRecipeDetail(recipeId) {
   panel.appendChild(ingTitle);
 
   // Use the indexed split so we know which ingredient to edit/delete
-  const { staples, regular } = splitIngredientsByStaples(ingForDisplay);
+  const split = splitIngredientsByStaples(ingForDisplay);
+  let staples = split.staples;
+  const regular = split.regular;
+
+  // --- Detect "to taste" style salt / pepper and collapse to one line ---
+  function isToTasteSaltPepper(ing) {
+    if (!ing || !ing.name) return false;
+    const nameLower = ing.name.toLowerCase();
+    const isSalt = nameLower.includes("salt");
+    const isPepper = nameLower.includes("pepper");
+    if (!isSalt && !isPepper) return false;
+
+    const qty = ing.quantity;
+    const unit = (ing.unit || "").trim();
+
+    const hasNumericQty =
+      typeof qty === "number" && !Number.isNaN(qty);
+
+    // We treat "no proper amount" as:
+    //  - no numeric quantity at all, OR
+    //  - quantity <= 1 and no unit.
+    const noRealAmount =
+      (!hasNumericQty || qty <= 1) && !unit;
+
+    return noRealAmount;
+  }
+
+  // First pass: see if we have a pepper "to taste" candidate.
+  let hasPepperToTaste = staples.some(({ ing }) => isToTasteSaltPepper(ing) &&
+    (ing.name.toLowerCase().includes("pepper"))
+  );
+
+  // Only collapse to "Salt and Pepper: to taste" if we have a pepper candidate.
+  const showSaltPepperCombined = hasPepperToTaste;
+
+  // Second pass: filter staples, removing individual salt/pepper
+  // "to taste" lines when we are going to show the combined line instead.
+  const filteredStaples = [];
+  staples.forEach((obj) => {
+    if (!showSaltPepperCombined) {
+      filteredStaples.push(obj);
+      return;
+    }
+
+    const ing = obj.ing;
+    if (!isToTasteSaltPepper(ing)) {
+      filteredStaples.push(obj);
+      return;
+    }
+
+    // If it's a salt/pepper "to taste" line and we ARE combining,
+    // skip it here – it'll be represented by the single combined bullet.
+  });
+  staples = filteredStaples;
 
   function addIngredientLi(ul, obj, isStapleList) {
     const { ing, index } = obj;
@@ -1685,13 +1738,35 @@ function openRecipeDetail(recipeId) {
   panel.appendChild(ingList);
 
   // Staples: "Make sure you have" (italic heading)
-  if (staples.length) {
+  const hasAnyStaplesToShow =
+    staples.length > 0 || showSaltPepperCombined;
+
+  if (hasAnyStaplesToShow) {
     const staplesTitle = document.createElement("h3");
     staplesTitle.innerHTML = "<em>Make sure you have</em>";
     panel.appendChild(staplesTitle);
 
     const staplesList = document.createElement("ul");
     staplesList.className = "recipe-detail-ingredients";
+
+    // Our combined Salt & Pepper line if appropriate
+    if (showSaltPepperCombined) {
+      const li = document.createElement("li");
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = "Salt and Pepper";
+      li.appendChild(nameSpan);
+
+      const sep = document.createTextNode(": ");
+      const em = document.createElement("em");
+      em.textContent = "to taste";
+      li.appendChild(sep);
+      li.appendChild(em);
+
+      // No long-press here – it's a synthetic line
+      staplesList.appendChild(li);
+    }
+
+    // All the other staples
     staples.forEach((obj) => addIngredientLi(staplesList, obj, true));
     panel.appendChild(staplesList);
   }
