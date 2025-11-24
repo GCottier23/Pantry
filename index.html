@@ -454,6 +454,162 @@ function splitIngredientsByStaples(ingredients) {
   return { staples, regular };
 }
 
+// Merge duplicate ingredients with the same name inside a recipe.
+// - Combines quantities where it's safe.
+// - Special case: "Butter" – converts tbsp → grams (1 tbsp = 14g, 1 tsp = 5g).
+function mergeDuplicateIngredientsInList(ingredients) {
+  if (!Array.isArray(ingredients)) return [];
+
+  const groups = new Map(); // name (lowercase) -> [ingredients]
+
+  ingredients.forEach((ing) => {
+    if (!ing || !ing.name) return;
+    const key = ing.name.trim().toLowerCase();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(ing);
+  });
+
+  const result = [];
+
+  groups.forEach((list, key) => {
+    if (list.length === 1) {
+      result.push(list[0]);
+      return;
+    }
+
+    const sampleName = list[0].name || "";
+
+    const hasAnyQty = list.some(
+      (ing) => ing.quantity && ing.quantity > 0
+    );
+    if (!hasAnyQty) {
+      // All lines are effectively "no numeric quantity" → just keep one
+      result.push({
+        name: titleCase(sampleName),
+        quantity: null,
+        unit: ""
+      });
+      return;
+    }
+
+    const lowerName = key;
+    const isButter = lowerName.includes("butter");
+
+    // ---- Special case: Butter -> combine everything into grams ----
+    if (isButter) {
+      let totalG = 0;
+      let hadConvertible = false;
+      let hadUnconvertible = false;
+
+      list.forEach((ing) => {
+        let q = ing.quantity || 0;
+        if (!q || q <= 0) return;
+
+        let u = (ing.unit || "").toLowerCase();
+        if (u === "kg") {
+          totalG += q * 1000;
+          hadConvertible = true;
+        } else if (u === "g" || !u) {
+          totalG += q;
+          hadConvertible = true;
+        } else if (u === "tbsp" || u === "tablespoon" || u === "tablespoons") {
+          totalG += q * 14; // 1 tbsp butter ≈ 14g
+          hadConvertible = true;
+        } else if (u === "tsp" || u === "teaspoon" || u === "teaspoons") {
+          totalG += q * 5; // 1 tsp butter ≈ 5g
+          hadConvertible = true;
+        } else {
+          hadUnconvertible = true;
+        }
+      });
+
+      if (hadConvertible && totalG > 0) {
+        result.push({
+          name: titleCase(sampleName),
+          quantity: totalG,
+          unit: "g"
+        });
+      }
+
+      // Any weird units we couldn’t convert stay as separate lines
+      if (hadUnconvertible) {
+        list.forEach((ing) => {
+          let u = (ing.unit || "").toLowerCase();
+          if (
+            u !== "kg" &&
+            u !== "g" &&
+            u !== "tbsp" &&
+            u !== "tablespoon" &&
+            u !== "tablespoons" &&
+            u !== "tsp" &&
+            u !== "teaspoon" &&
+            u !== "teaspoons"
+          ) {
+            result.push(ing);
+          }
+        });
+      }
+      return;
+    }
+
+    // ---- Generic safe merge for non-butter ingredients ----
+    const units = new Set(
+      list
+        .filter((ing) => ing.quantity && ing.quantity > 0)
+        .map((ing) => (ing.unit || "").toLowerCase())
+    );
+    const unitsArr = Array.from(units);
+
+    const canMergeSameUnitOnly =
+      unitsArr.length === 1 && unitsArr[0] !== "";
+
+    const isGAndKg =
+      unitsArr.length === 2 &&
+      unitsArr.includes("g") &&
+      unitsArr.includes("kg");
+
+    const isMlAndL =
+      unitsArr.length === 2 &&
+      unitsArr.includes("ml") &&
+      unitsArr.includes("l");
+
+    if (!canMergeSameUnitOnly && !isGAndKg && !isMlAndL) {
+      // Different / incompatible units – don’t try to be clever
+      list.forEach((ing) => result.push(ing));
+      return;
+    }
+
+    let baseUnit = "";
+    if (canMergeSameUnitOnly) baseUnit = unitsArr[0];
+    else if (isGAndKg) baseUnit = "g";
+    else if (isMlAndL) baseUnit = "ml";
+
+    let totalBase = 0;
+
+    list.forEach((ing) => {
+      const q = ing.quantity || 0;
+      if (!q || q <= 0) return;
+
+      const u = (ing.unit || "").toLowerCase();
+      let qBase = q;
+
+      if (baseUnit === "g" && u === "kg") qBase = q * 1000;
+      else if (baseUnit === "ml" && u === "l") qBase = q * 1000;
+      else if (baseUnit === u) qBase = q;
+
+      totalBase += qBase;
+    });
+
+    result.push({
+      name: titleCase(sampleName),
+      quantity: totalBase,
+      unit: baseUnit
+    });
+  });
+
+  return result;
+}
+
         function tidyRecipeTitle(str) {
       if (!str) return "";
       let t = str.trim();
@@ -755,6 +911,14 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     const data = JSON.parse(raw);
     if (Array.isArray(data.inventory)) inventory = data.inventory;
     if (Array.isArray(data.recipes)) recipes = data.recipes;
+    // Tidy up any old recipes that had duplicate ingredients
+if (Array.isArray(recipes)) {
+  recipes.forEach((r) => {
+    if (Array.isArray(r.ingredients)) {
+      r.ingredients = mergeDuplicateIngredientsInList(r.ingredients);
+    }
+  });
+}
     if (Array.isArray(data.mealPlan)) mealPlan = data.mealPlan;
 
     // user staples
@@ -2843,6 +3007,10 @@ importBtn.addEventListener("click", () => {
               currentRecipe.sourceUrl = lastImportedRecipeMeta.sourceUrl;
             }
           }
+          
+          currentRecipe.ingredients = mergeDuplicateIngredientsInList(
+            currentRecipe.ingredients || []
+          );
 
           if (editingRecipeId) {
             const idx = recipes.findIndex(
