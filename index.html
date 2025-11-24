@@ -1569,12 +1569,12 @@ function renderCurrentRecipeIngredients() {
     footer.className = "recipe-card-footer";
 
     const editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.className = "secondary";
-    editBtn.textContent = "Edit";
-    editBtn.addEventListener("click", () => {
-      startRecipeEdit(r.id);
-    });
+editBtn.type = "button";
+editBtn.className = "secondary";
+editBtn.textContent = "Edit";
+editBtn.addEventListener("click", () => {
+  openRecipeQuickEditDialog(r.id);
+});
 
     const delBtn = document.createElement("button");
     delBtn.type = "button";
@@ -1606,6 +1606,235 @@ function renderCurrentRecipeIngredients() {
 
   // keep meal plan dropdowns in sync
   renderMealPlan();
+}
+
+function openRecipeQuickEditDialog(recipeId) {
+  const recipe = recipes.find((r) => r.id === recipeId);
+  if (!recipe) {
+    alert("Recipe not found.");
+    return;
+  }
+  if (!Array.isArray(recipe.ingredients) || !recipe.ingredients.length) {
+    alert("This recipe has no ingredients to edit yet.");
+    return;
+  }
+
+  // Remove any existing overlay
+  let overlay = document.getElementById("recipe-quick-edit-overlay");
+  if (overlay) overlay.remove();
+
+  overlay = document.createElement("div");
+  overlay.id = "recipe-quick-edit-overlay";
+  // Re-use the same dim background style as the barcode dialog
+  overlay.className = "barcode-scanner-overlay";
+
+  const panel = document.createElement("div");
+  // Re-use the same panel style as the barcode dialog
+  panel.className = "barcode-scanner-panel";
+
+  const title = document.createElement("h2");
+  title.textContent = `Edit "${recipe.name}"`;
+  panel.appendChild(title);
+
+  // ---------- Ingredient selector ----------
+  const ingRow = document.createElement("div");
+  ingRow.className = "barcode-input-row";
+
+  const ingLabel = document.createElement("label");
+  ingLabel.textContent = "What is the item?";
+  ingLabel.style.display = "block";
+
+  const ingSelect = document.createElement("select");
+  ingSelect.id = "recipe-quick-edit-select";
+
+  const defaultOpt = document.createElement("option");
+  defaultOpt.value = "";
+  defaultOpt.textContent = "Select ingredient…";
+  ingSelect.appendChild(defaultOpt);
+
+  // Helper to build a small label like "Butter: 50g"
+  const makeIngLabel = (ing) => {
+    let label = ing.name || "Ingredient";
+    let q = ing.quantity;
+    let u = ing.unit || "";
+
+    if (q && q > 0) {
+      ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+      const compactUnits = ["g", "kg", "ml", "l"];
+      const nice = Number.isInteger(q)
+        ? String(q)
+        : (Math.round(q * 10) / 10).toString();
+
+      if (!u) {
+        label += `: ${nice}`;
+      } else if (compactUnits.includes(u)) {
+        label += `: ${nice}${u}`;
+      } else {
+        label += `: ${nice} ${u}`;
+      }
+    }
+    return label;
+  };
+
+  recipe.ingredients.forEach((ing, index) => {
+    const opt = document.createElement("option");
+    opt.value = String(index);
+    opt.textContent = makeIngLabel(ing);
+    ingSelect.appendChild(opt);
+  });
+
+  ingLabel.appendChild(ingSelect);
+  ingRow.appendChild(ingLabel);
+  panel.appendChild(ingRow);
+
+  // ---------- Quantity field ----------
+  const qtyRow = document.createElement("div");
+  qtyRow.className = "barcode-input-row";
+
+  const qtyLabel = document.createElement("label");
+  qtyLabel.textContent = "What is the quantity?";
+  qtyLabel.style.display = "block";
+
+  const qtyInput = document.createElement("input");
+  qtyInput.type = "number";
+  qtyInput.min = "0";
+  qtyInput.step = "0.1";
+  qtyInput.value = "1";
+
+  qtyLabel.appendChild(qtyInput);
+  qtyRow.appendChild(qtyLabel);
+  panel.appendChild(qtyRow);
+
+  // ---------- Unit field ----------
+  const unitRow = document.createElement("div");
+  unitRow.className = "barcode-input-row";
+
+  const unitLabel = document.createElement("label");
+  unitLabel.textContent = "What is the unit?";
+  unitLabel.style.display = "block";
+
+  const unitSelect = document.createElement("select");
+
+  const unitOptions = [
+    { value: "", label: "(none)" },
+    { value: "g", label: "g" },
+    { value: "kg", label: "kg" },
+    { value: "ml", label: "ml" },
+    { value: "l", label: "l" },
+    { value: "tsp", label: "tsp" },
+    { value: "tbsp", label: "tbsp" },
+    { value: "pack", label: "pack" },
+    { value: "packs", label: "packs" },
+    { value: "pcs", label: "pcs" },
+    { value: "clove", label: "clove" },
+    { value: "cloves", label: "cloves" },
+    { value: "stick", label: "stick" },
+    { value: "sticks", label: "sticks" },
+  ];
+
+  unitOptions.forEach((u) => {
+    const opt = document.createElement("option");
+    opt.value = u.value;
+    opt.textContent = u.label;
+    unitSelect.appendChild(opt);
+  });
+
+  unitLabel.appendChild(unitSelect);
+  unitRow.appendChild(unitLabel);
+  panel.appendChild(unitRow);
+
+  // When an ingredient is chosen, populate qty + unit
+  function populateFieldsFromIngredient(index) {
+    const ing = recipe.ingredients[index];
+    if (!ing) return;
+
+    // quantity
+    if (typeof ing.quantity === "number" && !Number.isNaN(ing.quantity)) {
+      qtyInput.value = String(ing.quantity);
+    } else {
+      qtyInput.value = "1";
+    }
+
+    // unit
+    const u = (ing.unit || "").toLowerCase();
+    // if it's not one of our known options, add it so it can still be selected
+    if (
+      u &&
+      !Array.from(unitSelect.options).some(
+        (opt) => opt.value.toLowerCase() === u
+      )
+    ) {
+      const extraOpt = document.createElement("option");
+      extraOpt.value = u;
+      extraOpt.textContent = u;
+      unitSelect.appendChild(extraOpt);
+    }
+    unitSelect.value = u;
+  }
+
+  ingSelect.addEventListener("change", () => {
+    const idx = parseInt(ingSelect.value, 10);
+    if (!Number.isNaN(idx)) {
+      populateFieldsFromIngredient(idx);
+    }
+  });
+
+  // Auto-select the first real ingredient to make it feel snappy
+  if (recipe.ingredients.length > 0) {
+    ingSelect.value = "0";
+    populateFieldsFromIngredient(0);
+  }
+
+  // ---------- Buttons ----------
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.className = "secondary";
+  cancelBtn.addEventListener("click", () => overlay.remove());
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.textContent = "Save changes";
+
+  saveBtn.addEventListener("click", () => {
+    const idx = parseInt(ingSelect.value, 10);
+    if (Number.isNaN(idx) || !recipe.ingredients[idx]) {
+      alert("Please choose an ingredient first.");
+      return;
+    }
+
+    const newQty = parseFloat(qtyInput.value || "0");
+    if (!newQty || newQty <= 0 || Number.isNaN(newQty)) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
+
+    const newUnit = unitSelect.value || "";
+
+    // Actually update the recipe’s ingredient
+    recipe.ingredients[idx].quantity = newQty;
+    recipe.ingredients[idx].unit = newUnit;
+
+    saveState();
+    renderRecipesList(); // refresh the cards so the "Serves" etc stay in sync
+    overlay.remove();
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+
+  // Click outside to close
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  document.body.appendChild(overlay);
 }
 
 // Simple long-press helper
