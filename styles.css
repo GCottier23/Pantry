@@ -52,65 +52,49 @@ body {
 }
 
 /* Hamburger button (we’ll leave it as a visual element) */
-
+./* Hamburger button */
 .menu-toggle {
   border: none;
   outline: none;
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
-  opacity: 1;
-
-  /* iOS-y size */
-  width: 3.4rem;
-  height: 3.4rem;
-  border-radius: 50%;
-
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: var(--radius-pill);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   cursor: pointer;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 8px 18px rgba(0, 0, 0, 0.7);
-
-  transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.menu-toggle:active {
-  transform: scale(0.96);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
-}
-
-/* Force bright white hamburger icon */
-.hamburger {
+/* Three-bar icon inside the button */
+.menu-toggle .hamburger {
   width: 22px;
   height: 2px;
-  background: #ffffff !important;
+  background: #ffffff;
   border-radius: 999px;
   position: relative;
 }
 
-.hamburger::before,
-.hamburger::after {
+.menu-toggle .hamburger::before,
+.menu-toggle .hamburger::after {
   content: "";
   position: absolute;
   left: 0;
   width: 22px;
   height: 2px;
-  background: #ffffff !important;
+  background: #ffffff;
   border-radius: 999px;
 }
 
-.hamburger::before {
+.menu-toggle .hamburger::before {
   top: -6px;
 }
 
-.hamburger::after {
+.menu-toggle .hamburger::after {
   top: 6px;
 }
-
-/* ---------- Navigation bar (always visible under top bar) ---------- */
 
 /* ---------- Navigation drawer (slides in from left) ---------- */
 
