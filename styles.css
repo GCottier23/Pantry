@@ -788,3 +788,58 @@ p {
     margin: 1.5rem;
   }
 }
+
+/* ===== FINAL HAMBURGER FIX – KEEP AT BOTTOM ===== */
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Button area */
+#menu-toggle {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  margin-right: 0.75rem;
+
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Bars */
+#menu-toggle .hamburger {
+  position: relative;
+  width: 24px;
+  height: 3px;
+  background-color: #ffffff !important;
+  border-radius: 999px;
+  opacity: 1 !important;
+}
+
+#menu-toggle .hamburger::before,
+#menu-toggle .hamburger::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 24px;
+  height: 3px;
+  background-color: #ffffff !important;
+  border-radius: 999px;
+  opacity: 1 !important;
+}
+
+#menu-toggle .hamburger::before {
+  top: -6px;
+}
+
+#menu-toggle .hamburger::after {
+  top: 6px;
+}
