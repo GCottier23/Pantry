@@ -2989,6 +2989,7 @@ if ("serviceWorker" in navigator) {
 
 // Import ingredients from the big textarea,
 // using BBC-aware parser if we have BBC metadata.
+const importBtn = document.getElementById("import-ingredients-btn");
 importBtn.addEventListener("click", () => {
   if (!currentRecipe) {
     alert(
