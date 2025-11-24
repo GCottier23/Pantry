@@ -33,6 +33,8 @@ body {
 
 /* ---------- Top bar + hamburger ---------- */
 
+/* ---------- Top bar + hamburger ---------- */
+
 .top-bar {
   position: sticky;
   top: 0;
@@ -51,48 +53,48 @@ body {
   letter-spacing: 0.03em;
 }
 
-/* Hamburger button (we’ll leave it as a visual element) */
-./* Hamburger button */
+/* Actual hamburger button */
 .menu-toggle {
   border: none;
   outline: none;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
-  width: 2.8rem;
-  height: 2.8rem;
-  border-radius: var(--radius-pill);
+  width: 44px;              /* bigger, touch-friendly */
+  height: 44px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   cursor: pointer;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-/* Three-bar icon inside the button */
-.menu-toggle .hamburger {
-  width: 22px;
+/* Three white lines */
+.hamburger {
+  width: 22px;"
   height: 2px;
-  background: #ffffff;
+  background: #ffffff !important;
   border-radius: 999px;
   position: relative;
 }
 
-.menu-toggle .hamburger::before,
-.menu-toggle .hamburger::after {
+.hamburger::before,
+.hamburger::after {
   content: "";
   position: absolute;
   left: 0;
   width: 22px;
   height: 2px;
-  background: #ffffff;
+  background: #ffffff !important;
   border-radius: 999px;
 }
 
-.menu-toggle .hamburger::before {
+.hamburger::before {
   top: -6px;
 }
 
-.menu-toggle .hamburger::after {
+.hamburger::after {
   top: 6px;
 }
 
