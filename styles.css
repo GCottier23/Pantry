@@ -81,10 +81,11 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
 }
 
+/* Force bright white hamburger icon */
 .hamburger {
   width: 22px;
   height: 2px;
-  background: var(--text-main);
+  background: #ffffff !important;
   border-radius: 999px;
   position: relative;
 }
@@ -96,7 +97,7 @@ body {
   left: 0;
   width: 22px;
   height: 2px;
-  background: var(--text-main);
+  background: #ffffff !important;
   border-radius: 999px;
 }
 
