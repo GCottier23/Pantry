@@ -73,12 +73,6 @@
 
   <!-- PAGE 1: INVENTORY -->
   <main id="page-inventory" class="page" role="tabpanel" aria-labelledby="nav-inventory">
-    <div class="inventory-controls">
-      <label>
-        Search inventory
-        <input id="inventory-search" type="text" placeholder="Type to filter items..." />
-      </label>
-    </div>
 
     <section class="panel">
       <h2>Inventory</h2>
@@ -2968,7 +2962,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === INVENTORY EVENTS ===
   const invForm = document.getElementById("inventory-form");
-  const searchInput = document.getElementById("inventory-search");
   const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
   const fakeScanBtn = document.getElementById("fake-scan-btn");
   const realScanBtn = document.getElementById("real-scan-btn");
@@ -3004,13 +2997,6 @@ document.addEventListener("DOMContentLoaded", () => {
       renderInventoryNameSuggestions();
       saveState();
       clearInventoryEditState();
-    });
-  }
-
-  if (searchInput) {
-    searchInput.addEventListener("input", (e) => {
-      inventoryFilter = e.target.value || "";
-      renderInventory();
     });
   }
 
