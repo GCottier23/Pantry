@@ -74,55 +74,24 @@
   <!-- PAGE 1: INVENTORY -->
   <main id="page-inventory" class="page" role="tabpanel" aria-labelledby="nav-inventory">
 
-    <section class="panel">
-      <h2>Inventory</h2>
+  <section class="panel">
+  <h2>Inventory</h2>
 
-    <div class="barcode-tools">
-  <button id="fake-scan-btn" type="button" class="secondary">
-    Fake barcode scan
+  <button id="add-inventory-item-btn" type="button">
+    + Add item
   </button>
-  <button id="real-scan-btn" type="button">
-    📷 Scan barcode
-  </button>
-</div>
 
-      <form id="inventory-form">
-        <label>
-          Item name
-          <input id="inv-name" type="text" list="inv-name-list" required />
-          <datalist id="inv-name-list"></datalist>
-        </label>
+  <div class="barcode-tools">
+    <button id="fake-scan-btn" type="button" class="secondary">
+      Fake barcode scan
+    </button>
+    <button id="real-scan-btn" type="button">
+      📷 Scan barcode
+    </button>
+  </div>
 
-        <div class="grid-2">
-          <label>
-            Quantity
-            <input id="inv-qty" type="number" min="0" step="0.1" value="1" required />
-          </label>
-          <label>
-            Unit
-            <select id="inv-unit">
-              <option value="">(none)</option>
-              <option value="g">g</option>
-              <option value="kg">kg</option>
-              <option value="ml">ml</option>
-              <option value="l">l</option>
-              <option value="pack">pack</option>
-              <option value="packs">packs</option>
-              <option value="pcs">pcs</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="form-actions">
-          <button id="inventory-submit-btn" type="submit">Add / Update</button>
-          <button id="inventory-cancel-edit" type="button" class="secondary hidden">
-            Cancel edit
-          </button>
-        </div>
-      </form>
-
-      <div id="inventory-list" class="inventory-list"></div>
-    </section>
+  <div id="inventory-list" class="inventory-list"></div>
+</section>
   </main>
 
   <!-- PAGE 2: RECIPES -->
@@ -1072,10 +1041,12 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
           actions.className = "inventory-actions";
 
           const editBtn = document.createElement("button");
-          editBtn.type = "button";
-          editBtn.textContent = "✎";
-          editBtn.title = "Edit";
-          editBtn.addEventListener("click", () => startInventoryEdit(item.key));
+editBtn.type = "button";
+editBtn.textContent = "✎";
+editBtn.title = "Edit";
+editBtn.addEventListener("click", () => {
+  openAddInventoryItemDialog(item);
+});
 
           const delBtn = document.createElement("button");
           delBtn.type = "button";
@@ -1367,6 +1338,157 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
         itemTextInput.focus();
       }
     }
+    
+    // Simple popup to add OR edit an inventory item (no barcode)
+function openAddInventoryItemDialog(existingItem) {
+  const isEdit = !!existingItem;
+
+  // Create overlay
+  let overlay = document.getElementById("inventory-item-overlay");
+  if (overlay) overlay.remove();
+
+  overlay = document.createElement("div");
+  overlay.id = "inventory-item-overlay";
+  overlay.className = "barcode-scanner-overlay"; // reuse same dim style
+
+  const panel = document.createElement("div");
+  panel.className = "barcode-scanner-panel";
+
+  const title = document.createElement("h2");
+  title.textContent = isEdit ? "Edit inventory item" : "Add inventory item";
+  panel.appendChild(title);
+
+  // Item name
+  const itemRow = document.createElement("div");
+  itemRow.className = "barcode-input-row";
+
+  const itemLabel = document.createElement("label");
+  itemLabel.textContent = "What is the item?";
+  itemLabel.style.display = "block";
+
+  const itemInput = document.createElement("input");
+  itemInput.type = "text";
+  itemInput.required = true;
+  itemInput.placeholder = "e.g. Sausages";
+
+  itemLabel.appendChild(itemInput);
+  itemRow.appendChild(itemLabel);
+  panel.appendChild(itemRow);
+
+  // Quantity
+  const qtyRow = document.createElement("div");
+  qtyRow.className = "barcode-input-row";
+
+  const qtyLabel = document.createElement("label");
+  qtyLabel.textContent = "What is the quantity?";
+  qtyLabel.style.display = "block";
+
+  const qtyInput = document.createElement("input");
+  qtyInput.type = "number";
+  qtyInput.min = "0";
+  qtyInput.step = "0.1";
+  qtyInput.value = "1";
+
+  qtyLabel.appendChild(qtyInput);
+  qtyRow.appendChild(qtyLabel);
+  panel.appendChild(qtyRow);
+
+  // Unit
+  const unitRow = document.createElement("div");
+  unitRow.className = "barcode-input-row";
+
+  const unitLabel = document.createElement("label");
+  unitLabel.textContent = "What is the unit?";
+  unitLabel.style.display = "block";
+
+  const unitSelect = document.createElement("select");
+  const units = [
+    { value: "", label: "(none)" },
+    { value: "g", label: "g" },
+    { value: "kg", label: "kg" },
+    { value: "ml", label: "ml" },
+    { value: "l", label: "l" },
+    { value: "pack", label: "pack" },
+    { value: "packs", label: "packs" },
+    { value: "pcs", label: "pcs" },
+  ];
+  units.forEach((u) => {
+    const opt = document.createElement("option");
+    opt.value = u.value;
+    opt.textContent = u.label;
+    unitSelect.appendChild(opt);
+  });
+
+  unitLabel.appendChild(unitSelect);
+  unitRow.appendChild(unitLabel);
+  panel.appendChild(unitRow);
+
+  // If we're editing, pre-fill the fields
+  if (isEdit) {
+    itemInput.value = existingItem.name || "";
+    qtyInput.value =
+      typeof existingItem.quantity === "number"
+        ? existingItem.quantity
+        : "1";
+    unitSelect.value = existingItem.unit || "";
+  }
+
+  // Buttons
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.className = "secondary";
+  cancelBtn.addEventListener("click", () => overlay.remove());
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.textContent = isEdit ? "Save" : "Add to inventory";
+
+  saveBtn.addEventListener("click", () => {
+    const name = itemInput.value.trim();
+    const qty = parseFloat(qtyInput.value || "0");
+    const unit = unitSelect.value || "";
+
+    if (!name) {
+      alert("Please enter an item name.");
+      return;
+    }
+    if (!qty || qty <= 0 || Number.isNaN(qty)) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
+
+    if (isEdit && existingItem && existingItem.key) {
+      // exact edit
+      setInventoryItemExact(existingItem.key, name, qty, unit);
+    } else {
+      // normal add
+      upsertInventoryItem(name, qty, unit);
+    }
+
+    renderInventory();
+    renderInventoryNameSuggestions();
+    saveState();
+    overlay.remove();
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+
+  // Tap outside to close
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  document.body.appendChild(overlay);
+  itemInput.focus();
+}
 
     // For real barcode scans
     function handleBarcodeCode(code) {
@@ -2965,6 +3087,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
   const fakeScanBtn = document.getElementById("fake-scan-btn");
   const realScanBtn = document.getElementById("real-scan-btn");
+  
+    const addInventoryBtn = document.getElementById("add-inventory-item-btn");
+
+  if (addInventoryBtn) {
+    addInventoryBtn.addEventListener("click", () => {
+      openAddInventoryItemDialog(); // add new item
+    });
+  }
+
+  if (fakeScanBtn) {
+    fakeScanBtn.addEventListener("click", handleFakeBarcodeScan);
+  }
+  if (realScanBtn) {
+    realScanBtn.addEventListener("click", openBarcodeScanner);
+  }
 
   if (invForm) {
     invForm.addEventListener("submit", (e) => {
