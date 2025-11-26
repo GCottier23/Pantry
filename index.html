@@ -3012,120 +3012,140 @@ function openAddRecipeDialog() {
 
     // ---------- MEAL PLAN ----------
 
-    function renderMealPlan() {
-      const container = document.getElementById("meal-plan-container");
-      if (!container) return;
-      container.innerHTML = "";
+ function renderMealPlan() {
+  const container = document.getElementById("meal-plan-container");
+  if (!container) return;
 
-      if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
+  // Clear any old content
+  container.innerHTML = "";
 
-      const validIds = new Set(recipes.map((r) => r.id));
-      mealPlan.forEach((entry) => {
-        if (entry.recipeId && !validIds.has(entry.recipeId)) {
-          entry.recipeId = "";
-          entry.servings = 0;
-        }
-      });
+  // If nothing stored yet, build Monday–Sunday
+  if (!mealPlan || !mealPlan.length) {
+    initDefaultMealPlan();
+  }
 
-      mealPlan.forEach((entry) => {
-        const row = document.createElement("div");
-        row.className = "subpanel";
-
-        const label = document.createElement("h3");
-        label.textContent = entry.dayLabel;
-        row.appendChild(label);
-
-        const recipeLabel = document.createElement("label");
-        recipeLabel.textContent = "Recipe";
-
-        const select = document.createElement("select");
-        select.dataset.dayId = entry.dayId;
-
-        const defaultOpt = document.createElement("option");
-        defaultOpt.value = "";
-        defaultOpt.textContent = "(no meal selected)";
-        select.appendChild(defaultOpt);
-
-        recipes
-          .slice()
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .forEach((recipe) => {
-            const opt = document.createElement("option");
-            opt.value = recipe.id;
-            opt.textContent = `${recipe.name} (serves ${recipe.servings})`;
-            select.appendChild(opt);
-          });
-
-        select.value = entry.recipeId || "";
-        select.addEventListener("change", (e) => {
-         const id = e.target.dataset.dayId;
-         const planEntry = mealPlan.find((p) => p.dayId === id);
-         if (!planEntry) return;
-         planEntry.recipeId = e.target.value;
-         if (!planEntry.recipeId) {
-          planEntry.servings = 0;
-          const sInput = document.querySelector(
-            `input[data-day-id="${id}"]`
-          );
-          if (sInput) sInput.value = "0";
-        }
-        saveState();
-        updateCookBtnState();
-      });
-
-        recipeLabel.appendChild(select);
-        row.appendChild(recipeLabel);
-
-        const servingsLabel = document.createElement("label");
-        servingsLabel.textContent = "Planned servings";
-
-        const servingsInput = document.createElement("input");
-        servingsInput.type = "number";
-        servingsInput.min = "0";
-        servingsInput.step = "1";
-        servingsInput.dataset.dayId = entry.dayId;
-        servingsInput.value =
-          entry.servings && entry.servings > 0 ? entry.servings : "0";
-
-        servingsInput.addEventListener("change", (e) => {
-  const id = e.target.dataset.dayId;
-  const planEntry = mealPlan.find((p) => p.dayId === id);
-  if (!planEntry) return;
-  let val = parseFloat(e.target.value || "0");
-  if (isNaN(val) || val < 0) val = 0;
-  planEntry.servings = val;
-  e.target.value = val === 0 ? "0" : String(val);
-  saveState();
-  updateCookBtnState();
-});
-
-        servingsLabel.appendChild(servingsInput);
-        row.appendChild(servingsLabel);
-
-                // "I'm cooking this" button
-        const cookBtn = document.createElement("button");
-        cookBtn.type = "button";
-        cookBtn.textContent = "I'm cooking this";
-        cookBtn.className = "secondary";
-        cookBtn.style.marginTop = "0.5rem";
-
-        // Enable only if recipe + servings selected
-        function updateCookBtnState() {
-          const hasRecipe = !!entry.recipeId;
-          const hasServings = entry.servings && entry.servings > 0;
-          cookBtn.disabled = !(hasRecipe && hasServings);
-        }
-
-        cookBtn.addEventListener("click", () => {
-          openCookDialog(entry.dayId);
-        });
-
-        updateCookBtnState();
-        row.appendChild(cookBtn);
-
-        container.appendChild(row);
-      });
+  // If recipes were deleted, clean up the meal plan
+  const validIds = new Set(recipes.map((r) => r.id));
+  mealPlan.forEach((entry) => {
+    if (entry.recipeId && !validIds.has(entry.recipeId)) {
+      entry.recipeId = "";
+      entry.servings = 0;
     }
+  });
+
+  // Build one row per day
+  mealPlan.forEach((entry) => {
+    const row = document.createElement("div");
+    row.className = "subpanel";
+
+    // Day label (e.g. Monday)
+    const label = document.createElement("h3");
+    label.textContent = entry.dayLabel;
+    row.appendChild(label);
+
+    // --- Recipe dropdown ---
+    const recipeLabel = document.createElement("label");
+    recipeLabel.textContent = "Recipe";
+
+    const select = document.createElement("select");
+    select.dataset.dayId = entry.dayId;
+
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = "";
+    defaultOpt.textContent = "(no meal selected)";
+    select.appendChild(defaultOpt);
+
+    // Add recipes into dropdown
+    recipes
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach((recipe) => {
+        const opt = document.createElement("option");
+        opt.value = recipe.id;
+        opt.textContent = `${recipe.name} (serves ${recipe.servings})`;
+        select.appendChild(opt);
+      });
+
+    select.value = entry.recipeId || "";
+
+    select.addEventListener("change", (e) => {
+      const id = e.target.dataset.dayId;
+      const planEntry = mealPlan.find((p) => p.dayId === id);
+      if (!planEntry) return;
+
+      planEntry.recipeId = e.target.value;
+
+      if (!planEntry.recipeId) {
+        planEntry.servings = 0;
+        const sInput = document.querySelector(
+          `input[data-day-id="${id}"]`
+        );
+        if (sInput) sInput.value = "0";
+      }
+
+      saveState();
+      updateCookButtonState();
+    });
+
+    recipeLabel.appendChild(select);
+    row.appendChild(recipeLabel);
+
+    // --- Servings input ---
+    const servingsLabel = document.createElement("label");
+    servingsLabel.textContent = "Planned servings";
+
+    const servingsInput = document.createElement("input");
+    servingsInput.type = "number";
+    servingsInput.min = "0";
+    servingsInput.step = "1";
+    servingsInput.dataset.dayId = entry.dayId;
+    servingsInput.value =
+      entry.servings && entry.servings > 0 ? entry.servings : "0";
+
+    servingsInput.addEventListener("change", (e) => {
+      const id = e.target.dataset.dayId;
+      const planEntry = mealPlan.find((p) => p.dayId === id);
+      if (!planEntry) return;
+
+      let val = parseFloat(e.target.value || "0");
+      if (isNaN(val) || val < 0) val = 0;
+
+      planEntry.servings = val;
+      e.target.value = val === 0 ? "0" : String(val);
+
+      saveState();
+      updateCookButtonState();
+    });
+
+    servingsLabel.appendChild(servingsInput);
+    row.appendChild(servingsLabel);
+
+    // --- "I'm cooking this" button ---
+    const cookBtn = document.createElement("button");
+    cookBtn.type = "button";
+    cookBtn.textContent = "I'm cooking this";
+    cookBtn.className = "secondary";
+    cookBtn.style.marginTop = "0.5rem";
+
+    cookBtn.addEventListener("click", () => {
+      openCookDialog(entry.dayId);
+    });
+
+    row.appendChild(cookBtn);
+
+    // Helper: enable / disable cook button
+    function updateCookButtonState() {
+      const hasRecipe = !!entry.recipeId;
+      const hasServings = entry.servings && entry.servings > 0;
+      cookBtn.disabled = !(hasRecipe && hasServings);
+    }
+
+    // Set initial state for this row
+    updateCookButtonState();
+
+    container.appendChild(row);
+  });
+}
 
     // ---------- SHOPPING LIST ----------
 function roundUpForShopping(quantity, unit) {
