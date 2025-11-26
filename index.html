@@ -848,7 +848,144 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
         // ---------- BARCODE → ITEM MAPPINGS (SIMPLE NAMES ONLY) ----------
 
     // barcodeMap[barcode] = ["Sausages", "Beef", ...]
-  
+
+  // Simple "Add item" dialog for manual inventory entry
+function openAddInventoryItemDialog() {
+  // Remove any existing overlay
+  let overlay = document.getElementById("add-inventory-overlay");
+  if (overlay) overlay.remove();
+
+  // Create overlay
+  overlay = document.createElement("div");
+  overlay.id = "add-inventory-overlay";
+  overlay.className = "barcode-scanner-overlay"; // reuse same dim background
+
+  const panel = document.createElement("div");
+  panel.className = "barcode-scanner-panel";
+
+  const title = document.createElement("h2");
+  title.textContent = "Add inventory item";
+  panel.appendChild(title);
+
+  // --- Item name row ---
+  const nameRow = document.createElement("div");
+  nameRow.className = "barcode-input-row";
+
+  const nameLabel = document.createElement("label");
+  nameLabel.textContent = "What is the item?";
+  nameLabel.style.display = "block";
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.id = "add-inventory-name";
+  nameInput.placeholder = "e.g. Pasta";
+
+  nameLabel.appendChild(nameInput);
+  nameRow.appendChild(nameLabel);
+  panel.appendChild(nameRow);
+
+  // --- Quantity row ---
+  const qtyRow = document.createElement("div");
+  qtyRow.className = "barcode-input-row";
+
+  const qtyLabel = document.createElement("label");
+  qtyLabel.textContent = "Quantity";
+  qtyLabel.style.display = "block";
+
+  const qtyInput = document.createElement("input");
+  qtyInput.type = "number";
+  qtyInput.min = "0";
+  qtyInput.step = "0.1";
+  qtyInput.value = "1";
+
+  qtyLabel.appendChild(qtyInput);
+  qtyRow.appendChild(qtyLabel);
+  panel.appendChild(qtyRow);
+
+  // --- Unit row ---
+  const unitRow = document.createElement("div");
+  unitRow.className = "barcode-input-row";
+
+  const unitLabel = document.createElement("label");
+  unitLabel.textContent = "Unit";
+  unitLabel.style.display = "block";
+
+  const unitSelect = document.createElement("select");
+  const units = [
+    { value: "", label: "(none)" },
+    { value: "g", label: "g" },
+    { value: "kg", label: "kg" },
+    { value: "ml", label: "ml" },
+    { value: "l", label: "l" },
+    { value: "pack", label: "pack" },
+    { value: "packs", label: "packs" },
+    { value: "pcs", label: "pcs" },
+  ];
+  units.forEach((u) => {
+    const opt = document.createElement("option");
+    opt.value = u.value;
+    opt.textContent = u.label;
+    unitSelect.appendChild(opt);
+  });
+
+  unitLabel.appendChild(unitSelect);
+  unitRow.appendChild(unitLabel);
+  panel.appendChild(unitRow);
+
+  // --- Buttons ---
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.className = "secondary";
+  cancelBtn.addEventListener("click", () => {
+    overlay.remove();
+  });
+
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.textContent = "Add to inventory";
+
+  addBtn.addEventListener("click", () => {
+    const name = nameInput.value.trim();
+    const qty = parseFloat(qtyInput.value || "0");
+    const unit = unitSelect.value || "";
+
+    if (!name) {
+      alert("Please enter an item name.");
+      return;
+    }
+    if (!qty || qty <= 0 || Number.isNaN(qty)) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
+
+    upsertInventoryItem(name, qty, unit);
+    renderInventory();
+    renderInventoryNameSuggestions();
+    saveState();
+
+    overlay.remove();
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(addBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+
+  // Close when you tap the dark background
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  document.body.appendChild(overlay);
+
+  // Focus name by default
+  nameInput.focus();
+}
 
     // Open a dialog asking:
     // 1) What is the item?
