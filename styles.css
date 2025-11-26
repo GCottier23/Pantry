@@ -206,7 +206,7 @@ select {
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(10, 10, 10, 0.9);
   color: var(--text-main);
-  font-size: 0.9rem;
+  font-size: 16px;
   outline: none;
   transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
