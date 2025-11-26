@@ -6,196 +6,92 @@
   <meta name="color-scheme" content="dark light" />
   <title>Pantry App</title>
 
-  <!-- Use your existing dark / modern CSS file -->
-  <link rel="stylesheet" href="styles.css?v=21" />
+  <link rel="stylesheet" href="styles.css?v=23"/>
 
-  <!-- PWA bits (keep for your phone shortcut) -->
-<!-- iOS Home Screen Icon -->
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
-
-<!-- PWA Manifest -->
-<link rel="manifest" href="manifest.json">
-
-<meta name="theme-color" content="#ff7a00">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- PWA -->
+  <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ff7a00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
+
 <body>
+
   <!-- TOP BAR -->
   <header class="top-bar">
-    <button
-      id="menu-toggle"
-      class="menu-toggle"
-      aria-label="Navigation"
-      aria-controls="app-nav"
-      aria-expanded="false"
-      type="button"
-    >
-      ☰
-    </button>
     <span class="top-bar-title">Pantry App</span>
   </header>
 
-  <!-- NAV BAR (kept simple & always visible) -->
-  <nav
-    id="app-nav"
-    class="app-nav"
-    role="tablist"
-    aria-label="Pantry navigation"
-  >
-    <button
-      id="nav-inventory"
-      role="tab"
-      aria-selected="true"
-      aria-controls="page-inventory"
-      type="button"
-    >
-      Inventory
-    </button>
-    <button
-      id="nav-recipes"
-      role="tab"
-      aria-selected="false"
-      aria-controls="page-recipes"
-      type="button"
-    >
-      Recipes
-    </button>
-    <button
-      id="nav-mealplan"
-      role="tab"
-      aria-selected="false"
-      aria-controls="page-mealplan"
-      type="button"
-    >
-      Meal plan
-    </button>
-    <button
-      id="nav-shopping"
-      role="tab"
-      aria-selected="false"
-      aria-controls="page-shopping"
-      type="button"
-    >
-      Shopping list
-    </button>
+  <!-- NAVIGATION BUTTONS -->
+  <nav id="app-nav" class="app-nav" role="tablist" aria-label="Pantry navigation">
+    <button id="nav-inventory" aria-controls="page-inventory" aria-selected="true" type="button">Inventory</button>
+    <button id="nav-recipes" aria-controls="page-recipes" aria-selected="false" type="button">Recipes</button>
+    <button id="nav-mealplan" aria-controls="page-mealplan" aria-selected="false" type="button">Meal plan</button>
+    <button id="nav-shopping" aria-controls="page-shopping" aria-selected="false" type="button">Shopping list</button>
   </nav>
 
-  <!-- PAGE 1: INVENTORY -->
+  <!-- ======================================= -->
+  <!-- PAGE 1 – INVENTORY                      -->
+  <!-- ======================================= -->
   <main id="page-inventory" class="page" role="tabpanel" aria-labelledby="nav-inventory">
-    <div class="inventory-controls">
-      <label>
-        Search inventory
-        <input id="inventory-search" type="text" placeholder="Type to filter items..." />
-      </label>
-    </div>
 
     <section class="panel">
       <h2>Inventory</h2>
 
-    <div class="barcode-tools">
-  <button id="fake-scan-btn" type="button" class="secondary">
-    Fake barcode scan
-  </button>
-  <button id="real-scan-btn" type="button">
-    📷 Scan barcode
-  </button>
-</div>
+      <div class="inventory-actions-row">
+        <button id="add-inventory-item-btn" type="button">
+          + Add item
+        </button>
 
-      <form id="inventory-form">
-        <label>
-          Item name
-          <input id="inv-name" type="text" list="inv-name-list" required />
-          <datalist id="inv-name-list"></datalist>
-        </label>
-
-        <div class="grid-2">
-          <label>
-            Quantity
-            <input id="inv-qty" type="number" min="0" step="0.1" value="1" required />
-          </label>
-          <label>
-            Unit
-            <select id="inv-unit">
-              <option value="">(none)</option>
-              <option value="g">g</option>
-              <option value="kg">kg</option>
-              <option value="ml">ml</option>
-              <option value="l">l</option>
-              <option value="pack">pack</option>
-              <option value="packs">packs</option>
-              <option value="pcs">pcs</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="form-actions">
-          <button id="inventory-submit-btn" type="submit">Add / Update</button>
-          <button id="inventory-cancel-edit" type="button" class="secondary hidden">
-            Cancel edit
-          </button>
-        </div>
-      </form>
+        <button id="real-scan-btn" type="button" class="secondary">
+          📷 Scan barcode
+        </button>
+      </div>
 
       <div id="inventory-list" class="inventory-list"></div>
     </section>
+
   </main>
 
-  <!-- PAGE 2: RECIPES -->
-  <section
-    id="page-recipes"
-    class="page hidden"
-    role="tabpanel"
-    aria-labelledby="nav-recipes"
-  >
+  <!-- ======================================= -->
+  <!-- PAGE 2 – RECIPES                        -->
+  <!-- ======================================= -->
+  <section id="page-recipes" class="page hidden" role="tabpanel" aria-labelledby="nav-recipes">
     <section class="panel">
       <h2>Recipes</h2>
 
-        <div class="recipe-import card">
-    <h2>Import from BBC Food</h2>
-    <p class="help-text">
-      Paste a BBC Food / BBC Good Food recipe link and tap “Fetch image”.
-    </p>
-   <div class="recipe-import-row">
-   <input
-     type="url"
-     id="recipe-import-url"
-     class="text-input"
-     placeholder="https://www.bbc.co.uk/food/recipes/..."
-     autocomplete="off"
-  />
-  <button type="button" id="recipe-fetch-image" class="btn-primary">
-    Fetch image
-  </button>
-  <button type="button" id="recipe-clear-import" class="secondary">
-    Clear
-  </button>
-</div>
-    <p id="recipe-import-status" class="import-status"></p>
-    <div class="recipe-image-preview-wrapper">
-      <img
-        id="recipe-image-preview"
-        class="recipe-image-preview"
-        alt="Recipe image preview"
-        style="display:none;"
-      />
-    </div>
-  </div>
+      <div class="barcode-tools">
+        <button id="add-recipe-btn" type="button">Add recipe</button>
+        <button id="import-recipe-btn" type="button" class="secondary">Import recipe</button>
+      </div>
 
-      <form id="recipe-form">
-        <label>
-          Recipe name
-          <input id="recipe-name" type="text" required />
-        </label>
-        <label>
-          Servings (base recipe)
-          <input id="recipe-servings" type="number" value="2" min="1" required />
-        </label>
+      <div id="recipe-import-card" class="recipe-import card hidden">
+        <h2>Import from BBC Food</h2>
+
+        <p>Paste a BBC link and tap "Fetch image".</p>
+
+        <div class="recipe-import-row">
+          <input type="url" id="recipe-import-url" placeholder="https://www.bbc.co.uk/food/recipes/..." />
+          <button id="recipe-fetch-image" type="button">Fetch image</button>
+          <button id="recipe-clear-import" type="button" class="secondary">Clear</button>
+        </div>
+
+        <p id="recipe-import-status" class="import-status"></p>
+
+        <div class="recipe-image-preview-wrapper">
+          <img id="recipe-image-preview" class="recipe-image-preview" alt="Recipe preview" style="display:none;">
+        </div>
+      </div>
+
+      <!-- Legacy inline recipe editor -- stays hidden -->
+      <form id="recipe-form" class="hidden">
+        <label>Recipe name <input id="recipe-name" type="text"></label>
+        <label>Servings <input id="recipe-servings" type="number" value="2" min="1"></label>
+
         <div class="form-actions">
           <button id="start-recipe" type="button">Start new recipe</button>
-          <button id="cancel-recipe-edit" type="button" class="secondary hidden">
-            Cancel edit
-          </button>
+          <button id="cancel-recipe-edit" type="button" class="secondary hidden">Cancel</button>
         </div>
       </form>
 
@@ -203,27 +99,16 @@
         <h3>Ingredients for current recipe</h3>
 
         <form id="ingredient-form">
-          <label>
-            Ingredient name
-            <input id="ing-name" type="text" required />
-          </label>
+          <label>Ingredient name <input id="ing-name" type="text"></label>
+
           <div class="grid-2">
-            <label>
-              Quantity
-              <input id="ing-qty" type="number" value="1" min="0" step="0.1" required />
-            </label>
-            <label>
-              Unit
-              <input id="ing-unit" type="text" placeholder="g, ml, pcs..." />
-            </label>
+            <label>Quantity <input id="ing-qty" type="number" value="1" min="0" step="0.1"></label>
+            <label>Unit <input id="ing-unit" type="text" placeholder="g, ml, pcs…"></label>
           </div>
+
           <div class="form-actions">
-            <button id="ingredient-submit-btn" type="submit">
-              Add ingredient
-            </button>
-            <button id="cancel-ingredient-edit" type="button" class="secondary hidden">
-              Cancel ingredient edit
-            </button>
+            <button type="submit">Add ingredient</button>
+            <button id="cancel-ingredient-edit" type="button" class="secondary hidden">Cancel</button>
           </div>
         </form>
 
@@ -233,62 +118,43 @@
 
         <div class="subpanel">
           <h3>Quick import from text</h3>
-          <p>
-            Paste one ingredient per line, e.g.
-            “500g beef mince” or “4 sticks celery”.
-          </p>
-          <label>
-            Ingredients text
-            <textarea
-              id="import-text"
-              rows="6"
-              placeholder="Example:
-500g beef mince
-4 sticks celery
-1 onion, chopped"
-            ></textarea>
-          </label>
-          <button id="import-ingredients-btn" type="button">
-            Import into current recipe
-          </button>
+          <textarea id="import-text" rows="6"></textarea>
+          <button id="import-ingredients-btn" type="button">Import into current recipe</button>
         </div>
       </div>
+
     </section>
 
     <section class="panel">
       <h2>Saved recipes</h2>
-      <p>Recipes you create here can be used on the Meal plan page.</p>
+      <p>These can be used in your meal plan.</p>
       <div id="recipes-list"></div>
     </section>
+
   </section>
 
-  <!-- PAGE 3: MEAL PLAN -->
-  <section
-    id="page-mealplan"
-    class="page hidden"
-    role="tabpanel"
-    aria-labelledby="nav-mealplan"
-  >
+  <!-- ======================================= -->
+  <!-- PAGE 3 – MEAL PLAN                      -->
+  <!-- ======================================= -->
+  <section id="page-mealplan" class="page hidden" role="tabpanel" aria-labelledby="nav-mealplan">
     <section class="panel">
       <h2>Meal plan</h2>
-      <p>Select meals for each day and how many portions you’ll cook.</p>
+      <p>Select meals for each day and portions.</p>
+
       <div id="meal-plan-container"></div>
-      <button id="generate-shopping-list" type="button">
-        Generate shopping list
-      </button>
+
+      <button id="generate-shopping-list" type="button">Generate shopping list</button>
     </section>
   </section>
 
-  <!-- PAGE 4: SHOPPING LIST -->
-  <section
-    id="page-shopping"
-    class="page hidden"
-    role="tabpanel"
-    aria-labelledby="nav-shopping"
-  >
+  <!-- ======================================= -->
+  <!-- PAGE 4 – SHOPPING LIST                  -->
+  <!-- ======================================= -->
+  <section id="page-shopping" class="page hidden" role="tabpanel" aria-labelledby="nav-shopping">
     <section class="panel">
       <h2>Shopping list</h2>
-      <p>This list is based on your weekly meal plan and current inventory.</p>
+      <p>Based on your meal plan & inventory.</p>
+
       <table id="shopping-table">
         <thead>
           <tr>
