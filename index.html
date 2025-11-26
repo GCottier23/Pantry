@@ -240,7 +240,10 @@
     <section class="panel">
       <h2>Meal plan</h2>
       <p>Select meals for each day and how many portions you’ll cook.</p>
+
+      <!-- This is where renderMealPlan() writes the Monday–Sunday rows -->
       <div id="meal-plan-container"></div>
+
       <button id="generate-shopping-list" type="button">
         Generate shopping list
       </button>
@@ -257,6 +260,7 @@
     <section class="panel">
       <h2>Shopping list</h2>
       <p>This list is based on your weekly meal plan and current inventory.</p>
+
       <table id="shopping-table">
         <thead>
           <tr>
@@ -265,7 +269,9 @@
             <th>To buy</th>
           </tr>
         </thead>
-        <tbody></tbody>
+        <tbody>
+          <!-- generateShoppingList() fills rows in here -->
+        </tbody>
       </table>
     </section>
   </section>
