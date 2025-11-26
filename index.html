@@ -77,18 +77,17 @@
   <section class="panel">
   <h2>Inventory</h2>
 
+ <div class="inventory-actions-row">
+
   <button id="add-inventory-item-btn" type="button">
     + Add item
   </button>
 
-  <div class="barcode-tools">
-    <button id="fake-scan-btn" type="button" class="secondary">
-      Fake barcode scan
-    </button>
-    <button id="real-scan-btn" type="button">
-      📷 Scan barcode
-    </button>
-  </div>
+  <button id="real-scan-btn" type="button" class="secondary">
+    📷 Scan barcode
+  </button>
+
+</div>
 
   <div id="inventory-list" class="inventory-list"></div>
 </section>
@@ -3085,23 +3084,18 @@ document.addEventListener("DOMContentLoaded", () => {
   // === INVENTORY EVENTS ===
   const invForm = document.getElementById("inventory-form");
   const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
-  const fakeScanBtn = document.getElementById("fake-scan-btn");
-  const realScanBtn = document.getElementById("real-scan-btn");
-  
-    const addInventoryBtn = document.getElementById("add-inventory-item-btn");
+const addInventoryBtn = document.getElementById("add-inventory-item-btn");
+const realScanBtn = document.getElementById("real-scan-btn");
 
-  if (addInventoryBtn) {
-    addInventoryBtn.addEventListener("click", () => {
-      openAddInventoryItemDialog(); // add new item
-    });
-  }
+if (addInventoryBtn) {
+  addInventoryBtn.addEventListener("click", () => {
+    openAddInventoryItemDialog();
+  });
+}
 
-  if (fakeScanBtn) {
-    fakeScanBtn.addEventListener("click", handleFakeBarcodeScan);
-  }
-  if (realScanBtn) {
-    realScanBtn.addEventListener("click", openBarcodeScanner);
-  }
+if (realScanBtn) {
+  realScanBtn.addEventListener("click", openBarcodeScanner);
+}
 
   if (invForm) {
     invForm.addEventListener("submit", (e) => {
