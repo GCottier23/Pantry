@@ -1,25 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="color-scheme" content="dark light" />
-  <title>Pantry App</title>
-
-  <!-- Use your existing dark / modern CSS file -->
-  <link rel="stylesheet" href="styles.css?v=22"/>
-
-  <!-- PWA bits (keep for your phone shortcut) -->
-<!-- iOS Home Screen Icon -->
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
-
-<!-- PWA Manifest -->
-<link rel="manifest" href="manifest.json">
-
-<meta name="theme-color" content="#ff7a00">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-</head>
 <body>
   <!-- TOP BAR -->
   <header class="top-bar">
@@ -72,25 +50,27 @@
   </nav>
 
   <!-- PAGE 1: INVENTORY -->
-  <main id="page-inventory" class="page" role="tabpanel" aria-labelledby="nav-inventory">
+  <main
+    id="page-inventory"
+    class="page"
+    role="tabpanel"
+    aria-labelledby="nav-inventory"
+  >
+    <section class="panel">
+      <h2>Inventory</h2>
 
-  <section class="panel">
-  <h2>Inventory</h2>
+      <div class="inventory-actions-row">
+        <button id="add-inventory-item-btn" type="button">
+          + Add item
+        </button>
 
- <div class="inventory-actions-row">
+        <button id="real-scan-btn" type="button" class="secondary">
+          📷 Scan barcode
+        </button>
+      </div>
 
-  <button id="add-inventory-item-btn" type="button">
-    + Add item
-  </button>
-
-  <button id="real-scan-btn" type="button" class="secondary">
-    📷 Scan barcode
-  </button>
-
-</div>
-
-  <div id="inventory-list" class="inventory-list"></div>
-</section>
+      <div id="inventory-list" class="inventory-list"></div>
+    </section>
   </main>
 
   <!-- PAGE 2: RECIPES -->
@@ -100,10 +80,10 @@
     role="tabpanel"
     aria-labelledby="nav-recipes"
   >
-      <section class="panel">
+    <section class="panel">
       <h2>Recipes</h2>
 
-      <!-- New top buttons, like Inventory -->
+      <!-- Top buttons -->
       <div class="barcode-tools">
         <button id="add-recipe-btn" type="button">
           Add recipe
@@ -113,7 +93,7 @@
         </button>
       </div>
 
-      <!-- Existing BBC import UI, now hidden until "Import recipe" is tapped -->
+      <!-- BBC import UI (hidden until Import recipe is tapped) -->
       <div id="recipe-import-card" class="recipe-import card hidden">
         <h2>Import from BBC Food</h2>
         <p class="help-text">
@@ -145,8 +125,7 @@
         </div>
       </div>
 
-      <!-- Old inline recipe form is now hidden by default.
-           We keep it only for the older advanced editor paths. -->
+      <!-- Old inline recipe form (hidden, kept for editor paths) -->
       <form id="recipe-form" class="hidden">
         <label>
           Recipe name
@@ -222,13 +201,10 @@
 
     <section class="panel">
       <h2>Saved recipes</h2>
-
-    <section class="panel">
-      <h2>Saved recipes</h2>
       <p>Recipes you create here can be used on the Meal plan page.</p>
       <div id="recipes-list"></div>
     </section>
-  </section>
+  </section> <!-- END PAGE 2 -->
 
   <!-- PAGE 3: MEAL PLAN -->
   <section
@@ -241,7 +217,6 @@
       <h2>Meal plan</h2>
       <p>Select meals for each day and how many portions you’ll cook.</p>
 
-      <!-- This is where renderMealPlan() writes the Monday–Sunday rows -->
       <div id="meal-plan-container"></div>
 
       <button id="generate-shopping-list" type="button">
@@ -270,12 +245,12 @@
           </tr>
         </thead>
         <tbody>
-          <!-- generateShoppingList() fills rows in here -->
+          <!-- generateShoppingList() fills rows here -->
         </tbody>
       </table>
     </section>
   </section>
-
+</body>
 <!-- Barcode scanner library (UMD build, exposes global ZXingBrowser) -->
 <script src="https://unpkg.com/@zxing/browser@latest/umd/zxing-browser.min.js"></script>
 
