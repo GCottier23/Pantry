@@ -2424,62 +2424,66 @@ function openBarcodeScanner() {
 
   showPage("page-inventory");
 
-        // Inventory events
-      const invForm = document.getElementById("inventory-form");
-      const searchInput = document.getElementById("inventory-search");
-      const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
-      const fakeScanBtn = document.getElementById("fake-scan-btn");
-      const realScanBtn = document.getElementById("real-scan-btn");
+  // === INVENTORY EVENTS ===
+const invForm = document.getElementById("inventory-form");
+const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
+const addInventoryBtn = document.getElementById("add-inventory-item-btn");  // ← YOU WERE MISSING THIS
+const realScanBtn = document.getElementById("real-scan-btn");
 
-      if (fakeScanBtn) {
-        fakeScanBtn.addEventListener("click", () => {
-          handleFakeBarcodeScan();
-        });
-      }
+// Add Item → opens the Add Item dialog
+if (addInventoryBtn) {
+  addInventoryBtn.addEventListener("click", () => {
+    console.log("OPENING ADD INVENTORY DIALOG");
+    openAddInventoryItemDialog();
+  });
+}
 
-      if (realScanBtn) {
-        realScanBtn.addEventListener("click", () => {
-          openBarcodeScanner();
-        });
-      }
+// Scan barcode → opens scanner
+if (realScanBtn) {
+  realScanBtn.addEventListener("click", () => {
+    openBarcodeScanner();
+  });
+}
 
-      invForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const name = document.getElementById("inv-name").value.trim();
-        const qty = parseFloat(
-          document.getElementById("inv-qty").value || "0"
-        );
-        const unit = document.getElementById("inv-unit").value || "";
+if (invForm) {
+  invForm.addEventListener("submit", (e) => {
+    e.preventDefault();
 
-        if (!name || qty <= 0) {
-          alert("Please enter a valid name and quantity.");
-          return;
-        }
+    const nameEl = document.getElementById("inv-name");
+    const qtyEl = document.getElementById("inv-qty");
+    const unitEl = document.getElementById("inv-unit");
 
-        if (editingInventoryKey) {
-          setInventoryItemExact(editingInventoryKey, name, qty, unit);
-          clearInventoryEditState();
-        } else {
-          upsertInventoryItem(name, qty, unit);
-          document.getElementById("inv-name").value = "";
-          document.getElementById("inv-qty").value = "1";
-          document.getElementById("inv-unit").value = "";
-        }
+    const name = nameEl.value.trim();
+    const qty = parseFloat(qtyEl.value || "0");
+    const unit = unitEl.value || "";
 
-        renderInventory();
-        renderInventoryNameSuggestions();
-        saveState();
-      });
+    if (!name) {
+      alert("Please enter an item name.");
+      return;
+    }
+    if (!qty || qty <= 0 || Number.isNaN(qty)) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
 
-      cancelInvEditBtn.addEventListener("click", () => {
-        clearInventoryEditState();
-      });
+    if (editingInventoryKey) {
+      setInventoryItemExact(editingInventoryKey, name, qty, unit);
+    } else {
+      upsertInventoryItem(name, qty, unit);
+    }
 
-      searchInput.addEventListener("input", () => {
-        inventoryFilter = searchInput.value || "";
-        renderInventory();
-      });
+    renderInventory();
+    renderInventoryNameSuggestions();
+    saveState();
+    clearInventoryEditState();
+  });
+}
 
+if (cancelInvEditBtn) {
+  cancelInvEditBtn.addEventListener("click", () => {
+    clearInventoryEditState();
+  });
+}
             // Recipes events
       const startRecipeBtn = document.getElementById("start-recipe");
       const ingSection = document.getElementById("recipe-ingredients-section");
