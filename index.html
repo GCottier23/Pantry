@@ -3515,18 +3515,20 @@ document.addEventListener("DOMContentLoaded", () => {
   // === INVENTORY EVENTS ===
   const invForm = document.getElementById("inventory-form");
   const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
-const addInventoryBtn = document.getElementById("add-inventory-item-btn");
-const realScanBtn = document.getElementById("real-scan-btn");
+  const addInventoryBtn = document.getElementById("add-inventory-item-btn");
+  const realScanBtn = document.getElementById("real-scan-btn");
 
-if (addInventoryBtn) {
-  addInventoryBtn.addEventListener("click", () => {
-    openAddInventoryItemDialog();
-  });
-}
+  // New "Add item" button → opens dialog
+  if (addInventoryBtn) {
+    addInventoryBtn.addEventListener("click", () => {
+      openAddInventoryItemDialog();
+    });
+  }
 
-if (realScanBtn) {
-  realScanBtn.addEventListener("click", openBarcodeScanner);
-}
+  // Scan barcode button → opens camera scanner
+  if (realScanBtn) {
+    realScanBtn.addEventListener("click", openBarcodeScanner);
+  }
 
   if (invForm) {
     invForm.addEventListener("submit", (e) => {
@@ -3568,19 +3570,7 @@ if (realScanBtn) {
     });
   }
 
-  if (fakeScanBtn) {
-    fakeScanBtn.addEventListener("click", () => {
-      handleFakeBarcodeScan();
-    });
-  }
-
-  if (realScanBtn) {
-    realScanBtn.addEventListener("click", () => {
-      openBarcodeScanner();
-    });
-  }
-
-  // === RECIPES: START / INGREDIENTS ===
+  // === RECIPES: OLD INLINE FORM (still works / safe, even if hidden) ===
   const startRecipeBtn = document.getElementById("start-recipe");
   const cancelRecipeEditBtn = document.getElementById("cancel-recipe-edit");
   const ingredientForm = document.getElementById("ingredient-form");
@@ -3610,15 +3600,18 @@ if (realScanBtn) {
         name,
         servings,
         ingredients: [],
-        instructions: currentRecipe && currentRecipe.instructions
-          ? currentRecipe.instructions
-          : [],
-        imageUrl: currentRecipe && currentRecipe.imageUrl
-          ? currentRecipe.imageUrl
-          : "",
-        sourceUrl: currentRecipe && currentRecipe.sourceUrl
-          ? currentRecipe.sourceUrl
-          : ""
+        instructions:
+          currentRecipe && currentRecipe.instructions
+            ? currentRecipe.instructions
+            : [],
+        imageUrl:
+          currentRecipe && currentRecipe.imageUrl
+            ? currentRecipe.imageUrl
+            : "",
+        sourceUrl:
+          currentRecipe && currentRecipe.sourceUrl
+            ? currentRecipe.sourceUrl
+            : "",
       };
 
       document
@@ -3643,7 +3636,9 @@ if (realScanBtn) {
     ingredientForm.addEventListener("submit", (e) => {
       e.preventDefault();
       if (!currentRecipe) {
-        alert("Start a recipe first (name + servings, then 'Start new recipe').");
+        alert(
+          "Start a recipe first (name + servings, then 'Start new recipe')."
+        );
         return;
       }
 
@@ -3686,8 +3681,8 @@ if (realScanBtn) {
       clearIngredientEditState();
     });
   }
-  
-    // --- Recipe buttons: Add + Import ---
+
+  // --- Recipe buttons: Add + Import (NEW top buttons) ---
   const addRecipeBtn = document.getElementById("add-recipe-btn");
   const importRecipeBtn = document.getElementById("import-recipe-btn");
   const importCard = document.getElementById("recipe-import-card");
@@ -3695,7 +3690,7 @@ if (realScanBtn) {
   if (addRecipeBtn) {
     addRecipeBtn.addEventListener("click", () => {
       showPage("page-recipes");
-      openAddRecipeDialog();
+      openAddRecipeDialog(); // your new multi-step Add Recipe dialog
     });
   }
 
@@ -3924,7 +3919,7 @@ if (realScanBtn) {
             servingsText: data.servings || "",
             image: data.image || "",
             title: data.title || "",
-            ingredientNames
+            ingredientNames,
           };
         } else {
           lastImportedRecipeMeta = {
@@ -3933,7 +3928,7 @@ if (realScanBtn) {
             servingsText: data.servings || "",
             image: data.image || "",
             title: data.title || "",
-            ingredientNames
+            ingredientNames,
           };
         }
 
@@ -3959,19 +3954,19 @@ if (realScanBtn) {
     });
   }
 
-  // === INITIAL RENDERS ===
+  // ✅ INITIAL RENDERS (this makes Meal plan & Shopping appear)
   renderInventory();
   renderInventoryNameSuggestions();
   renderRecipesList();
   renderMealPlan();
-
-  // === SERVICE WORKER (PWA) ===
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register("./sw.js")
-      .catch(() => {});
-  }
 });
+
+// Keep service worker registration small & safe
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("./sw.js")
+    .catch(() => {});
+}
   </script>
 </body>
 </html>
