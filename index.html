@@ -1,10 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Pantry App</title>
+
+  <!-- Use your existing dark / modern CSS file -->
+  <link rel="stylesheet" href="styles.css?v=21" />
+
+  <!-- PWA bits (keep for your phone shortcut) -->
+<!-- iOS Home Screen Icon -->
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+
+<meta name="theme-color" content="#ff7a00">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
 <body>
   <!-- TOP BAR -->
   <header class="top-bar">
+    <button
+      id="menu-toggle"
+      class="menu-toggle"
+      aria-label="Navigation"
+      aria-controls="app-nav"
+      aria-expanded="false"
+      type="button"
+    >
+      ☰
+    </button>
     <span class="top-bar-title">Pantry App</span>
   </header>
 
-  <!-- NAV BAR (simple, always visible) -->
+  <!-- NAV BAR (kept simple & always visible) -->
   <nav
     id="app-nav"
     class="app-nav"
@@ -50,24 +82,60 @@
   </nav>
 
   <!-- PAGE 1: INVENTORY -->
-  <main
-    id="page-inventory"
-    class="page"
-    role="tabpanel"
-    aria-labelledby="nav-inventory"
-  >
+  <main id="page-inventory" class="page" role="tabpanel" aria-labelledby="nav-inventory">
+    <div class="inventory-controls">
+      <label>
+        Search inventory
+        <input id="inventory-search" type="text" placeholder="Type to filter items..." />
+      </label>
+    </div>
+
     <section class="panel">
       <h2>Inventory</h2>
 
-      <div class="inventory-actions-row">
-        <button id="add-inventory-item-btn" type="button">
-          + Add item
-        </button>
+    <div class="barcode-tools">
+  <button id="fake-scan-btn" type="button" class="secondary">
+    Fake barcode scan
+  </button>
+  <button id="real-scan-btn" type="button">
+    📷 Scan barcode
+  </button>
+</div>
 
-        <button id="real-scan-btn" type="button" class="secondary">
-          📷 Scan barcode
-        </button>
-      </div>
+      <form id="inventory-form">
+        <label>
+          Item name
+          <input id="inv-name" type="text" list="inv-name-list" required />
+          <datalist id="inv-name-list"></datalist>
+        </label>
+
+        <div class="grid-2">
+          <label>
+            Quantity
+            <input id="inv-qty" type="number" min="0" step="0.1" value="1" required />
+          </label>
+          <label>
+            Unit
+            <select id="inv-unit">
+              <option value="">(none)</option>
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+              <option value="ml">ml</option>
+              <option value="l">l</option>
+              <option value="pack">pack</option>
+              <option value="packs">packs</option>
+              <option value="pcs">pcs</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button id="inventory-submit-btn" type="submit">Add / Update</button>
+          <button id="inventory-cancel-edit" type="button" class="secondary hidden">
+            Cancel edit
+          </button>
+        </div>
+      </form>
 
       <div id="inventory-list" class="inventory-list"></div>
     </section>
@@ -83,50 +151,38 @@
     <section class="panel">
       <h2>Recipes</h2>
 
-      <!-- Top buttons -->
-      <div class="barcode-tools">
-        <button id="add-recipe-btn" type="button">
-          Add recipe
-        </button>
-        <button id="import-recipe-btn" type="button" class="secondary">
-          Import recipe
-        </button>
-      </div>
+        <div class="recipe-import card">
+    <h2>Import from BBC Food</h2>
+    <p class="help-text">
+      Paste a BBC Food / BBC Good Food recipe link and tap “Fetch image”.
+    </p>
+   <div class="recipe-import-row">
+   <input
+     type="url"
+     id="recipe-import-url"
+     class="text-input"
+     placeholder="https://www.bbc.co.uk/food/recipes/..."
+     autocomplete="off"
+  />
+  <button type="button" id="recipe-fetch-image" class="btn-primary">
+    Fetch image
+  </button>
+  <button type="button" id="recipe-clear-import" class="secondary">
+    Clear
+  </button>
+</div>
+    <p id="recipe-import-status" class="import-status"></p>
+    <div class="recipe-image-preview-wrapper">
+      <img
+        id="recipe-image-preview"
+        class="recipe-image-preview"
+        alt="Recipe image preview"
+        style="display:none;"
+      />
+    </div>
+  </div>
 
-      <!-- BBC import UI (hidden until Import recipe is tapped) -->
-      <div id="recipe-import-card" class="recipe-import card hidden">
-        <h2>Import from BBC Food</h2>
-        <p class="help-text">
-          Paste a BBC Food / BBC Good Food recipe link and tap "Fetch image".
-        </p>
-        <div class="recipe-import-row">
-          <input
-            type="url"
-            id="recipe-import-url"
-            class="text-input"
-            placeholder="https://www.bbc.co.uk/food/recipes/..."
-            autocomplete="off"
-          />
-          <button type="button" id="recipe-fetch-image" class="btn-primary">
-            Fetch image
-          </button>
-          <button type="button" id="recipe-clear-import" class="secondary">
-            Clear
-          </button>
-        </div>
-        <p id="recipe-import-status" class="import-status"></p>
-        <div class="recipe-image-preview-wrapper">
-          <img
-            id="recipe-image-preview"
-            class="recipe-image-preview"
-            alt="Recipe image preview"
-            style="display:none;"
-          />
-        </div>
-      </div>
-
-      <!-- Old inline recipe form (hidden, kept for editor paths) -->
-      <form id="recipe-form" class="hidden">
+      <form id="recipe-form">
         <label>
           Recipe name
           <input id="recipe-name" type="text" required />
@@ -179,7 +235,7 @@
           <h3>Quick import from text</h3>
           <p>
             Paste one ingredient per line, e.g.
-            "500g beef mince" or "4 sticks celery".
+            “500g beef mince” or “4 sticks celery”.
           </p>
           <label>
             Ingredients text
@@ -204,7 +260,7 @@
       <p>Recipes you create here can be used on the Meal plan page.</p>
       <div id="recipes-list"></div>
     </section>
-  </section> <!-- END PAGE 2 -->
+  </section>
 
   <!-- PAGE 3: MEAL PLAN -->
   <section
@@ -216,9 +272,7 @@
     <section class="panel">
       <h2>Meal plan</h2>
       <p>Select meals for each day and how many portions you’ll cook.</p>
-
       <div id="meal-plan-container"></div>
-
       <button id="generate-shopping-list" type="button">
         Generate shopping list
       </button>
@@ -235,7 +289,6 @@
     <section class="panel">
       <h2>Shopping list</h2>
       <p>This list is based on your weekly meal plan and current inventory.</p>
-
       <table id="shopping-table">
         <thead>
           <tr>
@@ -244,13 +297,11 @@
             <th>To buy</th>
           </tr>
         </thead>
-        <tbody>
-          <!-- generateShoppingList() fills rows here -->
-        </tbody>
+        <tbody></tbody>
       </table>
     </section>
   </section>
-</body>
+
 <!-- Barcode scanner library (UMD build, exposes global ZXingBrowser) -->
 <script src="https://unpkg.com/@zxing/browser@latest/umd/zxing-browser.min.js"></script>
 
@@ -401,162 +452,6 @@ function splitIngredientsByStaples(ingredients) {
     bucket.push({ ing, index }); // remember which ingredient it was
   });
   return { staples, regular };
-}
-
-// Merge duplicate ingredients with the same name inside a recipe.
-// - Combines quantities where it's safe.
-// - Special case: "Butter" – converts tbsp → grams (1 tbsp = 14g, 1 tsp = 5g).
-function mergeDuplicateIngredientsInList(ingredients) {
-  if (!Array.isArray(ingredients)) return [];
-
-  const groups = new Map(); // name (lowercase) -> [ingredients]
-
-  ingredients.forEach((ing) => {
-    if (!ing || !ing.name) return;
-    const key = ing.name.trim().toLowerCase();
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(ing);
-  });
-
-  const result = [];
-
-  groups.forEach((list, key) => {
-    if (list.length === 1) {
-      result.push(list[0]);
-      return;
-    }
-
-    const sampleName = list[0].name || "";
-
-    const hasAnyQty = list.some(
-      (ing) => ing.quantity && ing.quantity > 0
-    );
-    if (!hasAnyQty) {
-      // All lines are effectively "no numeric quantity" → just keep one
-      result.push({
-        name: titleCase(sampleName),
-        quantity: null,
-        unit: ""
-      });
-      return;
-    }
-
-    const lowerName = key;
-    const isButter = lowerName.includes("butter");
-
-    // ---- Special case: Butter -> combine everything into grams ----
-    if (isButter) {
-      let totalG = 0;
-      let hadConvertible = false;
-      let hadUnconvertible = false;
-
-      list.forEach((ing) => {
-        let q = ing.quantity || 0;
-        if (!q || q <= 0) return;
-
-        let u = (ing.unit || "").toLowerCase();
-        if (u === "kg") {
-          totalG += q * 1000;
-          hadConvertible = true;
-        } else if (u === "g" || !u) {
-          totalG += q;
-          hadConvertible = true;
-        } else if (u === "tbsp" || u === "tablespoon" || u === "tablespoons") {
-          totalG += q * 14; // 1 tbsp butter ≈ 14g
-          hadConvertible = true;
-        } else if (u === "tsp" || u === "teaspoon" || u === "teaspoons") {
-          totalG += q * 5; // 1 tsp butter ≈ 5g
-          hadConvertible = true;
-        } else {
-          hadUnconvertible = true;
-        }
-      });
-
-      if (hadConvertible && totalG > 0) {
-        result.push({
-          name: titleCase(sampleName),
-          quantity: totalG,
-          unit: "g"
-        });
-      }
-
-      // Any weird units we couldn’t convert stay as separate lines
-      if (hadUnconvertible) {
-        list.forEach((ing) => {
-          let u = (ing.unit || "").toLowerCase();
-          if (
-            u !== "kg" &&
-            u !== "g" &&
-            u !== "tbsp" &&
-            u !== "tablespoon" &&
-            u !== "tablespoons" &&
-            u !== "tsp" &&
-            u !== "teaspoon" &&
-            u !== "teaspoons"
-          ) {
-            result.push(ing);
-          }
-        });
-      }
-      return;
-    }
-
-    // ---- Generic safe merge for non-butter ingredients ----
-    const units = new Set(
-      list
-        .filter((ing) => ing.quantity && ing.quantity > 0)
-        .map((ing) => (ing.unit || "").toLowerCase())
-    );
-    const unitsArr = Array.from(units);
-
-    const canMergeSameUnitOnly =
-      unitsArr.length === 1 && unitsArr[0] !== "";
-
-    const isGAndKg =
-      unitsArr.length === 2 &&
-      unitsArr.includes("g") &&
-      unitsArr.includes("kg");
-
-    const isMlAndL =
-      unitsArr.length === 2 &&
-      unitsArr.includes("ml") &&
-      unitsArr.includes("l");
-
-    if (!canMergeSameUnitOnly && !isGAndKg && !isMlAndL) {
-      // Different / incompatible units – don’t try to be clever
-      list.forEach((ing) => result.push(ing));
-      return;
-    }
-
-    let baseUnit = "";
-    if (canMergeSameUnitOnly) baseUnit = unitsArr[0];
-    else if (isGAndKg) baseUnit = "g";
-    else if (isMlAndL) baseUnit = "ml";
-
-    let totalBase = 0;
-
-    list.forEach((ing) => {
-      const q = ing.quantity || 0;
-      if (!q || q <= 0) return;
-
-      const u = (ing.unit || "").toLowerCase();
-      let qBase = q;
-
-      if (baseUnit === "g" && u === "kg") qBase = q * 1000;
-      else if (baseUnit === "ml" && u === "l") qBase = q * 1000;
-      else if (baseUnit === u) qBase = q;
-
-      totalBase += qBase;
-    });
-
-    result.push({
-      name: titleCase(sampleName),
-      quantity: totalBase,
-      unit: baseUnit
-    });
-  });
-
-  return result;
 }
 
         function tidyRecipeTitle(str) {
@@ -860,14 +755,6 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     const data = JSON.parse(raw);
     if (Array.isArray(data.inventory)) inventory = data.inventory;
     if (Array.isArray(data.recipes)) recipes = data.recipes;
-    // Tidy up any old recipes that had duplicate ingredients
-if (Array.isArray(recipes)) {
-  recipes.forEach((r) => {
-    if (Array.isArray(r.ingredients)) {
-      r.ingredients = mergeDuplicateIngredientsInList(r.ingredients);
-    }
-  });
-}
     if (Array.isArray(data.mealPlan)) mealPlan = data.mealPlan;
 
     // user staples
@@ -1037,12 +924,10 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
           actions.className = "inventory-actions";
 
           const editBtn = document.createElement("button");
-editBtn.type = "button";
-editBtn.textContent = "✎";
-editBtn.title = "Edit";
-editBtn.addEventListener("click", () => {
-  openAddInventoryItemDialog(item);
-});
+          editBtn.type = "button";
+          editBtn.textContent = "✎";
+          editBtn.title = "Edit";
+          editBtn.addEventListener("click", () => startInventoryEdit(item.key));
 
           const delBtn = document.createElement("button");
           delBtn.type = "button";
@@ -1334,157 +1219,6 @@ editBtn.addEventListener("click", () => {
         itemTextInput.focus();
       }
     }
-    
-    // Simple popup to add OR edit an inventory item (no barcode)
-function openAddInventoryItemDialog(existingItem) {
-  const isEdit = !!existingItem;
-
-  // Create overlay
-  let overlay = document.getElementById("inventory-item-overlay");
-  if (overlay) overlay.remove();
-
-  overlay = document.createElement("div");
-  overlay.id = "inventory-item-overlay";
-  overlay.className = "barcode-scanner-overlay"; // reuse same dim style
-
-  const panel = document.createElement("div");
-  panel.className = "barcode-scanner-panel";
-
-  const title = document.createElement("h2");
-  title.textContent = isEdit ? "Edit inventory item" : "Add inventory item";
-  panel.appendChild(title);
-
-  // Item name
-  const itemRow = document.createElement("div");
-  itemRow.className = "barcode-input-row";
-
-  const itemLabel = document.createElement("label");
-  itemLabel.textContent = "What is the item?";
-  itemLabel.style.display = "block";
-
-  const itemInput = document.createElement("input");
-  itemInput.type = "text";
-  itemInput.required = true;
-  itemInput.placeholder = "e.g. Sausages";
-
-  itemLabel.appendChild(itemInput);
-  itemRow.appendChild(itemLabel);
-  panel.appendChild(itemRow);
-
-  // Quantity
-  const qtyRow = document.createElement("div");
-  qtyRow.className = "barcode-input-row";
-
-  const qtyLabel = document.createElement("label");
-  qtyLabel.textContent = "What is the quantity?";
-  qtyLabel.style.display = "block";
-
-  const qtyInput = document.createElement("input");
-  qtyInput.type = "number";
-  qtyInput.min = "0";
-  qtyInput.step = "0.1";
-  qtyInput.value = "1";
-
-  qtyLabel.appendChild(qtyInput);
-  qtyRow.appendChild(qtyLabel);
-  panel.appendChild(qtyRow);
-
-  // Unit
-  const unitRow = document.createElement("div");
-  unitRow.className = "barcode-input-row";
-
-  const unitLabel = document.createElement("label");
-  unitLabel.textContent = "What is the unit?";
-  unitLabel.style.display = "block";
-
-  const unitSelect = document.createElement("select");
-  const units = [
-    { value: "", label: "(none)" },
-    { value: "g", label: "g" },
-    { value: "kg", label: "kg" },
-    { value: "ml", label: "ml" },
-    { value: "l", label: "l" },
-    { value: "pack", label: "pack" },
-    { value: "packs", label: "packs" },
-    { value: "pcs", label: "pcs" },
-  ];
-  units.forEach((u) => {
-    const opt = document.createElement("option");
-    opt.value = u.value;
-    opt.textContent = u.label;
-    unitSelect.appendChild(opt);
-  });
-
-  unitLabel.appendChild(unitSelect);
-  unitRow.appendChild(unitLabel);
-  panel.appendChild(unitRow);
-
-  // If we're editing, pre-fill the fields
-  if (isEdit) {
-    itemInput.value = existingItem.name || "";
-    qtyInput.value =
-      typeof existingItem.quantity === "number"
-        ? existingItem.quantity
-        : "1";
-    unitSelect.value = existingItem.unit || "";
-  }
-
-  // Buttons
-  const btnRow = document.createElement("div");
-  btnRow.className = "barcode-scanner-actions";
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.textContent = "Cancel";
-  cancelBtn.className = "secondary";
-  cancelBtn.addEventListener("click", () => overlay.remove());
-
-  const saveBtn = document.createElement("button");
-  saveBtn.type = "button";
-  saveBtn.textContent = isEdit ? "Save" : "Add to inventory";
-
-  saveBtn.addEventListener("click", () => {
-    const name = itemInput.value.trim();
-    const qty = parseFloat(qtyInput.value || "0");
-    const unit = unitSelect.value || "";
-
-    if (!name) {
-      alert("Please enter an item name.");
-      return;
-    }
-    if (!qty || qty <= 0 || Number.isNaN(qty)) {
-      alert("Please enter a valid quantity.");
-      return;
-    }
-
-    if (isEdit && existingItem && existingItem.key) {
-      // exact edit
-      setInventoryItemExact(existingItem.key, name, qty, unit);
-    } else {
-      // normal add
-      upsertInventoryItem(name, qty, unit);
-    }
-
-    renderInventory();
-    renderInventoryNameSuggestions();
-    saveState();
-    overlay.remove();
-  });
-
-  btnRow.appendChild(cancelBtn);
-  btnRow.appendChild(saveBtn);
-  panel.appendChild(btnRow);
-
-  overlay.appendChild(panel);
-
-  // Tap outside to close
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-
-  document.body.appendChild(overlay);
-  itemInput.focus();
-}
 
     // For real barcode scans
     function handleBarcodeCode(code) {
@@ -1593,22 +1327,19 @@ function renderCurrentRecipeIngredients() {
     }
 
     function clearRecipeEditState() {
-  editingRecipeId = null;
-  currentRecipe = null;
-  document.getElementById("recipe-name").value = "";
-  document.getElementById("recipe-servings").value = "2";
-  document.getElementById("current-recipe-ingredients").innerHTML = "";
-  document
-    .getElementById("recipe-ingredients-section")
-    .classList.add("hidden");
-  document
-    .getElementById("cancel-recipe-edit")
-    .classList.add("hidden");
-  document
-    .getElementById("recipe-form")
-    .classList.add("hidden");
-  clearIngredientEditState();
-}
+      editingRecipeId = null;
+      currentRecipe = null;
+      document.getElementById("recipe-name").value = "";
+      document.getElementById("recipe-servings").value = "2";
+      document.getElementById("current-recipe-ingredients").innerHTML = "";
+      document
+        .getElementById("recipe-ingredients-section")
+        .classList.add("hidden");
+      document
+        .getElementById("cancel-recipe-edit")
+        .classList.add("hidden");
+      clearIngredientEditState();
+    }
 
         function renderRecipesList() {
   const container = document.getElementById("recipes-list");
@@ -1674,12 +1405,12 @@ function renderCurrentRecipeIngredients() {
     footer.className = "recipe-card-footer";
 
     const editBtn = document.createElement("button");
-editBtn.type = "button";
-editBtn.className = "secondary";
-editBtn.textContent = "Edit";
-editBtn.addEventListener("click", () => {
-  openRecipeQuickEditDialog(r.id);
-});
+    editBtn.type = "button";
+    editBtn.className = "secondary";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => {
+      startRecipeEdit(r.id);
+    });
 
     const delBtn = document.createElement("button");
     delBtn.type = "button";
@@ -1711,235 +1442,6 @@ editBtn.addEventListener("click", () => {
 
   // keep meal plan dropdowns in sync
   renderMealPlan();
-}
-
-function openRecipeQuickEditDialog(recipeId) {
-  const recipe = recipes.find((r) => r.id === recipeId);
-  if (!recipe) {
-    alert("Recipe not found.");
-    return;
-  }
-  if (!Array.isArray(recipe.ingredients) || !recipe.ingredients.length) {
-    alert("This recipe has no ingredients to edit yet.");
-    return;
-  }
-
-  // Remove any existing overlay
-  let overlay = document.getElementById("recipe-quick-edit-overlay");
-  if (overlay) overlay.remove();
-
-  overlay = document.createElement("div");
-  overlay.id = "recipe-quick-edit-overlay";
-  // Re-use the same dim background style as the barcode dialog
-  overlay.className = "barcode-scanner-overlay";
-
-  const panel = document.createElement("div");
-  // Re-use the same panel style as the barcode dialog
-  panel.className = "barcode-scanner-panel";
-
-  const title = document.createElement("h2");
-  title.textContent = `Edit "${recipe.name}"`;
-  panel.appendChild(title);
-
-  // ---------- Ingredient selector ----------
-  const ingRow = document.createElement("div");
-  ingRow.className = "barcode-input-row";
-
-  const ingLabel = document.createElement("label");
-  ingLabel.textContent = "What is the item?";
-  ingLabel.style.display = "block";
-
-  const ingSelect = document.createElement("select");
-  ingSelect.id = "recipe-quick-edit-select";
-
-  const defaultOpt = document.createElement("option");
-  defaultOpt.value = "";
-  defaultOpt.textContent = "Select ingredient…";
-  ingSelect.appendChild(defaultOpt);
-
-  // Helper to build a small label like "Butter: 50g"
-  const makeIngLabel = (ing) => {
-    let label = ing.name || "Ingredient";
-    let q = ing.quantity;
-    let u = ing.unit || "";
-
-    if (q && q > 0) {
-      ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
-      const compactUnits = ["g", "kg", "ml", "l"];
-      const nice = Number.isInteger(q)
-        ? String(q)
-        : (Math.round(q * 10) / 10).toString();
-
-      if (!u) {
-        label += `: ${nice}`;
-      } else if (compactUnits.includes(u)) {
-        label += `: ${nice}${u}`;
-      } else {
-        label += `: ${nice} ${u}`;
-      }
-    }
-    return label;
-  };
-
-  recipe.ingredients.forEach((ing, index) => {
-    const opt = document.createElement("option");
-    opt.value = String(index);
-    opt.textContent = makeIngLabel(ing);
-    ingSelect.appendChild(opt);
-  });
-
-  ingLabel.appendChild(ingSelect);
-  ingRow.appendChild(ingLabel);
-  panel.appendChild(ingRow);
-
-  // ---------- Quantity field ----------
-  const qtyRow = document.createElement("div");
-  qtyRow.className = "barcode-input-row";
-
-  const qtyLabel = document.createElement("label");
-  qtyLabel.textContent = "What is the quantity?";
-  qtyLabel.style.display = "block";
-
-  const qtyInput = document.createElement("input");
-  qtyInput.type = "number";
-  qtyInput.min = "0";
-  qtyInput.step = "0.1";
-  qtyInput.value = "1";
-
-  qtyLabel.appendChild(qtyInput);
-  qtyRow.appendChild(qtyLabel);
-  panel.appendChild(qtyRow);
-
-  // ---------- Unit field ----------
-  const unitRow = document.createElement("div");
-  unitRow.className = "barcode-input-row";
-
-  const unitLabel = document.createElement("label");
-  unitLabel.textContent = "What is the unit?";
-  unitLabel.style.display = "block";
-
-  const unitSelect = document.createElement("select");
-
-  const unitOptions = [
-    { value: "", label: "(none)" },
-    { value: "g", label: "g" },
-    { value: "kg", label: "kg" },
-    { value: "ml", label: "ml" },
-    { value: "l", label: "l" },
-    { value: "tsp", label: "tsp" },
-    { value: "tbsp", label: "tbsp" },
-    { value: "pack", label: "pack" },
-    { value: "packs", label: "packs" },
-    { value: "pcs", label: "pcs" },
-    { value: "clove", label: "clove" },
-    { value: "cloves", label: "cloves" },
-    { value: "stick", label: "stick" },
-    { value: "sticks", label: "sticks" },
-  ];
-
-  unitOptions.forEach((u) => {
-    const opt = document.createElement("option");
-    opt.value = u.value;
-    opt.textContent = u.label;
-    unitSelect.appendChild(opt);
-  });
-
-  unitLabel.appendChild(unitSelect);
-  unitRow.appendChild(unitLabel);
-  panel.appendChild(unitRow);
-
-  // When an ingredient is chosen, populate qty + unit
-  function populateFieldsFromIngredient(index) {
-    const ing = recipe.ingredients[index];
-    if (!ing) return;
-
-    // quantity
-    if (typeof ing.quantity === "number" && !Number.isNaN(ing.quantity)) {
-      qtyInput.value = String(ing.quantity);
-    } else {
-      qtyInput.value = "1";
-    }
-
-    // unit
-    const u = (ing.unit || "").toLowerCase();
-    // if it's not one of our known options, add it so it can still be selected
-    if (
-      u &&
-      !Array.from(unitSelect.options).some(
-        (opt) => opt.value.toLowerCase() === u
-      )
-    ) {
-      const extraOpt = document.createElement("option");
-      extraOpt.value = u;
-      extraOpt.textContent = u;
-      unitSelect.appendChild(extraOpt);
-    }
-    unitSelect.value = u;
-  }
-
-  ingSelect.addEventListener("change", () => {
-    const idx = parseInt(ingSelect.value, 10);
-    if (!Number.isNaN(idx)) {
-      populateFieldsFromIngredient(idx);
-    }
-  });
-
-  // Auto-select the first real ingredient to make it feel snappy
-  if (recipe.ingredients.length > 0) {
-    ingSelect.value = "0";
-    populateFieldsFromIngredient(0);
-  }
-
-  // ---------- Buttons ----------
-  const btnRow = document.createElement("div");
-  btnRow.className = "barcode-scanner-actions";
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.textContent = "Cancel";
-  cancelBtn.className = "secondary";
-  cancelBtn.addEventListener("click", () => overlay.remove());
-
-  const saveBtn = document.createElement("button");
-  saveBtn.type = "button";
-  saveBtn.textContent = "Save changes";
-
-  saveBtn.addEventListener("click", () => {
-    const idx = parseInt(ingSelect.value, 10);
-    if (Number.isNaN(idx) || !recipe.ingredients[idx]) {
-      alert("Please choose an ingredient first.");
-      return;
-    }
-
-    const newQty = parseFloat(qtyInput.value || "0");
-    if (!newQty || newQty <= 0 || Number.isNaN(newQty)) {
-      alert("Please enter a valid quantity.");
-      return;
-    }
-
-    const newUnit = unitSelect.value || "";
-
-    // Actually update the recipe’s ingredient
-    recipe.ingredients[idx].quantity = newQty;
-    recipe.ingredients[idx].unit = newUnit;
-
-    saveState();
-    renderRecipesList(); // refresh the cards so the "Serves" etc stay in sync
-    overlay.remove();
-  });
-
-  btnRow.appendChild(cancelBtn);
-  btnRow.appendChild(saveBtn);
-  panel.appendChild(btnRow);
-
-  overlay.appendChild(panel);
-
-  // Click outside to close
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-
-  document.body.appendChild(overlay);
 }
 
 // Simple long-press helper
@@ -2128,70 +1630,20 @@ function openRecipeDetail(recipeId) {
   panel.appendChild(ingTitle);
 
   // Use the indexed split so we know which ingredient to edit/delete
-  const split = splitIngredientsByStaples(ingForDisplay);
-  let staples = split.staples;
-  const regular = split.regular;
-
-  // --- SPECIAL CASE: merge salt/pepper "to taste" into one line ---
-  // We only merge when there is NO real quantity/unit
-  // (so things like "2 tbsp black peppercorns" are left alone).
-  let mergedStaples = [];
-  let saltPepperAdded = false;
-
-  staples.forEach(({ ing, index }) => {
-    const nameLower = (ing.name || "").toLowerCase();
-    const hasSalt = nameLower.includes("salt");
-    const hasPepper = nameLower.includes("pepper");
-
-    const noRealQty =
-      (!ing.unit || !ing.unit.trim()) &&
-      (!ing.quantity || ing.quantity === 1);
-
-    const isSaltPepperLine = hasSalt && hasPepper && noRealQty;
-    const isSaltOnlyLine = hasSalt && !hasPepper && noRealQty;
-    const isPepperOnlyLine = hasPepper && !hasSalt && noRealQty;
-
-    const candidate =
-      isSaltPepperLine || isSaltOnlyLine || isPepperOnlyLine;
-
-    if (candidate) {
-      if (!saltPepperAdded) {
-        mergedStaples.push({
-          ing: { name: "Salt and Pepper", quantity: null, unit: "" },
-          index: -1
-        });
-        saltPepperAdded = true;
-      }
-      // Skip the original salt/pepper lines
-      return;
-    }
-
-    mergedStaples.push({ ing, index });
-  });
-
-  staples = mergedStaples;
+  const { staples, regular } = splitIngredientsByStaples(ingForDisplay);
 
   function addIngredientLi(ul, obj, isStapleList) {
     const { ing, index } = obj;
     const li = document.createElement("li");
 
+    // Name
     const nameSpan = document.createElement("span");
     nameSpan.textContent = ing.name || "";
     li.appendChild(nameSpan);
 
     let q = ing.quantity;
     let u = ing.unit || "";
-    const nameLower = (ing.name || "").toLowerCase();
-
-    // --- SPECIAL CASE: nutmeg "pinch" ---
-    // If it's nutmeg, no unit, and quantity is the default 1,
-    // treat it as "pinch" instead of "1".
-    const isNutmegFallback =
-      nameLower.includes("nutmeg") &&
-      (!u || !u.trim()) &&
-      (q === 1 || !q);
-
-    const hasNumericQty = q && q > 0 && !isNutmegFallback;
+    const hasNumericQty = q && q > 0;
 
     if (hasNumericQty) {
       ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
@@ -2211,12 +1663,11 @@ function openRecipeDetail(recipeId) {
 
       qtySpan.textContent = label;
       li.appendChild(qtySpan);
-    } else if (isNutmegFallback || isStapleList) {
-      // For nutmeg fallback → "pinch"
-      // For staple ingredients with no usable quantity → "to taste"
+    } else if (isStapleList) {
+      // No numeric quantity, and it's in the staples section → "to taste" in italics
       const sep = document.createTextNode(": ");
       const em = document.createElement("em");
-      em.textContent = isNutmegFallback ? "pinch" : "to taste";
+      em.textContent = "to taste";
       li.appendChild(sep);
       li.appendChild(em);
     }
@@ -2559,9 +2010,6 @@ function openCookDialog(dayId) {
     currentRecipe.servings;
 
   document
-    .getElementById("recipe-form")
-    .classList.remove("hidden");
-  document
     .getElementById("recipe-ingredients-section")
     .classList.remove("hidden");
   document
@@ -2569,6 +2017,7 @@ function openCookDialog(dayId) {
     .classList.remove("hidden");
 
   renderCurrentRecipeIngredients();
+
   // If we came from the long-press popup, drop straight into that ingredient
   if (
     typeof ingredientIndexToEdit === "number" &&
@@ -2581,552 +2030,122 @@ function openCookDialog(dayId) {
   }
 }
 
-// ---------- NEW ADD RECIPE FLOW (dialogs) ----------
-
-function createRecipeId() {
-  return "r_" + Date.now() + "_" + Math.random().toString(16).slice(2);
-}
-
-// Step 3: optional photo + method
-function openRecipeMetaDialog(recipeId) {
-  const recipe = recipes.find((r) => r.id === recipeId);
-  if (!recipe) return;
-
-  const overlay = document.createElement("div");
-  overlay.className = "recipe-detail-overlay";
-
-  const panel = document.createElement("div");
-  panel.className = "recipe-detail-panel";
-
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "recipe-detail-close";
-  closeBtn.textContent = "Close";
-  closeBtn.addEventListener("click", () => overlay.remove());
-  panel.appendChild(closeBtn);
-
-  const title = document.createElement("h2");
-  title.textContent = "Recipe extras";
-  panel.appendChild(title);
-
-  const photoLabel = document.createElement("label");
-  photoLabel.textContent = "Photo (optional)";
-  photoLabel.style.display = "block";
-
-  const photoInput = document.createElement("input");
-  photoInput.type = "file";
-  photoInput.accept = "image/*";
-  photoInput.style.marginTop = "0.5rem";
-
-  photoLabel.appendChild(photoInput);
-  panel.appendChild(photoLabel);
-
-  const methodLabel = document.createElement("label");
-  methodLabel.textContent = "Method / steps (one step per line)";
-  methodLabel.style.display = "block";
-  methodLabel.style.marginTop = "1rem";
-
-  const methodTextarea = document.createElement("textarea");
-  methodTextarea.rows = 6;
-  methodTextarea.style.width = "100%";
-  methodTextarea.placeholder = "Step 1...\nStep 2...\nStep 3...";
-  methodLabel.appendChild(methodTextarea);
-  panel.appendChild(methodLabel);
-
-  const btnRow = document.createElement("div");
-  btnRow.className = "barcode-scanner-actions";
-
-  const skipBtn = document.createElement("button");
-  skipBtn.type = "button";
-  skipBtn.className = "secondary";
-  skipBtn.textContent = "Skip";
-  skipBtn.addEventListener("click", () => overlay.remove());
-
-  const saveBtn = document.createElement("button");
-  saveBtn.type = "button";
-  saveBtn.textContent = "Save";
-
-  function finishSave(imageUrl) {
-    const methodText = methodTextarea.value || "";
-    if (methodText.trim()) {
-      recipe.instructions = methodText
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
-    }
-
-    if (imageUrl) {
-      recipe.imageUrl = imageUrl;
-    }
-
-    saveState();
-    renderRecipesList();
-    overlay.remove();
-  }
-
-  saveBtn.addEventListener("click", () => {
-    const file = photoInput.files && photoInput.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        finishSave(e.target.result);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      finishSave(null);
-    }
-  });
-
-  btnRow.appendChild(skipBtn);
-  btnRow.appendChild(saveBtn);
-  panel.appendChild(btnRow);
-
-  overlay.appendChild(panel);
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-
-  document.body.appendChild(overlay);
-}
-
-// Step 2: ingredients dialog
-function openAddRecipeIngredientsDialog(tempRecipe) {
-  const overlay = document.createElement("div");
-  overlay.className = "recipe-detail-overlay";
-
-  const panel = document.createElement("div");
-  panel.className = "recipe-detail-panel";
-
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "recipe-detail-close";
-  closeBtn.textContent = "Close";
-  closeBtn.addEventListener("click", () => overlay.remove());
-  panel.appendChild(closeBtn);
-
-  const title = document.createElement("h2");
-  title.textContent = `Ingredients for "${tempRecipe.name}"`;
-  panel.appendChild(title);
-
-  const ingForm = document.createElement("div");
-  ingForm.className = "subpanel";
-
-  const nameLabel = document.createElement("label");
-  nameLabel.textContent = "Item name";
-  nameLabel.style.display = "block";
-
-  const nameInput = document.createElement("input");
-  nameInput.type = "text";
-  nameInput.style.width = "100%";
-  nameInput.id = "new-recipe-ing-name";
-
-  nameLabel.appendChild(nameInput);
-  ingForm.appendChild(nameLabel);
-
-  const grid = document.createElement("div");
-  grid.className = "grid-2";
-
-  const qtyLabel = document.createElement("label");
-  qtyLabel.textContent = "Quantity";
-  qtyLabel.style.display = "block";
-
-  const qtyInput = document.createElement("input");
-  qtyInput.type = "number";
-  qtyInput.min = "0";
-  qtyInput.step = "0.1";
-  qtyInput.value = "1";
-  qtyInput.style.width = "100%";
-
-  qtyLabel.appendChild(qtyInput);
-  grid.appendChild(qtyLabel);
-
-  const unitLabel = document.createElement("label");
-  unitLabel.textContent = "Unit";
-  unitLabel.style.display = "block";
-
-  const unitSelect = document.createElement("select");
-  [
-    { value: "", label: "(none)" },
-    { value: "g", label: "g" },
-    { value: "kg", label: "kg" },
-    { value: "ml", label: "ml" },
-    { value: "l", label: "l" },
-    { value: "tsp", label: "tsp" },
-    { value: "tbsp", label: "tbsp" },
-    { value: "pack", label: "pack" },
-    { value: "packs", label: "packs" },
-    { value: "pcs", label: "pcs" },
-  ].forEach((u) => {
-    const opt = document.createElement("option");
-    opt.value = u.value;
-    opt.textContent = u.label;
-    unitSelect.appendChild(opt);
-  });
-
-  unitSelect.style.width = "100%";
-  unitLabel.appendChild(unitSelect);
-  grid.appendChild(unitLabel);
-
-  ingForm.appendChild(grid);
-  panel.appendChild(ingForm);
-
-  const listTitle = document.createElement("h3");
-  listTitle.textContent = "Ingredients added so far";
-  panel.appendChild(listTitle);
-
-  const list = document.createElement("ul");
-  list.className = "recipe-detail-ingredients";
-  panel.appendChild(list);
-
-  const btnRow = document.createElement("div");
-  btnRow.className = "barcode-scanner-actions";
-
-  const addMoreBtn = document.createElement("button");
-  addMoreBtn.type = "button";
-  addMoreBtn.className = "secondary";
-  addMoreBtn.textContent = "Add next ingredient";
-
-  const confirmBtn = document.createElement("button");
-  confirmBtn.type = "button";
-  confirmBtn.textContent = "Confirm";
-
-  const workingRecipe = {
-    id: tempRecipe.id,
-    name: tempRecipe.name,
-    servings: tempRecipe.servings,
-    ingredients: [],
-    instructions: [],
-    imageUrl: "",
-    sourceUrl: "",
-  };
-
-  // So the existing import-from-text flow can still use currentRecipe if needed
-  currentRecipe = workingRecipe;
-
-  function renderList() {
-    list.innerHTML = "";
-    workingRecipe.ingredients.forEach((ing) => {
-      const li = document.createElement("li");
-      let label = ing.name || "";
-      if (ing.quantity && ing.quantity > 0) {
-        const { quantity, unit } = autoCompactQuantityUnit(
-          ing.quantity,
-          ing.unit || ""
-        );
-        const compactUnits = ["g", "kg", "ml", "l"];
-        if (!unit) {
-          label += `: ${quantity}`;
-        } else if (compactUnits.includes(unit)) {
-          label += `: ${quantity}${unit}`;
-        } else {
-          label += `: ${quantity} ${unit}`;
-        }
-      }
-      li.textContent = label;
-      list.appendChild(li);
-    });
-  }
-
-  function addIngredientFromForm() {
-    const name = nameInput.value.trim();
-    const qty = parseFloat(qtyInput.value || "0");
-    const unit = unitSelect.value || "";
-
-    if (!name) {
-      alert("Please enter an item name.");
-      return false;
-    }
-    if (!qty || qty <= 0 || Number.isNaN(qty)) {
-      alert("Please enter a valid quantity.");
-      return false;
-    }
-
-    workingRecipe.ingredients.push({
-      name: titleCase(name),
-      quantity: qty,
-      unit,
-    });
-
-    nameInput.value = "";
-    qtyInput.value = "1";
-    unitSelect.value = "";
-    nameInput.focus();
-
-    renderList();
-    return true;
-  }
-
-  addMoreBtn.addEventListener("click", () => {
-    addIngredientFromForm();
-  });
-
-  confirmBtn.addEventListener("click", () => {
-    // Try to add whatever is in the boxes (if anything).
-    if (nameInput.value.trim()) {
-      const ok = addIngredientFromForm();
-      if (!ok) return;
-    }
-
-    if (!workingRecipe.ingredients.length) {
-      alert("Add at least one ingredient first.");
-      return;
-    }
-
-    workingRecipe.ingredients = mergeDuplicateIngredientsInList(
-      workingRecipe.ingredients
-    );
-
-    recipes.push(workingRecipe);
-    saveState();
-    renderRecipesList();
-
-    overlay.remove();
-    openRecipeMetaDialog(workingRecipe.id);
-  });
-
-  btnRow.appendChild(addMoreBtn);
-  btnRow.appendChild(confirmBtn);
-  panel.appendChild(btnRow);
-
-  overlay.appendChild(panel);
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-
-  document.body.appendChild(overlay);
-  nameInput.focus();
-}
-
-// Step 1: name + servings dialog
-function openAddRecipeDialog() {
-  const overlay = document.createElement("div");
-  overlay.className = "recipe-detail-overlay";
-
-  const panel = document.createElement("div");
-  panel.className = "recipe-detail-panel";
-
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "recipe-detail-close";
-  closeBtn.textContent = "Close";
-  closeBtn.addEventListener("click", () => overlay.remove());
-  panel.appendChild(closeBtn);
-
-  const title = document.createElement("h2");
-  title.textContent = "Add recipe";
-  panel.appendChild(title);
-
-  const nameLabel = document.createElement("label");
-  nameLabel.textContent = "Recipe name";
-  nameLabel.style.display = "block";
-
-  const nameInput = document.createElement("input");
-  nameInput.type = "text";
-  nameInput.style.width = "100%";
-
-  nameLabel.appendChild(nameInput);
-  panel.appendChild(nameLabel);
-
-  const servingsLabel = document.createElement("label");
-  servingsLabel.textContent = "Number of servings";
-  servingsLabel.style.display = "block";
-  servingsLabel.style.marginTop = "1rem";
-
-  const servingsInput = document.createElement("input");
-  servingsInput.type = "number";
-  servingsInput.min = "1";
-  servingsInput.step = "1";
-  servingsInput.value = "2";
-  servingsInput.style.width = "100%";
-
-  servingsLabel.appendChild(servingsInput);
-  panel.appendChild(servingsLabel);
-
-  const btnRow = document.createElement("div");
-  btnRow.className = "barcode-scanner-actions";
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.className = "secondary";
-  cancelBtn.textContent = "Cancel";
-  cancelBtn.addEventListener("click", () => overlay.remove());
-
-  const nextBtn = document.createElement("button");
-  nextBtn.type = "button";
-  nextBtn.textContent = "Next";
-
-  nextBtn.addEventListener("click", () => {
-    const name = nameInput.value.trim();
-    let servings = parseInt(servingsInput.value || "0", 10);
-
-    if (!name) {
-      alert("Please enter a recipe name.");
-      return;
-    }
-    if (!servings || servings <= 0 || Number.isNaN(servings)) {
-      alert("Please enter how many servings this recipe makes.");
-      return;
-    }
-
-    const tempRecipe = {
-      id: createRecipeId(),
-      name: titleCase(name),
-      servings,
-    };
-
-    overlay.remove();
-    openAddRecipeIngredientsDialog(tempRecipe);
-  });
-
-  btnRow.appendChild(cancelBtn);
-  btnRow.appendChild(nextBtn);
-  panel.appendChild(btnRow);
-
-  overlay.appendChild(panel);
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-
-  document.body.appendChild(overlay);
-  nameInput.focus();
-}
-
     // ---------- MEAL PLAN ----------
 
- function renderMealPlan() {
-  const container = document.getElementById("meal-plan-container");
-  if (!container) return;
+    function renderMealPlan() {
+      const container = document.getElementById("meal-plan-container");
+      if (!container) return;
+      container.innerHTML = "";
 
-  // Clear any old content
-  container.innerHTML = "";
+      if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
 
-  // If nothing stored yet, build Monday–Sunday
-  if (!mealPlan || !mealPlan.length) {
-    initDefaultMealPlan();
-  }
-
-  // If recipes were deleted, clean up the meal plan
-  const validIds = new Set(recipes.map((r) => r.id));
-  mealPlan.forEach((entry) => {
-    if (entry.recipeId && !validIds.has(entry.recipeId)) {
-      entry.recipeId = "";
-      entry.servings = 0;
-    }
-  });
-
-  // Build one row per day
-  mealPlan.forEach((entry) => {
-    const row = document.createElement("div");
-    row.className = "subpanel";
-
-    // Day label (e.g. Monday)
-    const label = document.createElement("h3");
-    label.textContent = entry.dayLabel;
-    row.appendChild(label);
-
-    // --- Recipe dropdown ---
-    const recipeLabel = document.createElement("label");
-    recipeLabel.textContent = "Recipe";
-
-    const select = document.createElement("select");
-    select.dataset.dayId = entry.dayId;
-
-    const defaultOpt = document.createElement("option");
-    defaultOpt.value = "";
-    defaultOpt.textContent = "(no meal selected)";
-    select.appendChild(defaultOpt);
-
-    // Add recipes into dropdown
-    recipes
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .forEach((recipe) => {
-        const opt = document.createElement("option");
-        opt.value = recipe.id;
-        opt.textContent = `${recipe.name} (serves ${recipe.servings})`;
-        select.appendChild(opt);
+      const validIds = new Set(recipes.map((r) => r.id));
+      mealPlan.forEach((entry) => {
+        if (entry.recipeId && !validIds.has(entry.recipeId)) {
+          entry.recipeId = "";
+          entry.servings = 0;
+        }
       });
 
-    select.value = entry.recipeId || "";
+      mealPlan.forEach((entry) => {
+        const row = document.createElement("div");
+        row.className = "subpanel";
 
-    select.addEventListener("change", (e) => {
-      const id = e.target.dataset.dayId;
-      const planEntry = mealPlan.find((p) => p.dayId === id);
-      if (!planEntry) return;
+        const label = document.createElement("h3");
+        label.textContent = entry.dayLabel;
+        row.appendChild(label);
 
-      planEntry.recipeId = e.target.value;
+        const recipeLabel = document.createElement("label");
+        recipeLabel.textContent = "Recipe";
 
-      if (!planEntry.recipeId) {
-        planEntry.servings = 0;
-        const sInput = document.querySelector(
-          `input[data-day-id="${id}"]`
-        );
-        if (sInput) sInput.value = "0";
-      }
+        const select = document.createElement("select");
+        select.dataset.dayId = entry.dayId;
 
-      saveState();
-      updateCookButtonState();
-    });
+        const defaultOpt = document.createElement("option");
+        defaultOpt.value = "";
+        defaultOpt.textContent = "(no meal selected)";
+        select.appendChild(defaultOpt);
 
-    recipeLabel.appendChild(select);
-    row.appendChild(recipeLabel);
+        recipes
+          .slice()
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .forEach((recipe) => {
+            const opt = document.createElement("option");
+            opt.value = recipe.id;
+            opt.textContent = `${recipe.name} (serves ${recipe.servings})`;
+            select.appendChild(opt);
+          });
 
-    // --- Servings input ---
-    const servingsLabel = document.createElement("label");
-    servingsLabel.textContent = "Planned servings";
+        select.value = entry.recipeId || "";
+        select.addEventListener("change", (e) => {
+         const id = e.target.dataset.dayId;
+         const planEntry = mealPlan.find((p) => p.dayId === id);
+         if (!planEntry) return;
+         planEntry.recipeId = e.target.value;
+         if (!planEntry.recipeId) {
+          planEntry.servings = 0;
+          const sInput = document.querySelector(
+            `input[data-day-id="${id}"]`
+          );
+          if (sInput) sInput.value = "0";
+        }
+        saveState();
+        updateCookBtnState();
+      });
 
-    const servingsInput = document.createElement("input");
-    servingsInput.type = "number";
-    servingsInput.min = "0";
-    servingsInput.step = "1";
-    servingsInput.dataset.dayId = entry.dayId;
-    servingsInput.value =
-      entry.servings && entry.servings > 0 ? entry.servings : "0";
+        recipeLabel.appendChild(select);
+        row.appendChild(recipeLabel);
 
-    servingsInput.addEventListener("change", (e) => {
-      const id = e.target.dataset.dayId;
-      const planEntry = mealPlan.find((p) => p.dayId === id);
-      if (!planEntry) return;
+        const servingsLabel = document.createElement("label");
+        servingsLabel.textContent = "Planned servings";
 
-      let val = parseFloat(e.target.value || "0");
-      if (isNaN(val) || val < 0) val = 0;
+        const servingsInput = document.createElement("input");
+        servingsInput.type = "number";
+        servingsInput.min = "0";
+        servingsInput.step = "1";
+        servingsInput.dataset.dayId = entry.dayId;
+        servingsInput.value =
+          entry.servings && entry.servings > 0 ? entry.servings : "0";
 
-      planEntry.servings = val;
-      e.target.value = val === 0 ? "0" : String(val);
+        servingsInput.addEventListener("change", (e) => {
+  const id = e.target.dataset.dayId;
+  const planEntry = mealPlan.find((p) => p.dayId === id);
+  if (!planEntry) return;
+  let val = parseFloat(e.target.value || "0");
+  if (isNaN(val) || val < 0) val = 0;
+  planEntry.servings = val;
+  e.target.value = val === 0 ? "0" : String(val);
+  saveState();
+  updateCookBtnState();
+});
 
-      saveState();
-      updateCookButtonState();
-    });
+        servingsLabel.appendChild(servingsInput);
+        row.appendChild(servingsLabel);
 
-    servingsLabel.appendChild(servingsInput);
-    row.appendChild(servingsLabel);
+                // "I'm cooking this" button
+        const cookBtn = document.createElement("button");
+        cookBtn.type = "button";
+        cookBtn.textContent = "I'm cooking this";
+        cookBtn.className = "secondary";
+        cookBtn.style.marginTop = "0.5rem";
 
-    // --- "I'm cooking this" button ---
-    const cookBtn = document.createElement("button");
-    cookBtn.type = "button";
-    cookBtn.textContent = "I'm cooking this";
-    cookBtn.className = "secondary";
-    cookBtn.style.marginTop = "0.5rem";
+        // Enable only if recipe + servings selected
+        function updateCookBtnState() {
+          const hasRecipe = !!entry.recipeId;
+          const hasServings = entry.servings && entry.servings > 0;
+          cookBtn.disabled = !(hasRecipe && hasServings);
+        }
 
-    cookBtn.addEventListener("click", () => {
-      openCookDialog(entry.dayId);
-    });
+        cookBtn.addEventListener("click", () => {
+          openCookDialog(entry.dayId);
+        });
 
-    row.appendChild(cookBtn);
+        updateCookBtnState();
+        row.appendChild(cookBtn);
 
-    // Helper: enable / disable cook button
-    function updateCookButtonState() {
-      const hasRecipe = !!entry.recipeId;
-      const hasServings = entry.servings && entry.servings > 0;
-      cookBtn.disabled = !(hasRecipe && hasServings);
+        container.appendChild(row);
+      });
     }
-
-    // Set initial state for this row
-    updateCookButtonState();
-
-    container.appendChild(row);
-  });
-}
 
     // ---------- SHOPPING LIST ----------
 function roundUpForShopping(quantity, unit) {
@@ -3467,507 +2486,492 @@ function openBarcodeScanner() {
   });
 }
 
-// ---------- NAVIGATION ----------
-function showPage(pageId) {
-  const pages = document.querySelectorAll(".page");
-  const navButtons = document.querySelectorAll(".app-nav button");
+    // ---------- NAVIGATION ----------
 
-  pages.forEach((page) => {
-    if (!page) return;
-    page.classList.toggle("hidden", page.id !== pageId);
-  });
+    function showPage(pageId) {
+      const pages = document.querySelectorAll(".page");
+      const navButtons = document.querySelectorAll(".app-nav button");
 
-  navButtons.forEach((btn) => {
-    if (!btn) return;
-    const controls = btn.getAttribute("aria-controls");
-    btn.setAttribute(
-      "aria-selected",
-      controls === pageId ? "true" : "false"
-    );
-  });
-}
-
-// ---------- INIT EVERYTHING ONCE THE PAGE IS READY ----------
-
-document.addEventListener("DOMContentLoaded", () => {
-  // Load saved data (inventory, recipes, meal plan, staples, barcodes)
-  loadState();
-
-  // === NAV BAR BUTTONS ===
-  document.getElementById("nav-inventory")?.addEventListener("click", () => {
-    showPage("page-inventory");
-  });
-
-  document.getElementById("nav-recipes")?.addEventListener("click", () => {
-    showPage("page-recipes");
-  });
-
-  document.getElementById("nav-mealplan")?.addEventListener("click", () => {
-    showPage("page-mealplan");
-  });
-
-  document.getElementById("nav-shopping")?.addEventListener("click", () => {
-    showPage("page-shopping");
-  });
-
-  // Start on Inventory
-  showPage("page-inventory");
-
-  // === INVENTORY EVENTS ===
-  const invForm = document.getElementById("inventory-form");
-  const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
-  const addInventoryBtn = document.getElementById("add-inventory-item-btn");
-  const realScanBtn = document.getElementById("real-scan-btn");
-
-  // New "Add item" button → opens dialog
-  if (addInventoryBtn) {
-    addInventoryBtn.addEventListener("click", () => {
-      openAddInventoryItemDialog();
-    });
-  }
-
-  // Scan barcode button → opens camera scanner
-  if (realScanBtn) {
-    realScanBtn.addEventListener("click", openBarcodeScanner);
-  }
-
-  if (invForm) {
-    invForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-
-      const nameEl = document.getElementById("inv-name");
-      const qtyEl = document.getElementById("inv-qty");
-      const unitEl = document.getElementById("inv-unit");
-
-      const name = nameEl.value.trim();
-      const qty = parseFloat(qtyEl.value || "0");
-      const unit = unitEl.value || "";
-
-      if (!name) {
-        alert("Please enter an item name.");
-        return;
-      }
-      if (!qty || qty <= 0 || Number.isNaN(qty)) {
-        alert("Please enter a valid quantity.");
-        return;
-      }
-
-      if (editingInventoryKey) {
-        setInventoryItemExact(editingInventoryKey, name, qty, unit);
-      } else {
-        upsertInventoryItem(name, qty, unit);
-      }
-
-      renderInventory();
-      renderInventoryNameSuggestions();
-      saveState();
-      clearInventoryEditState();
-    });
-  }
-
-  if (cancelInvEditBtn) {
-    cancelInvEditBtn.addEventListener("click", () => {
-      clearInventoryEditState();
-    });
-  }
-
-  // === RECIPES: OLD INLINE FORM (still works / safe, even if hidden) ===
-  const startRecipeBtn = document.getElementById("start-recipe");
-  const cancelRecipeEditBtn = document.getElementById("cancel-recipe-edit");
-  const ingredientForm = document.getElementById("ingredient-form");
-  const cancelIngredientEditBtn = document.getElementById("cancel-ingredient-edit");
-
-  if (startRecipeBtn) {
-    startRecipeBtn.addEventListener("click", () => {
-      const nameEl = document.getElementById("recipe-name");
-      const servingsEl = document.getElementById("recipe-servings");
-
-      const name = (nameEl.value || "").trim();
-      const servings = parseFloat(servingsEl.value || "0");
-
-      if (!name) {
-        alert("Please enter a recipe name first.");
-        return;
-      }
-      if (!servings || servings <= 0 || Number.isNaN(servings)) {
-        alert("Please enter how many servings the base recipe makes.");
-        return;
-      }
-
-      const id = editingRecipeId || ("r_" + Date.now());
-
-      currentRecipe = {
-        id,
-        name,
-        servings,
-        ingredients: [],
-        instructions:
-          currentRecipe && currentRecipe.instructions
-            ? currentRecipe.instructions
-            : [],
-        imageUrl:
-          currentRecipe && currentRecipe.imageUrl
-            ? currentRecipe.imageUrl
-            : "",
-        sourceUrl:
-          currentRecipe && currentRecipe.sourceUrl
-            ? currentRecipe.sourceUrl
-            : "",
-      };
-
-      document
-        .getElementById("recipe-ingredients-section")
-        .classList.remove("hidden");
-      document
-        .getElementById("cancel-recipe-edit")
-        .classList.remove("hidden");
-
-      renderCurrentRecipeIngredients();
-      clearIngredientEditState();
-    });
-  }
-
-  if (cancelRecipeEditBtn) {
-    cancelRecipeEditBtn.addEventListener("click", () => {
-      clearRecipeEditState();
-    });
-  }
-
-  if (ingredientForm) {
-    ingredientForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if (!currentRecipe) {
-        alert(
-          "Start a recipe first (name + servings, then 'Start new recipe')."
-        );
-        return;
-      }
-
-      const nameEl = document.getElementById("ing-name");
-      const qtyEl = document.getElementById("ing-qty");
-      const unitEl = document.getElementById("ing-unit");
-
-      const name = nameEl.value.trim();
-      const qty = parseFloat(qtyEl.value || "0");
-      const unit = unitEl.value || "";
-
-      if (!name) {
-        alert("Please enter an ingredient name.");
-        return;
-      }
-      if (!qty || qty <= 0 || Number.isNaN(qty)) {
-        alert("Please enter a valid quantity.");
-        return;
-      }
-
-      const newIng = { name: titleCase(name), quantity: qty, unit };
-
-      if (
-        typeof editingIngredientIndex === "number" &&
-        editingIngredientIndex >= 0 &&
-        currentRecipe.ingredients[editingIngredientIndex]
-      ) {
-        currentRecipe.ingredients[editingIngredientIndex] = newIng;
-      } else {
-        currentRecipe.ingredients.push(newIng);
-      }
-
-      renderCurrentRecipeIngredients();
-      clearIngredientEditState();
-    });
-  }
-
-  if (cancelIngredientEditBtn) {
-    cancelIngredientEditBtn.addEventListener("click", () => {
-      clearIngredientEditState();
-    });
-  }
-
-  // --- Recipe buttons: Add + Import (NEW top buttons) ---
-  const addRecipeBtn = document.getElementById("add-recipe-btn");
-  const importRecipeBtn = document.getElementById("import-recipe-btn");
-  const importCard = document.getElementById("recipe-import-card");
-
-  if (addRecipeBtn) {
-    addRecipeBtn.addEventListener("click", () => {
-      showPage("page-recipes");
-      openAddRecipeDialog(); // your new multi-step Add Recipe dialog
-    });
-  }
-
-  if (importRecipeBtn && importCard) {
-    importRecipeBtn.addEventListener("click", () => {
-      showPage("page-recipes");
-      importCard.classList.toggle("hidden");
-      if (!importCard.classList.contains("hidden")) {
-        importCard.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
-  }
-
-  // === IMPORT INGREDIENTS (BIG TEXT AREA) ===
-  const importBtn = document.getElementById("import-ingredients-btn");
-  if (importBtn) {
-    importBtn.addEventListener("click", () => {
-      if (!currentRecipe) {
-        alert(
-          "Start a recipe first (name + servings, then 'Start new recipe')."
-        );
-        return;
-      }
-
-      const textarea = document.getElementById("import-text");
-      const raw = textarea.value || "";
-      const lines = raw
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
-
-      let imported = 0;
-
-      const bbcNames =
-        lastImportedRecipeMeta &&
-        Array.isArray(lastImportedRecipeMeta.ingredientNames) &&
-        lastImportedRecipeMeta.ingredientNames.length
-          ? lastImportedRecipeMeta.ingredientNames
-          : null;
-
-      lines.forEach((line) => {
-        let parsed;
-
-        if (bbcNames) {
-          parsed = parseBbcIngredient(line, bbcNames);
-        } else {
-          parsed = parseIngredientLine(line);
-        }
-
-        if (!parsed || !parsed.name) return;
-
-        if (parsed.quantity !== null && parsed.quantity !== undefined) {
-          if (Number.isNaN(parsed.quantity) || parsed.quantity <= 0) return;
-        }
-
-        currentRecipe.ingredients.push(parsed);
-        imported++;
+      pages.forEach((page) => {
+        if (!page) return;
+        page.classList.toggle("hidden", page.id !== pageId);
       });
 
-      renderCurrentRecipeIngredients();
-      if (imported) {
-        alert(`Imported ${imported} ingredient(s).`);
-        textarea.value = "";
-      } else {
-        alert("No valid ingredients found.");
-      }
-    });
-  }
-
-  // === SAVE RECIPE BUTTON ===
-  const saveRecipeBtn = document.getElementById("save-recipe");
-  if (saveRecipeBtn) {
-    saveRecipeBtn.addEventListener("click", () => {
-      if (!currentRecipe) {
-        alert("No recipe in progress.");
-        return;
-      }
-      if (
-        !currentRecipe.ingredients ||
-        !currentRecipe.ingredients.length
-      ) {
-        alert("Add at least one ingredient.");
-        return;
-      }
-
-      if (
-        lastImportedRecipeMeta &&
-        Array.isArray(lastImportedRecipeMeta.instructions) &&
-        (!currentRecipe.instructions ||
-          !currentRecipe.instructions.length)
-      ) {
-        currentRecipe.instructions =
-          lastImportedRecipeMeta.instructions.slice();
-      }
-
-      if (lastImportedRecipeMeta) {
-        if (!currentRecipe.imageUrl && lastImportedRecipeMeta.image) {
-          currentRecipe.imageUrl = lastImportedRecipeMeta.image;
-        }
-        if (!currentRecipe.sourceUrl && lastImportedRecipeMeta.sourceUrl) {
-          currentRecipe.sourceUrl = lastImportedRecipeMeta.sourceUrl;
-        }
-      }
-
-      currentRecipe.ingredients = mergeDuplicateIngredientsInList(
-        currentRecipe.ingredients || []
-      );
-
-      if (editingRecipeId) {
-        const idx = recipes.findIndex(
-          (r) => r.id === editingRecipeId
+      navButtons.forEach((btn) => {
+        if (!btn) return;
+        const controls = btn.getAttribute("aria-controls");
+        btn.setAttribute(
+          "aria-selected",
+          controls === pageId ? "true" : "false"
         );
-        if (idx !== -1) {
-          recipes[idx] = {
-            id: editingRecipeId,
-            name: currentRecipe.name,
-            servings: currentRecipe.servings,
-            ingredients: currentRecipe.ingredients,
-            instructions: currentRecipe.instructions || [],
-            imageUrl: currentRecipe.imageUrl || "",
-            sourceUrl: currentRecipe.sourceUrl || "",
-          };
-        }
-      } else {
-        recipes.push(currentRecipe);
-      }
-
-      clearRecipeEditState();
-      renderRecipesList();
-      saveState();
-    });
-  }
-
-  // === BBC IMPORT (IMAGE + TITLE + INGREDIENTS + METHOD) ===
-  const recipeImportUrlInput = document.getElementById("recipe-import-url");
-  const recipeImageFetchBtn = document.getElementById("recipe-fetch-image");
-  const recipeImportStatus = document.getElementById("recipe-import-status");
-  const recipeImagePreview = document.getElementById("recipe-image-preview");
-  const recipeImportTextarea = document.getElementById("import-text");
-  const recipeClearBtn = document.getElementById("recipe-clear-import");
-
-  if (
-    recipeImportUrlInput &&
-    recipeImageFetchBtn &&
-    recipeImportStatus &&
-    recipeImagePreview &&
-    recipeImportTextarea
-  ) {
-    if (recipeClearBtn) {
-      recipeClearBtn.addEventListener("click", () => {
-        recipeImportUrlInput.value = "";
-        recipeImportStatus.textContent = "";
-        recipeImportStatus.classList.remove("error");
-        recipeImagePreview.style.display = "none";
-        recipeImagePreview.src = "";
-        recipeImportTextarea.value = "";
-        lastImportedRecipeMeta = null;
       });
     }
 
-    recipeImageFetchBtn.addEventListener("click", async () => {
-      const rawUrl = recipeImportUrlInput.value.trim();
-      if (!rawUrl) {
-        recipeImportStatus.textContent = "Please paste a recipe URL first.";
-        recipeImportStatus.classList.add("error");
-        recipeImagePreview.style.display = "none";
-        return;
+    // ---------- INIT ----------
+
+ document.addEventListener("DOMContentLoaded", () => {
+  loadState();
+
+  // Hamburger + nav panel
+  const menuToggle = document.getElementById("menu-toggle");
+  const appNav = document.getElementById("app-nav");
+
+  if (menuToggle && appNav) {
+    menuToggle.addEventListener("click", () => {
+      const isOpen = appNav.classList.toggle("nav-open");
+      menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+  }
+  
+   // Nav
+  document
+    .getElementById("nav-inventory")
+    .addEventListener("click", () => {
+      showPage("page-inventory");
+      if (appNav) appNav.classList.remove("nav-open");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+    });
+
+  document
+    .getElementById("nav-recipes")
+    .addEventListener("click", () => {
+      showPage("page-recipes");
+      if (appNav) appNav.classList.remove("nav-open");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+    });
+
+  document
+    .getElementById("nav-mealplan")
+    .addEventListener("click", () => {
+      showPage("page-mealplan");
+      if (appNav) appNav.classList.remove("nav-open");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+    });
+
+  document
+    .getElementById("nav-shopping")
+    .addEventListener("click", () => {
+      showPage("page-shopping");
+      if (appNav) appNav.classList.remove("nav-open");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+    });
+
+  showPage("page-inventory");
+
+        // Inventory events
+      const invForm = document.getElementById("inventory-form");
+      const searchInput = document.getElementById("inventory-search");
+      const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
+      const fakeScanBtn = document.getElementById("fake-scan-btn");
+      const realScanBtn = document.getElementById("real-scan-btn");
+
+      if (fakeScanBtn) {
+        fakeScanBtn.addEventListener("click", () => {
+          handleFakeBarcodeScan();
+        });
       }
 
-      recipeImportStatus.textContent = "Fetching recipe…";
-      recipeImportStatus.classList.remove("error");
-      recipeImagePreview.style.display = "none";
-      lastImportedRecipeMeta = null;
+      if (realScanBtn) {
+        realScanBtn.addEventListener("click", () => {
+          openBarcodeScanner();
+        });
+      }
 
-      try {
-        const endpoint = WORKER_BASE + "?url=" + encodeURIComponent(rawUrl);
-        const res = await fetch(endpoint);
-        if (!res.ok) {
-          throw new Error("Proxy returned " + res.status);
-        }
-        const data = await res.json();
+      invForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const name = document.getElementById("inv-name").value.trim();
+        const qty = parseFloat(
+          document.getElementById("inv-qty").value || "0"
+        );
+        const unit = document.getElementById("inv-unit").value || "";
 
-        if (!data || data.ok === false) {
-          recipeImportStatus.textContent =
-            (data && data.error) || "Recipe not found on that page.";
-          recipeImportStatus.classList.add("error");
-          recipeImagePreview.style.display = "none";
+        if (!name || qty <= 0) {
+          alert("Please enter a valid name and quantity.");
           return;
         }
 
-        if (data.image) {
-          recipeImagePreview.src = data.image;
-          recipeImagePreview.style.display = "block";
+        if (editingInventoryKey) {
+          setInventoryItemExact(editingInventoryKey, name, qty, unit);
+          clearInventoryEditState();
         } else {
-          recipeImagePreview.style.display = "none";
+          upsertInventoryItem(name, qty, unit);
+          document.getElementById("inv-name").value = "";
+          document.getElementById("inv-qty").value = "1";
+          document.getElementById("inv-unit").value = "";
         }
 
-        const titleInput = document.getElementById("recipe-name");
-        if (titleInput && !titleInput.value.trim() && data.title) {
-          titleInput.value = tidyRecipeTitle(data.title);
+        renderInventory();
+        renderInventoryNameSuggestions();
+        saveState();
+      });
+
+      cancelInvEditBtn.addEventListener("click", () => {
+        clearInventoryEditState();
+      });
+
+      searchInput.addEventListener("input", () => {
+        inventoryFilter = searchInput.value || "";
+        renderInventory();
+      });
+
+            // Recipes events
+      const startRecipeBtn = document.getElementById("start-recipe");
+      const ingSection = document.getElementById("recipe-ingredients-section");
+      const cancelRecipeEditBtn = document.getElementById("cancel-recipe-edit");
+      const importBtn = document.getElementById("import-ingredients-btn");
+
+      startRecipeBtn.addEventListener("click", () => {
+        const name = document.getElementById("recipe-name").value.trim();
+        const servings = parseFloat(
+          document.getElementById("recipe-servings").value || "0"
+        );
+        if (!name || servings <= 0) {
+          alert("Please enter a recipe name and servings.");
+          return;
         }
 
-        const servingsInput = document.getElementById("recipe-servings");
-        if (servingsInput && data.servings) {
-          const currentVal = servingsInput.value.trim();
-          if (!currentVal || currentVal === "2") {
-            const parsed = parseServingsNumber(data.servings);
-            if (parsed && parsed > 0) {
-              servingsInput.value = String(parsed);
-            }
-          }
-        }
-
-        if (Array.isArray(data.ingredients) && data.ingredients.length) {
-          recipeImportTextarea.value = data.ingredients.join("\n");
-        }
-
-        const ingredientNames = Array.isArray(data.ingredientNames)
-          ? data.ingredientNames
-          : [];
-
-        if (Array.isArray(data.instructions) && data.instructions.length) {
-          lastImportedRecipeMeta = {
-            instructions: data.instructions.slice(),
-            sourceUrl: data.source || rawUrl,
-            servingsText: data.servings || "",
-            image: data.image || "",
-            title: data.title || "",
-            ingredientNames,
+        if (!currentRecipe || !editingRecipeId) {
+          currentRecipe = {
+            id: editingRecipeId || String(Date.now()),
+            name: titleCase(name),
+            servings,
+            ingredients: [],
           };
         } else {
-          lastImportedRecipeMeta = {
-            instructions: [],
-            sourceUrl: data.source || rawUrl,
-            servingsText: data.servings || "",
-            image: data.image || "",
-            title: data.title || "",
-            ingredientNames,
-          };
+          currentRecipe.name = titleCase(name);
+          currentRecipe.servings = servings;
         }
 
-        recipeImportStatus.textContent =
-          "Recipe info loaded. Review, then click 'Import ingredients'.";
-        recipeImportStatus.classList.remove("error");
-      } catch (err) {
-        console.error(err);
-        recipeImportStatus.textContent = "Could not fetch recipe.";
-        recipeImportStatus.classList.add("error");
-        recipeImagePreview.style.display = "none";
-        lastImportedRecipeMeta = null;
-      }
-    });
+        ingSection.classList.remove("hidden");
+        renderCurrentRecipeIngredients();
+        if (editingRecipeId) {
+          cancelRecipeEditBtn.classList.remove("hidden");
+        } else {
+          cancelRecipeEditBtn.classList.add("hidden");
+        }
+        clearIngredientEditState();
+      });
+
+      cancelRecipeEditBtn.addEventListener("click", () => {
+        clearRecipeEditState();
+      });
+
+      const ingForm = document.getElementById("ingredient-form");
+      ingForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (!currentRecipe) {
+          alert("Start a recipe first.");
+          return;
+        }
+
+        const name = document.getElementById("ing-name").value.trim();
+        const qty = parseFloat(
+          document.getElementById("ing-qty").value || "0"
+        );
+        const unit = document.getElementById("ing-unit").value.trim();
+
+        if (!name || qty <= 0) {
+          alert("Please enter a valid ingredient name & quantity.");
+          return;
+        }
+
+        const cleanName = titleCase(name);
+
+        if (editingIngredientIndex !== null) {
+          currentRecipe.ingredients[editingIngredientIndex] = {
+            name: cleanName,
+            quantity: qty,
+            unit,
+          };
+          clearIngredientEditState();
+        } else {
+          currentRecipe.ingredients.push({
+            name: cleanName,
+            quantity: qty,
+            unit,
+          });
+        }
+
+        renderCurrentRecipeIngredients();
+      });
+
+      document
+        .getElementById("cancel-ingredient-edit")
+        .addEventListener("click", () => {
+          clearIngredientEditState();
+        });
+
+// Import ingredients from the big textarea,
+// using BBC-aware parser if we have BBC metadata.
+importBtn.addEventListener("click", () => {
+  if (!currentRecipe) {
+    alert(
+      "Start a recipe first (name + servings, then 'Start new recipe')."
+    );
+    return;
   }
 
-  // === MEAL PLAN / SHOPPING ===
-  const generateShoppingBtn = document.getElementById("generate-shopping-list");
-  if (generateShoppingBtn) {
-    generateShoppingBtn.addEventListener("click", () => {
-      generateShoppingList();
-      showPage("page-shopping");
-    });
-  }
+  const textarea = document.getElementById("import-text");
+  const raw = textarea.value || "";
+  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
-  // ✅ INITIAL RENDERS (this makes Meal plan & Shopping appear)
-  renderInventory();
-  renderInventoryNameSuggestions();
-  renderRecipesList();
-  renderMealPlan();
+  let imported = 0;
+
+  // If we recently fetched from BBC, use their clean ingredient names
+  const bbcNames =
+    lastImportedRecipeMeta &&
+    Array.isArray(lastImportedRecipeMeta.ingredientNames) &&
+    lastImportedRecipeMeta.ingredientNames.length
+      ? lastImportedRecipeMeta.ingredientNames
+      : null;
+
+  lines.forEach((line) => {
+    let parsed;
+
+    if (bbcNames) {
+      parsed = parseBbcIngredient(line, bbcNames);
+    } else {
+      parsed = parseIngredientLine(line);
+    }
+
+    if (!parsed || !parsed.name) return;
+    // Allow 0/empty quantity as “just name”, but if we have a number,
+    // it must be positive
+    if (parsed.quantity !== null && parsed.quantity !== undefined) {
+      if (Number.isNaN(parsed.quantity) || parsed.quantity <= 0) return;
+    }
+
+    currentRecipe.ingredients.push(parsed);
+    imported++;
+  });
+
+  renderCurrentRecipeIngredients();
+  if (imported) {
+    alert(`Imported ${imported} ingredient(s).`);
+    textarea.value = "";
+  } else {
+    alert("No valid ingredients found.");
+  }
 });
 
-// Keep service worker registration small & safe
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker
-    .register("./sw.js")
-    .catch(() => {});
+      document
+        .getElementById("save-recipe")
+        .addEventListener("click", () => {
+          if (!currentRecipe) {
+            alert("No recipe in progress.");
+            return;
+          }
+          if (
+            !currentRecipe.ingredients ||
+            !currentRecipe.ingredients.length
+          ) {
+            alert("Add at least one ingredient.");
+            return;
+          }
+
+          // If we imported from BBC and have method steps, attach them
+          if (
+            lastImportedRecipeMeta &&
+            Array.isArray(lastImportedRecipeMeta.instructions) &&
+            (!currentRecipe.instructions ||
+              !currentRecipe.instructions.length)
+          ) {
+            currentRecipe.instructions =
+              lastImportedRecipeMeta.instructions.slice();
+          }
+
+          // Attach image + source URL from BBC import if we have them
+          if (lastImportedRecipeMeta) {
+            if (!currentRecipe.imageUrl && lastImportedRecipeMeta.image) {
+              currentRecipe.imageUrl = lastImportedRecipeMeta.image;
+            }
+            if (
+              !currentRecipe.sourceUrl &&
+              lastImportedRecipeMeta.sourceUrl
+            ) {
+              currentRecipe.sourceUrl = lastImportedRecipeMeta.sourceUrl;
+            }
+          }
+
+          if (editingRecipeId) {
+            const idx = recipes.findIndex(
+              (r) => r.id === editingRecipeId
+            );
+            if (idx !== -1) {
+              recipes[idx] = {
+                id: editingRecipeId,
+                name: currentRecipe.name,
+                servings: currentRecipe.servings,
+                ingredients: currentRecipe.ingredients,
+                instructions: currentRecipe.instructions || [],
+                imageUrl: currentRecipe.imageUrl || "",
+                sourceUrl: currentRecipe.sourceUrl || "",
+              };
+            }
+          } else {
+            recipes.push(currentRecipe);
+          }
+
+          clearRecipeEditState();
+          renderRecipesList();
+          saveState();
+        });
+
+          // BBC Food / Good Food recipe import (image + title + ingredients + method)
+      const recipeImportUrlInput = document.getElementById("recipe-import-url");
+      const recipeImageFetchBtn = document.getElementById("recipe-fetch-image");
+      const recipeImportStatus = document.getElementById("recipe-import-status");
+      const recipeImagePreview = document.getElementById("recipe-image-preview");
+      const recipeImportTextarea = document.getElementById("import-text");
+      const recipeClearBtn = document.getElementById("recipe-clear-import");
+
+      if (
+        recipeImportUrlInput &&
+        recipeImageFetchBtn &&
+        recipeImportStatus &&
+        recipeImagePreview &&
+        recipeImportTextarea
+      ) {
+        recipeImageFetchBtn.addEventListener("click", async () => {
+          const rawUrl = recipeImportUrlInput.value.trim();
+          if (!rawUrl) {
+            recipeImportStatus.textContent = "Please paste a recipe URL first.";
+            recipeImportStatus.classList.add("error");
+            recipeImagePreview.style.display = "none";
+            return;
+          }
+
+          if (recipeClearBtn) {
+  recipeClearBtn.addEventListener("click", () => {
+    recipeImportUrlInput.value = "";
+    recipeImportStatus.textContent = "";
+    recipeImportStatus.classList.remove("error");
+
+    recipeImagePreview.style.display = "none";
+    recipeImagePreview.src = "";
+
+    recipeImportTextarea.value = "";
+
+    lastImportedRecipeMeta = null;
+  });
 }
+
+          recipeImportStatus.textContent = "Fetching recipe…";
+          recipeImportStatus.classList.remove("error");
+          recipeImagePreview.style.display = "none";
+          lastImportedRecipeMeta = null;
+
+          try {
+            const endpoint = WORKER_BASE + "?url=" + encodeURIComponent(rawUrl);
+            const res = await fetch(endpoint);
+            if (!res.ok) {
+              throw new Error("Proxy returned " + res.status);
+            }
+            const data = await res.json();
+
+            if (!data || data.ok === false) {
+              recipeImportStatus.textContent =
+                (data && data.error) || "Recipe not found on that page.";
+              recipeImportStatus.classList.add("error");
+              recipeImagePreview.style.display = "none";
+              return;
+            }
+
+            // --- Image ---
+            if (data.image) {
+              recipeImagePreview.src = data.image;
+              recipeImagePreview.style.display = "block";
+            } else {
+              recipeImagePreview.style.display = "none";
+            }
+
+            // --- Title -> recipe name (only if empty) ---
+            const titleInput = document.getElementById("recipe-name");
+            if (titleInput && (!titleInput.value.trim()) && data.title) {
+              titleInput.value = tidyRecipeTitle(data.title);
+            }
+
+            // --- Servings -> recipe-servings (only if still default-ish) ---
+            const servingsInput = document.getElementById("recipe-servings");
+            if (servingsInput && data.servings) {
+              const currentVal = servingsInput.value.trim();
+              if (!currentVal || currentVal === "2") {
+                const parsed = parseServingsNumber(data.servings);
+                if (parsed && parsed > 0) {
+                  servingsInput.value = String(parsed);
+                }
+              }
+            }
+
+            // --- Ingredients -> import textarea ---
+            if (Array.isArray(data.ingredients) && data.ingredients.length) {
+              recipeImportTextarea.value = data.ingredients.join("\n");
+            }
+
+            /// --- Ingredients -> import textarea ---
+if (Array.isArray(data.ingredients) && data.ingredients.length) {
+  recipeImportTextarea.value = data.ingredients.join("\n");
+}
+
+const ingredientNames = Array.isArray(data.ingredientNames)
+  ? data.ingredientNames
+  : [];
+
+// --- Method / instructions -> remember for when we save ---
+if (Array.isArray(data.instructions) && data.instructions.length) {
+  lastImportedRecipeMeta = {
+    instructions: data.instructions.slice(),
+    sourceUrl: data.source || rawUrl,
+    servingsText: data.servings || "",
+    image: data.image || "",
+    title: data.title || "",
+    ingredientNames
+  };
+} else {
+  lastImportedRecipeMeta = {
+    instructions: [],
+    sourceUrl: data.source || rawUrl,
+    servingsText: data.servings || "",
+    image: data.image || "",
+    title: data.title || "",
+    ingredientNames
+  };
+}
+
+            recipeImportStatus.textContent =
+              "Recipe info loaded. Review, then click 'Import ingredients'.";
+            recipeImportStatus.classList.remove("error");
+          } catch (err) {
+            console.error(err);
+            recipeImportStatus.textContent = "Could not fetch recipe.";
+            recipeImportStatus.classList.add("error");
+            recipeImagePreview.style.display = "none";
+            lastImportedRecipeMeta = null;
+          }
+        });
+      }
+
+      // Meal plan & shopping
+      document
+        .getElementById("generate-shopping-list")
+        .addEventListener("click", () => {
+          generateShoppingList();
+          showPage("page-shopping");
+        });
+
+      // Initial renders
+      renderInventory();
+      renderInventoryNameSuggestions();
+      renderRecipesList();
+      renderMealPlan();
+    });
+
+    // Keep service worker registration small & safe
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("./sw.js")
+        .catch(() => {});
+    }
   </script>
 </body>
 </html>

@@ -31,19 +31,15 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
 }
 
-/* ---------- Top bar + hamburger (CLEAN) ---------- */
+/* ---------- Top bar + hamburger ---------- */
 
 .top-bar {
   position: sticky;
   top: 0;
   z-index: 50;
-
   display: flex;
-  flex-direction: row;
-  align-items: center;       /* keeps icon + title on same line */
-  justify-content: flex-start;
+  align-items: center;
   gap: 0.75rem;
-
   padding: 0.75rem 1rem;
   background: rgba(10, 10, 10, 0.96);
   backdrop-filter: blur(14px);
@@ -53,11 +49,27 @@ body {
 .top-bar-title {
   font-weight: 600;
   letter-spacing: 0.03em;
-  line-height: 1;
-  margin: 0;                /* no extra spacing pushing it down */
 }
 
-/* ---------- Navigation drawer (slides in from left) ---------- */
+/* Hamburger button (we’ll leave it as a visual element) */
+
+.menu-toggle {
+  border: none;
+  outline: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: default;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* ---------- Navigation bar (always visible under top bar) ---------- */
 
 .app-nav {
   display: flex;
@@ -87,27 +99,27 @@ body {
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
 }
 
-/* nav buttons inside drawer */
-.app-nav button {
-  width: 100%;
-  text-align: left;
-  padding: 0.7rem 1rem;
-  border-radius: var(--radius-pill);
-  border: none;
-  background: radial-gradient(circle at top, #ff9c3a 0, #ff7a00 40%, #d95e00 100%);
-  color: #1b0a00;
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  cursor: pointer;
+.app-nav button[aria-selected="true"] {
+  border-color: rgba(255, 122, 0, 0.7);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 10px 24px rgba(0, 0, 0, 0.9);
+    0 0 0 1px rgba(255, 122, 0, 0.5),
+    0 10px 24px rgba(255, 122, 0, 0.35);
+  background:
+    radial-gradient(circle at top, rgba(255, 122, 0, 0.35), transparent 55%),
+    radial-gradient(circle at bottom, #1b1b1b 0, #101010 60%, #050505 100%);
 }
 
-.app-nav button[aria-selected="true"] {
-  outline: 2px solid rgba(255, 255, 255, 0.35);
-  outline-offset: 0;
+/* Larger screens: nav buttons shrink a bit, hamburger not really needed */
+
+@media (min-width: 768px) {
+  .app-nav {
+    justify-content: flex-start;
+    padding-inline: 1.5rem;
+  }
+
+  .app-nav button {
+    flex: 0 0 auto;
+  }
 }
 
 /* ---------- Page layout ---------- */
@@ -740,19 +752,6 @@ p {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-}
-
-/* Clean inline row for Add + Scan buttons */
-.inventory-actions-row {
-  display: flex;
-  gap: 0.6rem;
-  margin-bottom: 1rem;
-}
-
-.inventory-actions-row button {
-  flex: 1;
-  padding: 0.7rem 1rem;
-  font-size: 0.9rem;
 }
 
 /* On very small screens, give the panel a bit more breathing room */
