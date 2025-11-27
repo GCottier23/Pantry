@@ -883,10 +883,10 @@ function renderInventory() {
       editBtn.title = "Edit item";
       editBtn.setAttribute("aria-label", "Edit item");
       editBtn.textContent = "✎";
-      editBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        startInventoryEdit(item.key);
-      });
+    editBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  openAddInventoryItemDialog(item.key);
+});
 
       // Delete
       const delBtn = document.createElement("button");
@@ -948,11 +948,18 @@ function renderInventory() {
 
     // barcodeMap[barcode] = ["Sausages", "Beef", ...]
 
-  // Simple "Add item" dialog for manual inventory entry
-function openAddInventoryItemDialog() {
+// Simple "Add / Edit item" dialog for manual inventory entry
+// If `existingKey` is passed, we prefill + save changes instead of adding new
+function openAddInventoryItemDialog(existingKey = null) {
   // Remove any old overlay
   let overlay = document.getElementById("add-item-overlay");
   if (overlay) overlay.remove();
+
+  // Find existing item if we're editing
+  let existingItem = null;
+  if (existingKey) {
+    existingItem = inventory.find((i) => i.key === existingKey) || null;
+  }
 
   // Overlay
   overlay = document.createElement("div");
@@ -965,7 +972,7 @@ function openAddInventoryItemDialog() {
 
   // Title
   const title = document.createElement("h2");
-  title.textContent = "Add item";
+  title.textContent = existingItem ? "Edit item" : "Add item";
   panel.appendChild(title);
 
   // Item name row
@@ -980,6 +987,11 @@ function openAddInventoryItemDialog() {
   nameInput.type = "text";
   nameInput.autocomplete = "off";
   nameInput.placeholder = "e.g. Beef mince";
+
+  // Prefill if editing
+  if (existingItem) {
+    nameInput.value = existingItem.name || "";
+  }
 
   nameLabel.appendChild(nameInput);
   nameRow.appendChild(nameLabel);
@@ -996,33 +1008,32 @@ function openAddInventoryItemDialog() {
   qtyLabel.textContent = "Quantity";
   qtyLabel.style.display = "block";
 
- const qtyInput = document.createElement("input");
-qtyInput.type = "number";
-qtyInput.min = "0";
-qtyInput.placeholder = "e.g. 500"
-
-qtyInput.addEventListener("focus", () => {
-  qtyInput.select();
-});
-
-// ⬇️ Help iOS/Android show a numeric keypad
-qtyInput.inputMode = "decimal";           // modern hint
-qtyInput.setAttribute("pattern", "[0-9]*"); // older WebKit hint
-
-qtyLabel.appendChild(qtyInput);
+  const qtyInput = document.createElement("input");
+  qtyInput.type = "number";
+  qtyInput.inputMode = "decimal";
+  qtyInput.min = "0";
+  qtyInput.step = "0.1";
+  qtyInput.value = existingItem ? existingItem.quantity : "1";
+  qtyLabel.appendChild(qtyInput);
 
   const unitLabel = document.createElement("label");
   unitLabel.textContent = "Unit";
   unitLabel.style.display = "block";
 
   const unitSelect = document.createElement("select");
-  const units = ["", "g", "kg", "ml", "l", "pack", "packs", "pcs","stick", "sticks"];
+  const units = ["", "g", "kg", "ml", "l", "pack", "packs", "pcs"];
   units.forEach((u) => {
     const opt = document.createElement("option");
     opt.value = u;
     opt.textContent = u || "(none)";
     unitSelect.appendChild(opt);
   });
+
+  // Prefill unit if editing
+  if (existingItem && existingItem.unit) {
+    unitSelect.value = existingItem.unit;
+  }
+
   unitLabel.appendChild(unitSelect);
 
   grid.appendChild(qtyLabel);
@@ -1044,7 +1055,7 @@ qtyLabel.appendChild(qtyInput);
 
   const addBtn = document.createElement("button");
   addBtn.type = "button";
-  addBtn.textContent = "Add item";
+  addBtn.textContent = existingItem ? "Save changes" : "Add item";
   addBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
     const qty = parseFloat(qtyInput.value || "0");
@@ -1061,8 +1072,14 @@ qtyLabel.appendChild(qtyInput);
       return;
     }
 
-    // Save straight into inventory
-    upsertInventoryItem(name, qty, unit);
+    if (existingItem && existingKey) {
+      // EDIT EXISTING
+      setInventoryItemExact(existingKey, name, qty, unit);
+    } else {
+      // ADD NEW
+      upsertInventoryItem(name, qty, unit);
+    }
+
     renderInventory();
     renderInventoryNameSuggestions();
     saveState();
@@ -1077,9 +1094,8 @@ qtyLabel.appendChild(qtyInput);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
-  // Smooth "pop" in – make BOTH the overlay and panel visible
+  // Smooth "pop" in
   requestAnimationFrame(() => {
-    overlay.classList.add("is-visible");   // ⬅️ this is the missing bit
     panel.classList.add("visible");
   });
 
