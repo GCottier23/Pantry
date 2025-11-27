@@ -761,83 +761,98 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
         });
     }
 
-    function attachInventorySwipe(row, item) {
+   function attachInventorySwipe(cardEl) {
+  const row = cardEl.closest(".inventory-item");
+  if (!row) return;
+
   let startX = 0;
   let startY = 0;
+  let currentX = 0;
   let activeId = null;
   let swiping = false;
+  const OPEN_OFFSET = -120;   // how far left the card parks when “open”
+  const THRESHOLD   = 40;     // how much you must drag to open
 
-  function resetTransform() {
-    row.style.transition = "transform 0.15s ease-out";
-    row.style.transform = "translateX(0)";
-    setTimeout(() => {
-      row.style.transition = "";
-    }, 160);
+  function setTransform(x, withTransition) {
+    currentX = x;
+    if (withTransition) {
+      cardEl.style.transition = "transform 0.15s ease-out";
+    } else {
+      cardEl.style.transition = "none";
+    }
+    cardEl.style.transform = `translateX(${x}px)`;
   }
 
-  row.addEventListener("pointerdown", (e) => {
+  function snapOpen() {
+    setTransform(OPEN_OFFSET, true);
+  }
+
+  function snapClosed() {
+    setTransform(0, true);
+  }
+
+  cardEl.addEventListener("pointerdown", (e) => {
     activeId = e.pointerId;
     startX = e.clientX;
     startY = e.clientY;
     swiping = true;
-    row.setPointerCapture(activeId);
+    cardEl.setPointerCapture(activeId);
   });
 
-  row.addEventListener("pointermove", (e) => {
+  cardEl.addEventListener("pointermove", (e) => {
     if (!swiping || e.pointerId !== activeId) return;
 
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
 
-    // If vertical movement dominates, treat it as scroll and cancel swipe
+    // If vertical movement dominates → treat as scroll, cancel swipe
     if (Math.abs(dy) > Math.abs(dx)) {
       swiping = false;
-      row.releasePointerCapture(activeId);
-      resetTransform();
+      cardEl.releasePointerCapture(activeId);
+      snapClosed();
       return;
     }
 
-    // Limit how far the row slides
-    const clamped = Math.max(-80, Math.min(80, dx));
-    row.style.transform = `translateX(${clamped}px)`;
+    // Only allow swiping left
+    const clamped = Math.max(OPEN_OFFSET - 20, Math.min(0, dx));
+    setTransform(clamped, false);
   });
 
   function endSwipe(e) {
     if (!swiping || e.pointerId !== activeId) return;
     swiping = false;
-    row.releasePointerCapture(activeId);
+    cardEl.releasePointerCapture(activeId);
 
-    const dx = e.clientX - startX;
-    const threshold = 60; // how far you need to swipe
-
-    resetTransform();
-
-    if (dx > threshold) {
-      // ➡️ swipe right → edit
-      startInventoryEdit(item.key);
-    } else if (dx < -threshold) {
-      // ⬅️ swipe left → delete
-      if (confirm(`Delete ${item.name} from inventory?`)) {
-        deleteInventoryItem(item.key);
-        if (editingInventoryKey === item.key) clearInventoryEditState();
-        renderInventory();
-        renderInventoryNameSuggestions();
-        saveState();
-      }
+    // Decide open vs close based on how far we dragged
+    if (currentX < -THRESHOLD) {
+      snapOpen();
+    } else {
+      snapClosed();
     }
   }
 
-  row.addEventListener("pointerup", endSwipe);
-  row.addEventListener("pointercancel", endSwipe);
+  cardEl.addEventListener("pointerup", endSwipe);
+  cardEl.addEventListener("pointercancel", endSwipe);
 
-  row.addEventListener("pointerleave", () => {
+  cardEl.addEventListener("pointerleave", () => {
     if (!swiping) return;
     swiping = false;
-    resetTransform();
+    // If we drift off the card, just snap whichever side is closer
+    if (Math.abs(currentX) > THRESHOLD) {
+      snapOpen();
+    } else {
+      snapClosed();
+    }
+  });
+
+  // Tapping the row when open -> close it
+  cardEl.addEventListener("click", () => {
+    if (currentX !== 0) {
+      snapClosed();
+    }
   });
 }
-
-  function renderInventory() {
+function renderInventory() {
   const container = document.getElementById("inventory-list");
   if (!container) return;
   container.innerHTML = "";
@@ -850,8 +865,49 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
     .forEach((item) => {
       if (filter && !item.name.toLowerCase().includes(filter)) return;
 
+      // Outer row
       const row = document.createElement("div");
       row.className = "inventory-item";
+
+      // --- Underlying action buttons (fixed on the right) ---
+      const actions = document.createElement("div");
+      actions.className = "inventory-item-actions";
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "inv-action inv-delete";
+      deleteBtn.title = "Delete";
+      deleteBtn.innerHTML = "🗑"; // we’ll style it as a circle
+
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete ${item.name} from inventory?`)) {
+          deleteInventoryItem(item.key);
+          if (editingInventoryKey === item.key) clearInventoryEditState();
+          renderInventory();
+          renderInventoryNameSuggestions();
+          saveState();
+        }
+      });
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "inv-action inv-edit";
+      editBtn.title = "Edit";
+      editBtn.innerHTML = "✎";
+
+      editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        startInventoryEdit(item.key);
+      });
+
+      actions.appendChild(deleteBtn);
+      actions.appendChild(editBtn);
+      row.appendChild(actions);
+
+      // --- Foreground swipeable content ---
+      const swipeCard = document.createElement("div");
+      swipeCard.className = "inventory-item-swipe";
 
       const text = document.createElement("span");
       text.className = "inventory-item-text";
@@ -859,10 +915,12 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
         item.name +
         " - " +
         formatQuantityWithUnit(item.quantity, item.unit || "");
-      row.appendChild(text);
 
-      // 👇 swipe right = edit, swipe left = delete
-      attachInventorySwipe(row, item);
+      swipeCard.appendChild(text);
+      row.appendChild(swipeCard);
+
+      // Attach iOS-style swipe behaviour
+      attachInventorySwipe(swipeCard);
 
       container.appendChild(row);
     });
