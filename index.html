@@ -877,15 +877,12 @@ function renderInventory() {
       actions.className = "inventory-actions";
 
       // Edit
-      const editBtn = document.createElement("button");
-      editBtn.type = "button";
-      editBtn.className = "icon-button";
-      editBtn.title = "Edit item";
-      editBtn.setAttribute("aria-label", "Edit item");
-      editBtn.textContent = "✎";
-    editBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  openAddInventoryItemDialog(item.key);
+  const editBtn = document.createElement("button");
+editBtn.type = "button";
+editBtn.textContent = "✎";
+editBtn.title = "Edit";
+editBtn.addEventListener("click", () => {
+  openAddInventoryItemDialog(item.key);   // <-- use dialog in EDIT mode
 });
 
       // Delete
@@ -950,16 +947,17 @@ function renderInventory() {
 
 // Simple "Add / Edit item" dialog for manual inventory entry
 // If `existingKey` is passed, we prefill + save changes instead of adding new
-function openAddInventoryItemDialog(existingKey = null) {
+// Simple "Add item" dialog for manual inventory entry
+// If you pass a key, it will open in EDIT mode for that inventory item.
+function openAddInventoryItemDialog(editKey = null) {
+  // Look up existing item (if editing)
+  const existingItem = editKey
+    ? inventory.find((i) => i.key === editKey)
+    : null;
+
   // Remove any old overlay
   let overlay = document.getElementById("add-item-overlay");
   if (overlay) overlay.remove();
-
-  // Find existing item if we're editing
-  let existingItem = null;
-  if (existingKey) {
-    existingItem = inventory.find((i) => i.key === existingKey) || null;
-  }
 
   // Overlay
   overlay = document.createElement("div");
@@ -988,7 +986,7 @@ function openAddInventoryItemDialog(existingKey = null) {
   nameInput.autocomplete = "off";
   nameInput.placeholder = "e.g. Beef mince";
 
-  // Prefill if editing
+  // Pre-fill if editing
   if (existingItem) {
     nameInput.value = existingItem.name || "";
   }
@@ -1010,10 +1008,10 @@ function openAddInventoryItemDialog(existingKey = null) {
 
   const qtyInput = document.createElement("input");
   qtyInput.type = "number";
-  qtyInput.inputMode = "decimal";
+  qtyInput.inputMode = "decimal";   // number keypad
   qtyInput.min = "0";
   qtyInput.step = "0.1";
-  qtyInput.value = existingItem ? existingItem.quantity : "1";
+  qtyInput.value = existingItem ? String(existingItem.quantity || 1) : "1";
   qtyLabel.appendChild(qtyInput);
 
   const unitLabel = document.createElement("label");
@@ -1029,7 +1027,6 @@ function openAddInventoryItemDialog(existingKey = null) {
     unitSelect.appendChild(opt);
   });
 
-  // Prefill unit if editing
   if (existingItem && existingItem.unit) {
     unitSelect.value = existingItem.unit;
   }
@@ -1056,6 +1053,7 @@ function openAddInventoryItemDialog(existingKey = null) {
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.textContent = existingItem ? "Save changes" : "Add item";
+
   addBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
     const qty = parseFloat(qtyInput.value || "0");
@@ -1072,11 +1070,11 @@ function openAddInventoryItemDialog(existingKey = null) {
       return;
     }
 
-    if (existingItem && existingKey) {
-      // EDIT EXISTING
-      setInventoryItemExact(existingKey, name, qty, unit);
+    if (existingItem && editKey) {
+      // EDIT mode: overwrite this item exactly
+      setInventoryItemExact(editKey, name, qty, unit);
     } else {
-      // ADD NEW
+      // ADD mode: merge into inventory
       upsertInventoryItem(name, qty, unit);
     }
 
@@ -2733,15 +2731,14 @@ function attachAddItemKeyboardShim(panel) {
 
   showPage("page-inventory");
 
-  // === INVENTORY EVENTS ===
+   // === INVENTORY EVENTS ===
   const addInventoryBtn = document.getElementById("add-inventory-item-btn");
-  const realScanBtn = document.getElementById("real-scan-btn");
+  const realScanBtn     = document.getElementById("real-scan-btn");
 
-  // Add Item → opens the Add Item overlay dialog
+  // Add Item → opens the Add Item overlay dialog (empty)
   if (addInventoryBtn) {
     addInventoryBtn.addEventListener("click", () => {
-      console.log("Add item button clicked");
-      openAddInventoryItemDialog();
+      openAddInventoryItemDialog();  // ADD mode
     });
   } else {
     console.warn("No #add-inventory-item-btn found in DOM");
