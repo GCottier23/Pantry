@@ -2547,17 +2547,11 @@ function openBarcodeScanner() {
     return;
   }
 
-  // Always start with a fresh overlay
+  // Remove any stale overlay
   let overlay = document.getElementById("barcode-scanner-overlay");
-  if (overlay) {
-    overlay.remove();
-  }
+  if (overlay) overlay.remove();
 
-  // New scan session
-  barcodeScanHandled = false;
-  scannerSessionStart = Date.now();  // remember when we opened
-  // ❗ do NOT reset lastScannedCode here – we use it to ignore ghost replays
-
+  // Create a fresh overlay
   overlay = document.createElement("div");
   overlay.id = "barcode-scanner-overlay";
   overlay.className = "barcode-scanner-overlay";
@@ -2575,6 +2569,7 @@ function openBarcodeScanner() {
   video.playsInline = true;
   panel.appendChild(video);
 
+  // Cancel button
   const btnRow = document.createElement("div");
   btnRow.className = "barcode-scanner-actions";
 
@@ -2588,10 +2583,8 @@ function openBarcodeScanner() {
 
   btnRow.appendChild(cancelBtn);
   panel.appendChild(btnRow);
-
   overlay.appendChild(panel);
 
-  // Close if you tap the dim background
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) closeBarcodeScannerOverlay();
   });
@@ -2604,46 +2597,42 @@ function openBarcodeScanner() {
     return;
   }
 
-  // Safety: if a reader is somehow still active, reset it
+  // ALWAYS destroy the old reader completely
   if (activeBarcodeReader) {
-    try {
-      activeBarcodeReader.reset();
-    } catch (e) {
-      console.error(e);
-    }
+    try { activeBarcodeReader.reset(); } catch(e){}
     activeBarcodeReader = null;
   }
 
+  // Start absolutely fresh
   activeBarcodeReader = new ZX.BrowserMultiFormatReader();
+
+  let firstResultIgnored = false;   // KEY FIX 🔥
 
   activeBarcodeReader.decodeFromVideoDevice(
     null,
     "barcode-video",
     (result, err) => {
-      if (barcodeScanHandled) return;
       if (!result || !result.text) return;
 
       const code = result.text.trim();
       if (!code) return;
 
-      const now = Date.now();
-
-      // 👇 Ignore “ghost” replays of the last code in the first 0.8s
-      if (code === lastScannedCode && now - scannerSessionStart < 800) {
-        // This is almost certainly ZXing re-emitting the previous result
-        // while the camera is just looking at your desk.
+      // 🔥 IGNORE THE FIRST DECODED BARCODE, ALWAYS.
+      if (!firstResultIgnored) {
+        firstResultIgnored = true;
+        console.log("IGNORED first result:", code);
         return;
       }
 
-      // Accept this as the real scan
-      barcodeScanHandled = true;
+      // Real scan
+      console.log("ACCEPTED scan:", code);
       lastScannedCode = code;
-
       closeBarcodeScannerOverlay();
-      handleBarcodeCode(code);   // opens your Add-from-barcode dialog
+      handleBarcodeCode(code);
     }
   );
 }
+
 function attachAddItemKeyboardShim(panel) {
   if (!window.visualViewport) return;
 
