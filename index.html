@@ -2557,9 +2557,14 @@ function attachAddItemKeyboardShim(panel) {
  document.addEventListener("DOMContentLoaded", () => {
   loadState();
 
-  // Hamburger + nav panel
+  // ----- NAV / MENU -----
   const menuToggle = document.getElementById("menu-toggle");
   const appNav = document.getElementById("app-nav");
+
+  function closeMenu() {
+    if (appNav) appNav.classList.remove("nav-open");
+    if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+  }
 
   if (menuToggle && appNav) {
     menuToggle.addEventListener("click", () => {
@@ -2567,420 +2572,423 @@ function attachAddItemKeyboardShim(panel) {
       menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
     });
   }
-  
-   // Nav
-  document
-    .getElementById("nav-inventory")
-    .addEventListener("click", () => {
+
+  const navInventory = document.getElementById("nav-inventory");
+  const navRecipes   = document.getElementById("nav-recipes");
+  const navMealplan  = document.getElementById("nav-mealplan");
+  const navShopping  = document.getElementById("nav-shopping");
+
+  if (navInventory) {
+    navInventory.addEventListener("click", () => {
       showPage("page-inventory");
-      if (appNav) appNav.classList.remove("nav-open");
-      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+      closeMenu();
     });
+  }
 
-  document
-    .getElementById("nav-recipes")
-    .addEventListener("click", () => {
+  if (navRecipes) {
+    navRecipes.addEventListener("click", () => {
       showPage("page-recipes");
-      if (appNav) appNav.classList.remove("nav-open");
-      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+      closeMenu();
     });
+  }
 
-  document
-    .getElementById("nav-mealplan")
-    .addEventListener("click", () => {
+  if (navMealplan) {
+    navMealplan.addEventListener("click", () => {
       showPage("page-mealplan");
-      if (appNav) appNav.classList.remove("nav-open");
-      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+      closeMenu();
     });
+  }
 
-  document
-    .getElementById("nav-shopping")
-    .addEventListener("click", () => {
+  if (navShopping) {
+    navShopping.addEventListener("click", () => {
       showPage("page-shopping");
-      if (appNav) appNav.classList.remove("nav-open");
-      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+      closeMenu();
     });
+  }
 
   showPage("page-inventory");
 
-// === INVENTORY EVENTS ===
-const invForm = document.getElementById("inventory-form");
-const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
-const addInventoryBtn = document.getElementById("add-inventory-item-btn");
-const realScanBtn = document.getElementById("real-scan-btn");
+  // ----- INVENTORY BUTTONS -----
+  const addInventoryBtn = document.getElementById("add-inventory-item-btn");
+  const realScanBtn     = document.getElementById("real-scan-btn");
 
-// Add Item → opens the Add Item dialog
-if (addInventoryBtn) {
-  addInventoryBtn.addEventListener("click", () => {
-    console.log("OPENING ADD INVENTORY DIALOG");
-    openAddInventoryItemDialog();
-  });
-}
+  // "+ Add item" → open manual add dialog
+  if (addInventoryBtn) {
+    addInventoryBtn.addEventListener("click", () => {
+      try {
+        openAddInventoryItemDialog();
+      } catch (err) {
+        console.error("Error in openAddInventoryItemDialog:", err);
+        alert("Sorry, something went wrong opening the Add Item box.");
+      }
+    });
+  }
 
-// Scan barcode → opens scanner
-if (realScanBtn) {
-  realScanBtn.addEventListener("click", () => {
-    openBarcodeScanner();
-  });
-}
+  // 📷 Scan barcode → open camera scanner
+  if (realScanBtn) {
+    realScanBtn.addEventListener("click", () => {
+      try {
+        openBarcodeScanner();
+      } catch (err) {
+        console.error("Error in openBarcodeScanner:", err);
+        alert("Sorry, something went wrong opening the scanner.");
+      }
+    });
+  }
 
-// No inventory form exists (we use dialogs instead)
-console.log("Inventory form not present -- OK");
+  // ----- RECIPES -----
+  const startRecipeBtn       = document.getElementById("start-recipe");
+  const ingSection           = document.getElementById("recipe-ingredients-section");
+  const cancelRecipeEditBtn  = document.getElementById("cancel-recipe-edit");
+  const importBtn            = document.getElementById("import-ingredients-btn");
+  const ingForm              = document.getElementById("ingredient-form");
+  const cancelIngEditBtn     = document.getElementById("cancel-ingredient-edit");
+  const saveRecipeBtn        = document.getElementById("save-recipe");
 
-if (cancelInvEditBtn) {
-  cancelInvEditBtn.addEventListener("click", clearInventoryEditState);
-}
-            // Recipes events
-      const startRecipeBtn = document.getElementById("start-recipe");
-      const ingSection = document.getElementById("recipe-ingredients-section");
-      const cancelRecipeEditBtn = document.getElementById("cancel-recipe-edit");
-      const importBtn = document.getElementById("import-ingredients-btn");
+  if (startRecipeBtn && ingSection && cancelRecipeEditBtn) {
+    startRecipeBtn.addEventListener("click", () => {
+      const nameEl     = document.getElementById("recipe-name");
+      const servingsEl = document.getElementById("recipe-servings");
 
-      startRecipeBtn.addEventListener("click", () => {
-        const name = document.getElementById("recipe-name").value.trim();
-        const servings = parseFloat(
-          document.getElementById("recipe-servings").value || "0"
-        );
-        if (!name || servings <= 0) {
-          alert("Please enter a recipe name and servings.");
-          return;
-        }
+      const name = nameEl ? nameEl.value.trim() : "";
+      const servings = servingsEl
+        ? parseFloat(servingsEl.value || "0")
+        : 0;
 
-        if (!currentRecipe || !editingRecipeId) {
-          currentRecipe = {
-            id: editingRecipeId || String(Date.now()),
-            name: titleCase(name),
-            servings,
-            ingredients: [],
-          };
-        } else {
-          currentRecipe.name = titleCase(name);
-          currentRecipe.servings = servings;
-        }
+      if (!name || servings <= 0) {
+        alert("Please enter a recipe name and servings.");
+        return;
+      }
 
-        ingSection.classList.remove("hidden");
-        renderCurrentRecipeIngredients();
-        if (editingRecipeId) {
-          cancelRecipeEditBtn.classList.remove("hidden");
-        } else {
-          cancelRecipeEditBtn.classList.add("hidden");
-        }
+      if (!currentRecipe || !editingRecipeId) {
+        currentRecipe = {
+          id: editingRecipeId || String(Date.now()),
+          name: titleCase(name),
+          servings,
+          ingredients: [],
+        };
+      } else {
+        currentRecipe.name     = titleCase(name);
+        currentRecipe.servings = servings;
+      }
+
+      ingSection.classList.remove("hidden");
+      renderCurrentRecipeIngredients();
+
+      if (editingRecipeId) {
+        cancelRecipeEditBtn.classList.remove("hidden");
+      } else {
+        cancelRecipeEditBtn.classList.add("hidden");
+      }
+      clearIngredientEditState();
+    });
+  }
+
+  if (cancelRecipeEditBtn) {
+    cancelRecipeEditBtn.addEventListener("click", () => {
+      clearRecipeEditState();
+    });
+  }
+
+  if (ingForm) {
+    ingForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!currentRecipe) {
+        alert("Start a recipe first.");
+        return;
+      }
+
+      const nameEl = document.getElementById("ing-name");
+      const qtyEl  = document.getElementById("ing-qty");
+      const unitEl = document.getElementById("ing-unit");
+
+      const name = nameEl ? nameEl.value.trim() : "";
+      const qty  = qtyEl  ? parseFloat(qtyEl.value || "0") : 0;
+      const unit = unitEl ? unitEl.value.trim() : "";
+
+      if (!name || qty <= 0) {
+        alert("Please enter a valid ingredient name & quantity.");
+        return;
+      }
+
+      const cleanName = titleCase(name);
+
+      if (editingIngredientIndex !== null) {
+        currentRecipe.ingredients[editingIngredientIndex] = {
+          name: cleanName,
+          quantity: qty,
+          unit,
+        };
         clearIngredientEditState();
-      });
-
-      cancelRecipeEditBtn.addEventListener("click", () => {
-        clearRecipeEditState();
-      });
-
-      const ingForm = document.getElementById("ingredient-form");
-      ingForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        if (!currentRecipe) {
-          alert("Start a recipe first.");
-          return;
-        }
-
-        const name = document.getElementById("ing-name").value.trim();
-        const qty = parseFloat(
-          document.getElementById("ing-qty").value || "0"
-        );
-        const unit = document.getElementById("ing-unit").value.trim();
-
-        if (!name || qty <= 0) {
-          alert("Please enter a valid ingredient name & quantity.");
-          return;
-        }
-
-        const cleanName = titleCase(name);
-
-        if (editingIngredientIndex !== null) {
-          currentRecipe.ingredients[editingIngredientIndex] = {
-            name: cleanName,
-            quantity: qty,
-            unit,
-          };
-          clearIngredientEditState();
-        } else {
-          currentRecipe.ingredients.push({
-            name: cleanName,
-            quantity: qty,
-            unit,
-          });
-        }
-
-        renderCurrentRecipeIngredients();
-      });
-
-      document
-        .getElementById("cancel-ingredient-edit")
-        .addEventListener("click", () => {
-          clearIngredientEditState();
-        });
-
-// Import ingredients from the big textarea,
-// using BBC-aware parser if we have BBC metadata.
-importBtn.addEventListener("click", () => {
-  if (!currentRecipe) {
-    alert(
-      "Start a recipe first (name + servings, then 'Start new recipe')."
-    );
-    return;
-  }
-
-  const textarea = document.getElementById("import-text");
-  const raw = textarea.value || "";
-  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-
-  let imported = 0;
-
-  // If we recently fetched from BBC, use their clean ingredient names
-  const bbcNames =
-    lastImportedRecipeMeta &&
-    Array.isArray(lastImportedRecipeMeta.ingredientNames) &&
-    lastImportedRecipeMeta.ingredientNames.length
-      ? lastImportedRecipeMeta.ingredientNames
-      : null;
-
-  lines.forEach((line) => {
-    let parsed;
-
-    if (bbcNames) {
-      parsed = parseBbcIngredient(line, bbcNames);
-    } else {
-      parsed = parseIngredientLine(line);
-    }
-
-    if (!parsed || !parsed.name) return;
-    // Allow 0/empty quantity as “just name”, but if we have a number,
-    // it must be positive
-    if (parsed.quantity !== null && parsed.quantity !== undefined) {
-      if (Number.isNaN(parsed.quantity) || parsed.quantity <= 0) return;
-    }
-
-    currentRecipe.ingredients.push(parsed);
-    imported++;
-  });
-
-  renderCurrentRecipeIngredients();
-  if (imported) {
-    alert(`Imported ${imported} ingredient(s).`);
-    textarea.value = "";
-  } else {
-    alert("No valid ingredients found.");
-  }
-});
-
-      document
-        .getElementById("save-recipe")
-        .addEventListener("click", () => {
-          if (!currentRecipe) {
-            alert("No recipe in progress.");
-            return;
-          }
-          if (
-            !currentRecipe.ingredients ||
-            !currentRecipe.ingredients.length
-          ) {
-            alert("Add at least one ingredient.");
-            return;
-          }
-
-          // If we imported from BBC and have method steps, attach them
-          if (
-            lastImportedRecipeMeta &&
-            Array.isArray(lastImportedRecipeMeta.instructions) &&
-            (!currentRecipe.instructions ||
-              !currentRecipe.instructions.length)
-          ) {
-            currentRecipe.instructions =
-              lastImportedRecipeMeta.instructions.slice();
-          }
-
-          // Attach image + source URL from BBC import if we have them
-          if (lastImportedRecipeMeta) {
-            if (!currentRecipe.imageUrl && lastImportedRecipeMeta.image) {
-              currentRecipe.imageUrl = lastImportedRecipeMeta.image;
-            }
-            if (
-              !currentRecipe.sourceUrl &&
-              lastImportedRecipeMeta.sourceUrl
-            ) {
-              currentRecipe.sourceUrl = lastImportedRecipeMeta.sourceUrl;
-            }
-          }
-
-          if (editingRecipeId) {
-            const idx = recipes.findIndex(
-              (r) => r.id === editingRecipeId
-            );
-            if (idx !== -1) {
-              recipes[idx] = {
-                id: editingRecipeId,
-                name: currentRecipe.name,
-                servings: currentRecipe.servings,
-                ingredients: currentRecipe.ingredients,
-                instructions: currentRecipe.instructions || [],
-                imageUrl: currentRecipe.imageUrl || "",
-                sourceUrl: currentRecipe.sourceUrl || "",
-              };
-            }
-          } else {
-            recipes.push(currentRecipe);
-          }
-
-          clearRecipeEditState();
-          renderRecipesList();
-          saveState();
-        });
-
-          // BBC Food / Good Food recipe import (image + title + ingredients + method)
-      const recipeImportUrlInput = document.getElementById("recipe-import-url");
-      const recipeImageFetchBtn = document.getElementById("recipe-fetch-image");
-      const recipeImportStatus = document.getElementById("recipe-import-status");
-      const recipeImagePreview = document.getElementById("recipe-image-preview");
-      const recipeImportTextarea = document.getElementById("import-text");
-      const recipeClearBtn = document.getElementById("recipe-clear-import");
-
-      if (
-        recipeImportUrlInput &&
-        recipeImageFetchBtn &&
-        recipeImportStatus &&
-        recipeImagePreview &&
-        recipeImportTextarea
-      ) {
-        recipeImageFetchBtn.addEventListener("click", async () => {
-          const rawUrl = recipeImportUrlInput.value.trim();
-          if (!rawUrl) {
-            recipeImportStatus.textContent = "Please paste a recipe URL first.";
-            recipeImportStatus.classList.add("error");
-            recipeImagePreview.style.display = "none";
-            return;
-          }
-
-          if (recipeClearBtn) {
-  recipeClearBtn.addEventListener("click", () => {
-    recipeImportUrlInput.value = "";
-    recipeImportStatus.textContent = "";
-    recipeImportStatus.classList.remove("error");
-
-    recipeImagePreview.style.display = "none";
-    recipeImagePreview.src = "";
-
-    recipeImportTextarea.value = "";
-
-    lastImportedRecipeMeta = null;
-  });
-}
-
-          recipeImportStatus.textContent = "Fetching recipe…";
-          recipeImportStatus.classList.remove("error");
-          recipeImagePreview.style.display = "none";
-          lastImportedRecipeMeta = null;
-
-          try {
-            const endpoint = WORKER_BASE + "?url=" + encodeURIComponent(rawUrl);
-            const res = await fetch(endpoint);
-            if (!res.ok) {
-              throw new Error("Proxy returned " + res.status);
-            }
-            const data = await res.json();
-
-            if (!data || data.ok === false) {
-              recipeImportStatus.textContent =
-                (data && data.error) || "Recipe not found on that page.";
-              recipeImportStatus.classList.add("error");
-              recipeImagePreview.style.display = "none";
-              return;
-            }
-
-            // --- Image ---
-            if (data.image) {
-              recipeImagePreview.src = data.image;
-              recipeImagePreview.style.display = "block";
-            } else {
-              recipeImagePreview.style.display = "none";
-            }
-
-            // --- Title -> recipe name (only if empty) ---
-            const titleInput = document.getElementById("recipe-name");
-            if (titleInput && (!titleInput.value.trim()) && data.title) {
-              titleInput.value = tidyRecipeTitle(data.title);
-            }
-
-            // --- Servings -> recipe-servings (only if still default-ish) ---
-            const servingsInput = document.getElementById("recipe-servings");
-            if (servingsInput && data.servings) {
-              const currentVal = servingsInput.value.trim();
-              if (!currentVal || currentVal === "2") {
-                const parsed = parseServingsNumber(data.servings);
-                if (parsed && parsed > 0) {
-                  servingsInput.value = String(parsed);
-                }
-              }
-            }
-
-            // --- Ingredients -> import textarea ---
-            if (Array.isArray(data.ingredients) && data.ingredients.length) {
-              recipeImportTextarea.value = data.ingredients.join("\n");
-            }
-
-            /// --- Ingredients -> import textarea ---
-if (Array.isArray(data.ingredients) && data.ingredients.length) {
-  recipeImportTextarea.value = data.ingredients.join("\n");
-}
-
-const ingredientNames = Array.isArray(data.ingredientNames)
-  ? data.ingredientNames
-  : [];
-
-// --- Method / instructions -> remember for when we save ---
-if (Array.isArray(data.instructions) && data.instructions.length) {
-  lastImportedRecipeMeta = {
-    instructions: data.instructions.slice(),
-    sourceUrl: data.source || rawUrl,
-    servingsText: data.servings || "",
-    image: data.image || "",
-    title: data.title || "",
-    ingredientNames
-  };
-} else {
-  lastImportedRecipeMeta = {
-    instructions: [],
-    sourceUrl: data.source || rawUrl,
-    servingsText: data.servings || "",
-    image: data.image || "",
-    title: data.title || "",
-    ingredientNames
-  };
-}
-
-            recipeImportStatus.textContent =
-              "Recipe info loaded. Review, then click 'Import ingredients'.";
-            recipeImportStatus.classList.remove("error");
-          } catch (err) {
-            console.error(err);
-            recipeImportStatus.textContent = "Could not fetch recipe.";
-            recipeImportStatus.classList.add("error");
-            recipeImagePreview.style.display = "none";
-            lastImportedRecipeMeta = null;
-          }
+      } else {
+        currentRecipe.ingredients.push({
+          name: cleanName,
+          quantity: qty,
+          unit,
         });
       }
 
-      // Meal plan & shopping
-      document
-        .getElementById("generate-shopping-list")
-        .addEventListener("click", () => {
-          generateShoppingList();
-          showPage("page-shopping");
-        });
-
-      // Initial renders
-      renderInventory();
-      renderInventoryNameSuggestions();
-      renderRecipesList();
-      renderMealPlan();
+      renderCurrentRecipeIngredients();
     });
+  }
+
+  if (cancelIngEditBtn) {
+    cancelIngEditBtn.addEventListener("click", () => {
+      clearIngredientEditState();
+    });
+  }
+
+  // Import ingredients from textarea (BBC-aware parser)
+  if (importBtn) {
+    importBtn.addEventListener("click", () => {
+      if (!currentRecipe) {
+        alert(
+          "Start a recipe first (name + servings, then 'Start new recipe')."
+        );
+        return;
+      }
+
+      const textarea = document.getElementById("import-text");
+      const raw = textarea ? textarea.value : "";
+      const lines = raw
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+      let imported = 0;
+
+      const bbcNames =
+        lastImportedRecipeMeta &&
+        Array.isArray(lastImportedRecipeMeta.ingredientNames) &&
+        lastImportedRecipeMeta.ingredientNames.length
+          ? lastImportedRecipeMeta.ingredientNames
+          : null;
+
+      lines.forEach((line) => {
+        let parsed;
+        if (bbcNames) {
+          parsed = parseBbcIngredient(line, bbcNames);
+        } else {
+          parsed = parseIngredientLine(line);
+        }
+
+        if (!parsed || !parsed.name) return;
+
+        if (parsed.quantity !== null && parsed.quantity !== undefined) {
+          if (Number.isNaN(parsed.quantity) || parsed.quantity <= 0) return;
+        }
+
+        currentRecipe.ingredients.push(parsed);
+        imported++;
+      });
+
+      renderCurrentRecipeIngredients();
+      if (imported) {
+        alert(`Imported ${imported} ingredient(s).`);
+        if (textarea) textarea.value = "";
+      } else {
+        alert("No valid ingredients found.");
+      }
+    });
+  }
+
+  if (saveRecipeBtn) {
+    saveRecipeBtn.addEventListener("click", () => {
+      if (!currentRecipe) {
+        alert("No recipe in progress.");
+        return;
+      }
+      if (
+        !currentRecipe.ingredients ||
+        !currentRecipe.ingredients.length
+      ) {
+        alert("Add at least one ingredient.");
+        return;
+      }
+
+      if (
+        lastImportedRecipeMeta &&
+        Array.isArray(lastImportedRecipeMeta.instructions) &&
+        (!currentRecipe.instructions ||
+          !currentRecipe.instructions.length)
+      ) {
+        currentRecipe.instructions =
+          lastImportedRecipeMeta.instructions.slice();
+      }
+
+      if (lastImportedRecipeMeta) {
+        if (!currentRecipe.imageUrl && lastImportedRecipeMeta.image) {
+          currentRecipe.imageUrl = lastImportedRecipeMeta.image;
+        }
+        if (
+          !currentRecipe.sourceUrl &&
+          lastImportedRecipeMeta.sourceUrl
+        ) {
+          currentRecipe.sourceUrl = lastImportedRecipeMeta.sourceUrl;
+        }
+      }
+
+      if (editingRecipeId) {
+        const idx = recipes.findIndex((r) => r.id === editingRecipeId);
+        if (idx !== -1) {
+          recipes[idx] = {
+            id: editingRecipeId,
+            name: currentRecipe.name,
+            servings: currentRecipe.servings,
+            ingredients: currentRecipe.ingredients,
+            instructions: currentRecipe.instructions || [],
+            imageUrl: currentRecipe.imageUrl || "",
+            sourceUrl: currentRecipe.sourceUrl || "",
+          };
+        }
+      } else {
+        recipes.push(currentRecipe);
+      }
+
+      clearRecipeEditState();
+      renderRecipesList();
+      saveState();
+    });
+  }
+
+  // ----- BBC IMPORT -----
+  const recipeImportUrlInput = document.getElementById("recipe-import-url");
+  const recipeImageFetchBtn  = document.getElementById("recipe-fetch-image");
+  const recipeImportStatus   = document.getElementById("recipe-import-status");
+  const recipeImagePreview   = document.getElementById("recipe-image-preview");
+  const recipeImportTextarea = document.getElementById("import-text");
+  const recipeClearBtn       = document.getElementById("recipe-clear-import");
+
+  if (
+    recipeImportUrlInput &&
+    recipeImageFetchBtn &&
+    recipeImportStatus &&
+    recipeImagePreview &&
+    recipeImportTextarea
+  ) {
+    if (recipeClearBtn) {
+      recipeClearBtn.addEventListener("click", () => {
+        recipeImportUrlInput.value = "";
+        recipeImportStatus.textContent = "";
+        recipeImportStatus.classList.remove("error");
+
+        recipeImagePreview.style.display = "none";
+        recipeImagePreview.src = "";
+
+        recipeImportTextarea.value = "";
+        lastImportedRecipeMeta = null;
+      });
+    }
+
+    recipeImageFetchBtn.addEventListener("click", async () => {
+      const rawUrl = recipeImportUrlInput.value.trim();
+      if (!rawUrl) {
+        recipeImportStatus.textContent = "Please paste a recipe URL first.";
+        recipeImportStatus.classList.add("error");
+        recipeImagePreview.style.display = "none";
+        return;
+      }
+
+      recipeImportStatus.textContent = "Fetching recipe…";
+      recipeImportStatus.classList.remove("error");
+      recipeImagePreview.style.display = "none";
+      lastImportedRecipeMeta = null;
+
+      try {
+        const endpoint = WORKER_BASE + "?url=" + encodeURIComponent(rawUrl);
+        const res = await fetch(endpoint);
+        if (!res.ok) {
+          throw new Error("Proxy returned " + res.status);
+        }
+        const data = await res.json();
+
+        if (!data || data.ok === false) {
+          recipeImportStatus.textContent =
+            (data && data.error) || "Recipe not found on that page.";
+          recipeImportStatus.classList.add("error");
+          recipeImagePreview.style.display = "none";
+          return;
+        }
+
+        if (data.image) {
+          recipeImagePreview.src = data.image;
+          recipeImagePreview.style.display = "block";
+        } else {
+          recipeImagePreview.style.display = "none";
+        }
+
+        const titleInput = document.getElementById("recipe-name");
+        if (titleInput && !titleInput.value.trim() && data.title) {
+          titleInput.value = tidyRecipeTitle(data.title);
+        }
+
+        const servingsInput = document.getElementById("recipe-servings");
+        if (servingsInput && data.servings) {
+          const currentVal = servingsInput.value.trim();
+          if (!currentVal || currentVal === "2") {
+            const parsed = parseServingsNumber(data.servings);
+            if (parsed && parsed > 0) {
+              servingsInput.value = String(parsed);
+            }
+          }
+        }
+
+        if (Array.isArray(data.ingredients) && data.ingredients.length) {
+          recipeImportTextarea.value = data.ingredients.join("\n");
+        }
+
+        const ingredientNames = Array.isArray(data.ingredientNames)
+          ? data.ingredientNames
+          : [];
+
+        if (Array.isArray(data.instructions) && data.instructions.length) {
+          lastImportedRecipeMeta = {
+            instructions: data.instructions.slice(),
+            sourceUrl: data.source || rawUrl,
+            servingsText: data.servings || "",
+            image: data.image || "",
+            title: data.title || "",
+            ingredientNames
+          };
+        } else {
+          lastImportedRecipeMeta = {
+            instructions: [],
+            sourceUrl: data.source || rawUrl,
+            servingsText: data.servings || "",
+            image: data.image || "",
+            title: data.title || "",
+            ingredientNames
+          };
+        }
+
+        recipeImportStatus.textContent =
+          "Recipe info loaded. Review, then click 'Import ingredients'.";
+        recipeImportStatus.classList.remove("error");
+      } catch (err) {
+        console.error(err);
+        recipeImportStatus.textContent = "Could not fetch recipe.";
+        recipeImportStatus.classList.add("error");
+        recipeImagePreview.style.display = "none";
+        lastImportedRecipeMeta = null;
+      }
+    });
+  }
+
+  // ----- MEAL PLAN & SHOPPING -----
+  const generateShoppingBtn = document.getElementById("generate-shopping-list");
+  if (generateShoppingBtn) {
+    generateShoppingBtn.addEventListener("click", () => {
+      generateShoppingList();
+      showPage("page-shopping");
+    });
+  }
+
+  // ----- INITIAL RENDERS -----
+  renderInventory();
+  renderInventoryNameSuggestions();
+  renderRecipesList();
+  renderMealPlan();
+});
 
     // Keep service worker registration small & safe
     if ("serviceWorker" in navigator) {
