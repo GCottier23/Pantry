@@ -896,12 +896,17 @@ function openAddInventoryItemDialog() {
   qtyLabel.textContent = "Quantity";
   qtyLabel.style.display = "block";
 
-  const qtyInput = document.createElement("input");
-  qtyInput.type = "number";
-  qtyInput.min = "0";
-  qtyInput.step = "0.1";
-  qtyInput.value = "1";
-  qtyLabel.appendChild(qtyInput);
+ const qtyInput = document.createElement("input");
+qtyInput.type = "number";
+qtyInput.min = "0";
+qtyInput.step = "0.1";
+qtyInput.value = "1";
+
+// ⬇️ Help iOS/Android show a numeric keypad
+qtyInput.inputMode = "decimal";           // modern hint
+qtyInput.setAttribute("pattern", "[0-9]*"); // older WebKit hint
+
+qtyLabel.appendChild(qtyInput);
 
   const unitLabel = document.createElement("label");
   unitLabel.textContent = "Unit";
