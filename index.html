@@ -2552,7 +2552,9 @@ function openBarcodeScanner() {
     overlay.remove();
   }
 
-  lastScannedCode = null;
+  // ❗ Important: do NOT reset lastScannedCode here
+  // We want to remember the last successful scan across openings
+  barcodeScanHandled = false;
 
   overlay = document.createElement("div");
   overlay.id = "barcode-scanner-overlay";
@@ -2600,32 +2602,40 @@ function openBarcodeScanner() {
     return;
   }
 
-  barcodeScanHandled = false;
+  // If a reader was somehow still active, reset it before starting
+  if (activeBarcodeReader) {
+    try {
+      activeBarcodeReader.reset();
+    } catch (e) {
+      console.error(e);
+    }
+    activeBarcodeReader = null;
+  }
 
   activeBarcodeReader = new ZX.BrowserMultiFormatReader();
 
-  activeBarcodeReader.decodeFromVideoDevice(null, "barcode-video", (result, err) => {
-    if (barcodeScanHandled) return;
+  activeBarcodeReader.decodeFromVideoDevice(
+    null,
+    "barcode-video",
+    (result, err) => {
+      if (barcodeScanHandled) return;
+      if (!result || !result.text) return;
 
-    if (!result || !result.text) return;
+      const code = result.text.trim();
+      if (!code) return;
 
-    const code = result.text.trim();
-    if (!code) return;
+      // 👇 KEY BIT: ignore if it’s the same as the last successful scan
+      if (code === lastScannedCode) {
+        return;
+      }
 
-    // 👇 KEY BIT: if it’s the same barcode as the previous successful scan,
-    // completely ignore it. This stops the “auto reusing 123” issue.
-    if (code === lastScannedCode) {
-      return; // keep scanning, waiting for a different code
+      lastScannedCode = code;
+      barcodeScanHandled = true;
+      closeBarcodeScannerOverlay();
+      handleBarcodeCode(code);
     }
-
-    lastScannedCode = code;
-
-    barcodeScanHandled = true;
-    closeBarcodeScannerOverlay();
-    handleBarcodeCode(code); // opens your “Add item from barcode” dialog
-  });
+  );
 }
-
 function attachAddItemKeyboardShim(panel) {
   if (!window.visualViewport) return;
 
