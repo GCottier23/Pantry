@@ -2521,8 +2521,9 @@ tdBuy.textContent = fixedQtyStr;
 // ---------- BARCODE CAMERA SCANNER ----------
 
 let activeBarcodeReader = null;
-let barcodeScanHandled = false;     // prevents multiple runs for one scan
-let lastScannedCode = null;         // remember the last successful barcode
+let barcodeScanHandled = false;
+let lastScannedCode = null;   // last successful barcode across sessions
+let scannerSessionStart = 0;  // timestamp when current scan session started
 
 function closeBarcodeScannerOverlay() {
   const overlay = document.getElementById("barcode-scanner-overlay");
@@ -2552,9 +2553,10 @@ function openBarcodeScanner() {
     overlay.remove();
   }
 
-  // ❗ Important: do NOT reset lastScannedCode here
-  // We want to remember the last successful scan across openings
+  // New scan session
   barcodeScanHandled = false;
+  scannerSessionStart = Date.now();  // remember when we opened
+  // ❗ do NOT reset lastScannedCode here – we use it to ignore ghost replays
 
   overlay = document.createElement("div");
   overlay.id = "barcode-scanner-overlay";
@@ -2602,7 +2604,7 @@ function openBarcodeScanner() {
     return;
   }
 
-  // If a reader was somehow still active, reset it before starting
+  // Safety: if a reader is somehow still active, reset it
   if (activeBarcodeReader) {
     try {
       activeBarcodeReader.reset();
@@ -2624,15 +2626,21 @@ function openBarcodeScanner() {
       const code = result.text.trim();
       if (!code) return;
 
-      // 👇 KEY BIT: ignore if it’s the same as the last successful scan
-      if (code === lastScannedCode) {
+      const now = Date.now();
+
+      // 👇 Ignore “ghost” replays of the last code in the first 0.8s
+      if (code === lastScannedCode && now - scannerSessionStart < 800) {
+        // This is almost certainly ZXing re-emitting the previous result
+        // while the camera is just looking at your desk.
         return;
       }
 
-      lastScannedCode = code;
+      // Accept this as the real scan
       barcodeScanHandled = true;
+      lastScannedCode = code;
+
       closeBarcodeScannerOverlay();
-      handleBarcodeCode(code);
+      handleBarcodeCode(code);   // opens your Add-from-barcode dialog
     }
   );
 }
