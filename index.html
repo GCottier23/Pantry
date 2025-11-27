@@ -2603,10 +2603,10 @@ function attachAddItemKeyboardShim(panel) {
 
   showPage("page-inventory");
 
-  // === INVENTORY EVENTS ===
+// === INVENTORY EVENTS ===
 const invForm = document.getElementById("inventory-form");
 const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
-const addInventoryBtn = document.getElementById("add-inventory-item-btn");  // ← YOU WERE MISSING THIS
+const addInventoryBtn = document.getElementById("add-inventory-item-btn");
 const realScanBtn = document.getElementById("real-scan-btn");
 
 // Add Item → opens the Add Item dialog
@@ -2624,44 +2624,18 @@ if (realScanBtn) {
   });
 }
 
+// If you ever add a real inventory form, this will activate
 if (invForm) {
   invForm.addEventListener("submit", (e) => {
     e.preventDefault();
-
-    const nameEl = document.getElementById("inv-name");
-    const qtyEl = document.getElementById("inv-qty");
-    const unitEl = document.getElementById("inv-unit");
-
-    const name = nameEl.value.trim();
-    const qty = parseFloat(qtyEl.value || "0");
-    const unit = unitEl.value || "";
-
-    if (!name) {
-      alert("Please enter an item name.");
-      return;
-    }
-    if (!qty || qty <= 0 || Number.isNaN(qty)) {
-      alert("Please enter a valid quantity.");
-      return;
-    }
-
-    if (editingInventoryKey) {
-      setInventoryItemExact(editingInventoryKey, name, qty, unit);
-    } else {
-      upsertInventoryItem(name, qty, unit);
-    }
-
-    renderInventory();
-    renderInventoryNameSuggestions();
-    saveState();
-    clearInventoryEditState();
+    ...
   });
+} else {
+  console.log("No #inventory-form found -- skipping submit handler");
 }
 
 if (cancelInvEditBtn) {
-  cancelInvEditBtn.addEventListener("click", () => {
-    clearInventoryEditState();
-  });
+  cancelInvEditBtn.addEventListener("click", clearInventoryEditState);
 }
             // Recipes events
       const startRecipeBtn = document.getElementById("start-recipe");
