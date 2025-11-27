@@ -2992,29 +2992,5 @@ function attachAddItemKeyboardShim(panel) {
         .catch(() => {});
     }
   </script>
-  
-  <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    var addBtn = document.getElementById("add-inventory-item-btn");
-    if (!addBtn) {
-      alert("Add Item button not found in DOM.");
-      return;
-    }
-
-    addBtn.addEventListener("click", function () {
-      try {
-        // Simple sanity check first
-        if (typeof openAddInventoryItemDialog !== "function") {
-          alert("openAddInventoryItemDialog is not defined.");
-          return;
-        }
-
-        openAddInventoryItemDialog();
-      } catch (e) {
-        alert("Error when opening Add Item dialog: " + e.message);
-      }
-    });
-  });
-</script>
 </body>
 </html>
