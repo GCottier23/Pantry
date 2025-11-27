@@ -951,8 +951,7 @@ function openAddInventoryItemDialog() {
  const qtyInput = document.createElement("input");
 qtyInput.type = "number";
 qtyInput.min = "0";
-qtyInput.step = "0.1";
-qtyInput.value = "1";
+qtyInput.placeholder = "e.g. 500"
 
 qtyInput.addEventListener("focus", () => {
   qtyInput.select();
