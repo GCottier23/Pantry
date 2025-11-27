@@ -852,15 +852,16 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
 
   // Simple "Add item" dialog for manual inventory entry
 function openAddInventoryItemDialog() {
-  // Remove any existing overlay
-  let overlay = document.getElementById("add-inventory-overlay");
-  if (overlay) overlay.remove();
+  // If one is already open, remove it first
+  const existing = document.getElementById("add-item-overlay");
+  if (existing) existing.remove();
 
-  // Create overlay
-  overlay = document.createElement("div");
-  overlay.id = "add-inventory-overlay";
-  overlay.className = "barcode-scanner-overlay"; // reuse same dim background
+  // Overlay
+  const overlay = document.createElement("div");
+  overlay.id = "add-item-overlay";
+  overlay.className = "barcode-scanner-overlay"; // reuse same style base
 
+  // Panel
   const panel = document.createElement("div");
   panel.className = "barcode-scanner-panel";
 
@@ -868,20 +869,19 @@ function openAddInventoryItemDialog() {
   title.textContent = "Add inventory item";
   panel.appendChild(title);
 
-  // --- Item name row ---
+  // --- Name row ---
   const nameRow = document.createElement("div");
   nameRow.className = "barcode-input-row";
 
   const nameLabel = document.createElement("label");
-  nameLabel.textContent = "What is the item?";
+  nameLabel.textContent = "Item name";
   nameLabel.style.display = "block";
 
   const nameInput = document.createElement("input");
   nameInput.type = "text";
-  nameInput.id = "add-inventory-name";
-  nameInput.placeholder = "e.g. Pasta";
-
+  nameInput.autocomplete = "off";
   nameLabel.appendChild(nameInput);
+
   nameRow.appendChild(nameLabel);
   panel.appendChild(nameRow);
 
@@ -912,7 +912,7 @@ function openAddInventoryItemDialog() {
   unitLabel.style.display = "block";
 
   const unitSelect = document.createElement("select");
-  const units = [
+  [
     { value: "", label: "(none)" },
     { value: "g", label: "g" },
     { value: "kg", label: "kg" },
@@ -921,8 +921,7 @@ function openAddInventoryItemDialog() {
     { value: "pack", label: "pack" },
     { value: "packs", label: "packs" },
     { value: "pcs", label: "pcs" },
-  ];
-  units.forEach((u) => {
+  ].forEach((u) => {
     const opt = document.createElement("option");
     opt.value = u.value;
     opt.textContent = u.label;
@@ -941,16 +940,38 @@ function openAddInventoryItemDialog() {
   cancelBtn.type = "button";
   cancelBtn.textContent = "Cancel";
   cancelBtn.className = "secondary";
-  cancelBtn.addEventListener("click", () => {
-    overlay.remove();
-  });
 
   const addBtn = document.createElement("button");
   addBtn.type = "button";
-  addBtn.textContent = "Add to inventory";
+  addBtn.textContent = "Add item";
 
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(addBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  // Helper to close with reverse animation
+  function closeOverlay() {
+    overlay.classList.remove("is-visible");
+    setTimeout(() => {
+      overlay.remove();
+    }, 200); // matches CSS transition
+  }
+
+  // Click outside panel closes
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      closeOverlay();
+    }
+  });
+
+  cancelBtn.addEventListener("click", closeOverlay);
+
+  // Save on "Add item"
   addBtn.addEventListener("click", () => {
-    const name = nameInput.value.trim();
+    const name = (nameInput.value || "").trim();
     const qty = parseFloat(qtyInput.value || "0");
     const unit = unitSelect.value || "";
 
@@ -968,24 +989,38 @@ function openAddInventoryItemDialog() {
     renderInventoryNameSuggestions();
     saveState();
 
-    overlay.remove();
+    closeOverlay();
   });
 
-  btnRow.appendChild(cancelBtn);
-  btnRow.appendChild(addBtn);
-  panel.appendChild(btnRow);
+  // 🔽 When any field is focused → lift dialog up above keyboard
+  function handleFocusIn() {
+    overlay.classList.add("overlay-keyboard-up");
+  }
 
-  overlay.appendChild(panel);
+  // When focus leaves all fields → drop dialog back to centre
+  function handleFocusOut() {
+    setTimeout(() => {
+      // If nothing inside overlay is focused any more, remove the class
+      if (!overlay.contains(document.activeElement)) {
+        overlay.classList.remove("overlay-keyboard-up");
+      }
+    }, 100);
+  }
 
-  // Close when you tap the dark background
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
+  [nameInput, qtyInput, unitSelect].forEach((el) => {
+    el.addEventListener("focus", handleFocusIn);
+    el.addEventListener("blur", handleFocusOut);
   });
 
-  document.body.appendChild(overlay);
+  // 🔑 Smooth animation in:
+  requestAnimationFrame(() => {
+    overlay.classList.add("is-visible");
+  });
 
-  // Focus name by default
-  nameInput.focus();
+  // 🔑 Slight delay before focusing, so animation happens first
+  setTimeout(() => {
+    nameInput.focus();
+  }, 250);
 }
 
     // Open a dialog asking:
