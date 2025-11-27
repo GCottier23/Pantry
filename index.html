@@ -41,7 +41,7 @@
 
     <div class="inventory-actions-row">
       <button id="add-inventory-item-btn" type="button">
-        + Add item
+        Add item
       </button>
 
       <button id="real-scan-btn" type="button" class="secondary">
@@ -1092,9 +1092,10 @@ function openAddInventoryItemDialog(editKey = null) {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
-  // Smooth "pop" in
+    // Smooth "pop" in (overlay fade + panel pop)
   requestAnimationFrame(() => {
-    panel.classList.add("visible");
+    overlay.classList.add("is-visible"); // make overlay visible
+    panel.classList.add("visible");      // animate panel
   });
 
   // Focus without page jump
