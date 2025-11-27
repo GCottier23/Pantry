@@ -799,3 +799,18 @@ p {
     padding-top: 0.75rem;
   }
 }
+
+/* Add-item dialog animation + keyboard offset */
+
+.add-item-panel {
+  --offset-y: 0px;                 /* JS will update this */
+  transform: translateY(var(--offset-y)) scale(0.96);
+  opacity: 0;
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+  will-change: transform, opacity;
+}
+
+.add-item-panel.visible {
+  opacity: 1;
+  transform: translateY(var(--offset-y)) scale(1);
+}
