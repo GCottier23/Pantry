@@ -41,7 +41,7 @@
 
     <div class="inventory-actions-row">
       <button id="add-inventory-item-btn" type="button">
-        Add Iventory
+        Add Item
       </button>
 
       <button id="real-scan-btn" type="button" class="secondary">
@@ -1008,10 +1008,19 @@ function openAddInventoryItemDialog(editKey = null) {
 
   const qtyInput = document.createElement("input");
   qtyInput.type = "number";
-  qtyInput.inputMode = "decimal";   // number keypad
-  qtyInput.placeholder = "e.g. 500"
-  qtyInput.value = existingItem ? String(existingItem.quantity || 1) : "1";
-  qtyLabel.appendChild(qtyInput);
+  qtyInput.inputMode = "decimal"; // number keypad
+  qtyInput.min = "0";
+  qtyInput.step = "0.1";
+  qtyInput.placeholder = "e.g. 500";
+
+// Only set a value if we're editing an existing item.
+// For a brand new item, leave it empty so the placeholder shows.
+if (existingItem) {
+  qtyInput.value =
+    existingItem.quantity != null ? String(existingItem.quantity) : "";
+}
+
+qtyLabel.appendChild(qtyInput);
 
   const unitLabel = document.createElement("label");
   unitLabel.textContent = "Unit";
