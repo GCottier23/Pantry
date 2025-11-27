@@ -2612,21 +2612,37 @@ function attachAddItemKeyboardShim(panel) {
 
   showPage("page-inventory");
 
-  // ----- INVENTORY BUTTONS -----
-  const addInventoryBtn = document.getElementById("add-inventory-item-btn");
-  const realScanBtn     = document.getElementById("real-scan-btn");
+  const invForm = document.getElementById("inventory-form");
+const cancelInvEditBtn = document.getElementById("inventory-cancel-edit");
+const addInventoryBtn = document.getElementById("add-inventory-item-btn");
+const realScanBtn = document.getElementById("real-scan-btn");
 
-  // "+ Add item" → open manual add dialog
-  if (addInventoryBtn) {
-    addInventoryBtn.addEventListener("click", () => {
-      try {
-        openAddInventoryItemDialog();
-      } catch (err) {
-        console.error("Error in openAddInventoryItemDialog:", err);
-        alert("Sorry, something went wrong opening the Add Item box.");
-      }
-    });
-  }
+// SUPER SIMPLE: use prompts for now so the button definitely works
+if (addInventoryBtn) {
+  addInventoryBtn.addEventListener("click", () => {
+    const name = (prompt("Item name (e.g. Beef mince):") || "").trim();
+    if (!name) {
+      return; // user cancelled or left blank
+    }
+
+    const qtyStr = prompt("Quantity:", "1");
+    const qty = parseFloat(qtyStr || "0");
+    if (!qty || qty <= 0 || Number.isNaN(qty)) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
+
+    const unit = (prompt(
+      "Unit (g, kg, ml, l, pack, packs, pcs) – leave blank for none:",
+      ""
+    ) || "").trim();
+
+    upsertInventoryItem(name, qty, unit);
+    renderInventory();
+    renderInventoryNameSuggestions();
+    saveState();
+  });
+}
 
   // 📷 Scan barcode → open camera scanner
   if (realScanBtn) {
