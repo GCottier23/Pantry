@@ -969,8 +969,9 @@ function openAddInventoryItemDialog() {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
-  // Smooth "pop" in
+  // Smooth "pop" in – make BOTH the overlay and panel visible
   requestAnimationFrame(() => {
+    overlay.classList.add("is-visible");   // ⬅️ this is the missing bit
     panel.classList.add("visible");
   });
 
