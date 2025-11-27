@@ -2630,6 +2630,22 @@ function attachAddItemKeyboardShim(panel) {
   } else {
     console.warn("No #real-scan-btn found in DOM");
   }
+  
+    // ----- RECIPES BUTTONS -----
+  const addRecipeBtn = document.getElementById("add-recipe-btn");
+  const recipeForm   = document.getElementById("recipe-form");
+
+  if (addRecipeBtn && recipeForm) {
+    addRecipeBtn.addEventListener("click", () => {
+      // show the legacy inline editor form
+      recipeForm.classList.remove("hidden");
+
+      const nameInput = document.getElementById("recipe-name");
+      if (nameInput) {
+        nameInput.focus();
+      }
+    });
+  }
 
   // ----- RECIPES -----
   const startRecipeBtn       = document.getElementById("start-recipe");
