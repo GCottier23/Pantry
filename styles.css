@@ -328,15 +328,18 @@ button.secondary:active {
   padding-inline: 0.5rem;
 }
 
-/* Make the Add item / Scan barcode buttons sit in a row and match widths */
+/* Inventory action buttons – match nav button sizing */
 .inventory-actions-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
 
 .inventory-actions-row button {
-  flex: 1 1 0;
+  flex: 1 1 calc(50% - 0.5rem);  /* same idea as .app-nav buttons */
+  min-width: 7rem;
+  text-align: center;
 }
 
 /* ---------- Recipes / subpanels ---------- */
