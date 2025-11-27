@@ -837,7 +837,7 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
   });
 }
 
-  function renderInventory() {
+function renderInventory() {
   const container = document.getElementById("inventory-list");
   if (!container) return;
   container.innerHTML = "";
@@ -853,16 +853,64 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
       const row = document.createElement("div");
       row.className = "inventory-item";
 
-      const text = document.createElement("span");
-      text.className = "inventory-item-text";
-      text.textContent =
-        item.name +
-        " - " +
-        formatQuantityWithUnit(item.quantity, item.unit || "");
-      row.appendChild(text);
+      // Left side: name + quantity on two lines
+      const main = document.createElement("div");
+      main.className = "inventory-item-main";
 
-      // 👇 swipe right = edit, swipe left = delete
-      attachInventorySwipe(row, item);
+      const nameEl = document.createElement("div");
+      nameEl.className = "inventory-item-name";
+      nameEl.textContent = item.name;
+
+      const qtyEl = document.createElement("div");
+      qtyEl.className = "inventory-item-qty";
+      qtyEl.textContent = formatQuantityWithUnit(
+        item.quantity,
+        item.unit || ""
+      );
+
+      main.appendChild(nameEl);
+      main.appendChild(qtyEl);
+      row.appendChild(main);
+
+      // Right side: icon buttons
+      const actions = document.createElement("div");
+      actions.className = "inventory-actions";
+
+      // Edit
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "icon-button";
+      editBtn.title = "Edit item";
+      editBtn.setAttribute("aria-label", "Edit item");
+      editBtn.textContent = "✎";
+      editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        startInventoryEdit(item.key);
+      });
+
+      // Delete
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "icon-button danger";
+      delBtn.title = "Delete item";
+      delBtn.setAttribute("aria-label", "Delete item");
+      delBtn.textContent = "🗑";
+      delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!confirm(`Delete ${item.name} from inventory?`)) return;
+
+        deleteInventoryItem(item.key);
+        if (editingInventoryKey === item.key) {
+          clearInventoryEditState();
+        }
+        renderInventory();
+        renderInventoryNameSuggestions();
+        saveState();
+      });
+
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      row.appendChild(actions);
 
       container.appendChild(row);
     });
@@ -968,7 +1016,7 @@ qtyLabel.appendChild(qtyInput);
   unitLabel.style.display = "block";
 
   const unitSelect = document.createElement("select");
-  const units = ["", "g", "kg", "ml", "l", "pack", "packs", "pcs"];
+  const units = ["", "g", "kg", "ml", "l", "pack", "packs", "pcs","stick", "sticks"];
   units.forEach((u) => {
     const opt = document.createElement("option");
     opt.value = u;
