@@ -311,6 +311,8 @@ button.secondary:active {
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;         /* <-- add */
+  touch-action: pan-y;     /* <-- add */
 }
 
 .inventory-item-text {

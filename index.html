@@ -761,60 +761,112 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
         });
     }
 
-    function renderInventory() {
-      const container = document.getElementById("inventory-list");
-      if (!container) return;
-      container.innerHTML = "";
+    function attachInventorySwipe(row, item) {
+  let startX = 0;
+  let startY = 0;
+  let activeId = null;
+  let swiping = false;
 
-      const filter = (inventoryFilter || "").toLowerCase();
+  function resetTransform() {
+    row.style.transition = "transform 0.15s ease-out";
+    row.style.transform = "translateX(0)";
+    setTimeout(() => {
+      row.style.transition = "";
+    }, 160);
+  }
 
-      inventory
-        .slice()
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .forEach((item) => {
-          if (filter && !item.name.toLowerCase().includes(filter)) return;
+  row.addEventListener("pointerdown", (e) => {
+    activeId = e.pointerId;
+    startX = e.clientX;
+    startY = e.clientY;
+    swiping = true;
+    row.setPointerCapture(activeId);
+  });
 
-          const row = document.createElement("div");
-          row.className = "inventory-item";
+  row.addEventListener("pointermove", (e) => {
+    if (!swiping || e.pointerId !== activeId) return;
 
-          const text = document.createElement("span");
-          text.className = "inventory-item-text";
-          text.textContent =
-            item.name +
-            " - " +
-            formatQuantityWithUnit(item.quantity, item.unit || "");
-          row.appendChild(text);
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
 
-          const actions = document.createElement("div");
-          actions.className = "inventory-actions";
-
-          const editBtn = document.createElement("button");
-          editBtn.type = "button";
-          editBtn.textContent = "✎";
-          editBtn.title = "Edit";
-          editBtn.addEventListener("click", () => startInventoryEdit(item.key));
-
-          const delBtn = document.createElement("button");
-          delBtn.type = "button";
-          delBtn.textContent = "🗑";
-          delBtn.title = "Delete";
-          delBtn.addEventListener("click", () => {
-            if (confirm(`Delete ${item.name} from inventory?`)) {
-              deleteInventoryItem(item.key);
-              if (editingInventoryKey === item.key) clearInventoryEditState();
-              renderInventory();
-              renderInventoryNameSuggestions();
-              saveState();
-            }
-          });
-
-          actions.appendChild(editBtn);
-          actions.appendChild(delBtn);
-          row.appendChild(actions);
-
-          container.appendChild(row);
-        });
+    // If vertical movement dominates, treat it as scroll and cancel swipe
+    if (Math.abs(dy) > Math.abs(dx)) {
+      swiping = false;
+      row.releasePointerCapture(activeId);
+      resetTransform();
+      return;
     }
+
+    // Limit how far the row slides
+    const clamped = Math.max(-80, Math.min(80, dx));
+    row.style.transform = `translateX(${clamped}px)`;
+  });
+
+  function endSwipe(e) {
+    if (!swiping || e.pointerId !== activeId) return;
+    swiping = false;
+    row.releasePointerCapture(activeId);
+
+    const dx = e.clientX - startX;
+    const threshold = 60; // how far you need to swipe
+
+    resetTransform();
+
+    if (dx > threshold) {
+      // ➡️ swipe right → edit
+      startInventoryEdit(item.key);
+    } else if (dx < -threshold) {
+      // ⬅️ swipe left → delete
+      if (confirm(`Delete ${item.name} from inventory?`)) {
+        deleteInventoryItem(item.key);
+        if (editingInventoryKey === item.key) clearInventoryEditState();
+        renderInventory();
+        renderInventoryNameSuggestions();
+        saveState();
+      }
+    }
+  }
+
+  row.addEventListener("pointerup", endSwipe);
+  row.addEventListener("pointercancel", endSwipe);
+
+  row.addEventListener("pointerleave", () => {
+    if (!swiping) return;
+    swiping = false;
+    resetTransform();
+  });
+}
+
+  function renderInventory() {
+  const container = document.getElementById("inventory-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const filter = (inventoryFilter || "").toLowerCase();
+
+  inventory
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((item) => {
+      if (filter && !item.name.toLowerCase().includes(filter)) return;
+
+      const row = document.createElement("div");
+      row.className = "inventory-item";
+
+      const text = document.createElement("span");
+      text.className = "inventory-item-text";
+      text.textContent =
+        item.name +
+        " - " +
+        formatQuantityWithUnit(item.quantity, item.unit || "");
+      row.appendChild(text);
+
+      // 👇 swipe right = edit, swipe left = delete
+      attachInventorySwipe(row, item);
+
+      container.appendChild(row);
+    });
+}
 
     function startInventoryEdit(key) {
       const item = inventory.find((i) => i.key === key);
