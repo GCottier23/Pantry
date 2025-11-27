@@ -992,8 +992,10 @@ function openAddInventoryItemDialog() {
     if (evt.target === overlay) overlay.remove();
   });
 
-  // Keyboard-aware positioning
-  attachAddItemKeyboardShim(panel);
+  // Keyboard-aware positioning (only if helper exists)
+  if (typeof attachAddItemKeyboardShim === "function") {
+    attachAddItemKeyboardShim(panel);
+  }
 }
 
     // Open a dialog asking:
@@ -2618,29 +2620,40 @@ const addInventoryBtn = document.getElementById("add-inventory-item-btn");
 const realScanBtn = document.getElementById("real-scan-btn");
 
 // SUPER SIMPLE: use prompts for now so the button definitely works
+// Add Item → open the proper Add Item dialog, with a safe fallback
 if (addInventoryBtn) {
   addInventoryBtn.addEventListener("click", () => {
-    const name = (prompt("Item name (e.g. Beef mince):") || "").trim();
-    if (!name) {
-      return; // user cancelled or left blank
+    try {
+      // Try to use the nice overlay dialog
+      openAddInventoryItemDialog();
+    } catch (err) {
+      // If something goes wrong, fall back so the button NEVER feels dead
+      console.error("Error opening Add Item dialog:", err);
+      alert(
+        "There was a problem opening the Add Item window.\n\n" +
+        "I'll use a simple backup method instead."
+      );
+
+      const name = (prompt("Item name (e.g. Beef mince):") || "").trim();
+      if (!name) return;
+
+      const qtyStr = prompt("Quantity:", "1");
+      const qty = parseFloat(qtyStr || "0");
+      if (!qty || qty <= 0 || Number.isNaN(qty)) {
+        alert("Please enter a valid quantity.");
+        return;
+      }
+
+      const unit = (prompt(
+        "Unit (g, kg, ml, l, pack, packs, pcs) – leave blank for none:",
+        ""
+      ) || "").trim();
+
+      upsertInventoryItem(name, qty, unit);
+      renderInventory();
+      renderInventoryNameSuggestions();
+      saveState();
     }
-
-    const qtyStr = prompt("Quantity:", "1");
-    const qty = parseFloat(qtyStr || "0");
-    if (!qty || qty <= 0 || Number.isNaN(qty)) {
-      alert("Please enter a valid quantity.");
-      return;
-    }
-
-    const unit = (prompt(
-      "Unit (g, kg, ml, l, pack, packs, pcs) – leave blank for none:",
-      ""
-    ) || "").trim();
-
-    upsertInventoryItem(name, qty, unit);
-    renderInventory();
-    renderInventoryNameSuggestions();
-    saveState();
   });
 }
 
