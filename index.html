@@ -2618,13 +2618,9 @@ function attachAddItemKeyboardShim(panel) {
       console.log("Add item button clicked");
       openAddInventoryItemDialog();
     });
-    // DEBUG TEST -- forces dialog to run on page load
-window.testAddItem = () => {
-  console.log("TEST RUNNING: Trying to open dialog");
-  openAddInventoryItemDialog();
-};
-
-console.log("DEBUG: testAddItem() is now available.");
+  } else {
+    console.warn("No #add-inventory-item-btn found in DOM");
+  }
 
   // Scan barcode → opens camera scanner
   if (realScanBtn) {
