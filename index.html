@@ -1011,6 +1011,7 @@ function openAddInventoryItemDialog(editKey = null) {
   qtyInput.inputMode = "decimal";   // number keypad
   qtyInput.min = "0";
   qtyInput.step = "0.1";
+  qtyInput.placeholder = "e.g. 500"
   qtyInput.value = existingItem ? String(existingItem.quantity || 1) : "1";
   qtyLabel.appendChild(qtyInput);
 
