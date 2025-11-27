@@ -859,7 +859,7 @@ function openAddInventoryItemDialog() {
   // Overlay
   const overlay = document.createElement("div");
   overlay.id = "add-item-overlay";
-  overlay.className = "barcode-scanner-overlay"; // reuse same style base
+  overlay.className = "barcode-scanner-overlay"; // base dialog overlay styling
 
   // Panel
   const panel = document.createElement("div");
@@ -957,7 +957,7 @@ function openAddInventoryItemDialog() {
     overlay.classList.remove("is-visible");
     setTimeout(() => {
       overlay.remove();
-    }, 200); // matches CSS transition
+    }, 180); // matches CSS transition
   }
 
   // Click outside panel closes
@@ -992,15 +992,35 @@ function openAddInventoryItemDialog() {
     closeOverlay();
   });
 
-  // 🔽 When any field is focused → lift dialog up above keyboard
-  function handleFocusIn() {
-    overlay.classList.add("overlay-keyboard-up");
+  // 🔽 Keyboard handling: only lift dialog when keyboard really appears
+  let keyboardCheckTimer = null;
+  const KEYBOARD_THRESHOLD = 120; // px difference between full height & viewport
+
+  function scheduleKeyboardCheck() {
+    if (!window.visualViewport) return; // desktop etc → do nothing
+    if (keyboardCheckTimer) clearTimeout(keyboardCheckTimer);
+
+    keyboardCheckTimer = setTimeout(() => {
+      const vh = window.visualViewport.height;
+      const wh = window.innerHeight;
+      // If viewport height has shrunk by more than ~120px, assume keyboard is open
+      if (wh - vh > KEYBOARD_THRESHOLD) {
+        overlay.classList.add("overlay-keyboard-up");
+      }
+    }, 350); // give iOS time to show keyboard
   }
 
-  // When focus leaves all fields → drop dialog back to centre
+  function handleFocusIn() {
+    scheduleKeyboardCheck();
+  }
+
   function handleFocusOut() {
+    if (keyboardCheckTimer) {
+      clearTimeout(keyboardCheckTimer);
+      keyboardCheckTimer = null;
+    }
+    // After blur, if nothing in the dialog is focused, drop it back to centre
     setTimeout(() => {
-      // If nothing inside overlay is focused any more, remove the class
       if (!overlay.contains(document.activeElement)) {
         overlay.classList.remove("overlay-keyboard-up");
       }
@@ -1017,10 +1037,10 @@ function openAddInventoryItemDialog() {
     overlay.classList.add("is-visible");
   });
 
-  // 🔑 Slight delay before focusing, so animation happens first
+  // 🔑 Slight delay before focusing so the animation plays first
   setTimeout(() => {
     nameInput.focus();
-  }, 250);
+  }, 220);
 }
 
     // Open a dialog asking:
