@@ -40,7 +40,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 2rem;
   background: rgba(10, 10, 10, 0.96);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -324,6 +324,17 @@ button.secondary:active {
 
 .inventory-actions button {
   padding-inline: 0.5rem;
+}
+
+/* Make the Add item / Scan barcode buttons sit in a row and match widths */
+.inventory-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.inventory-actions-row button {
+  flex: 1 1 0;
 }
 
 /* ---------- Recipes / subpanels ---------- */
