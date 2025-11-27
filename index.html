@@ -2624,15 +2624,8 @@ if (realScanBtn) {
   });
 }
 
-// If you ever add a real inventory form, this will activate
-if (invForm) {
-  invForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    ...
-  });
-} else {
-  console.log("No #inventory-form found -- skipping submit handler");
-}
+// No inventory form exists (we use dialogs instead)
+console.log("Inventory form not present -- OK");
 
 if (cancelInvEditBtn) {
   cancelInvEditBtn.addEventListener("click", clearInventoryEditState);
