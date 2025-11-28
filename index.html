@@ -948,7 +948,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
     presetName,
   });
 
-  // Make sure the barcode map exists if we're in a barcode flow
+  // If this dialog is part of a barcode flow, make sure barcodeMap exists
   if (scannedBarcode) {
     window.barcodeMap = window.barcodeMap || {};
   }
@@ -1088,13 +1088,13 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
       let names = map[scannedBarcode];
 
       if (!names) {
-        // First time we've seen this barcode
+        // First time we've seen this barcode → single string
         map[scannedBarcode] = name;
       } else if (Array.isArray(names)) {
         // Already an array of names
         if (!names.includes(name)) names.push(name);
       } else {
-        // Was a single name string, convert to array if different
+        // Was a single string, convert to array if different
         if (names !== name) {
           map[scannedBarcode] = [names, name];
         }
@@ -1140,7 +1140,6 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
     attachAddItemKeyboardShim(panel);
   }
 }
-
 function animateCloseAddItemDialog(durationMs = 480) {
   const overlay = document.getElementById("add-item-overlay");
   if (!overlay) {
@@ -2435,63 +2434,84 @@ function openBarcodeScanner() {
   );
 }
 
-function handleBarcodeCode(code) {
-  console.log("handleBarcodeCode:", code);
-  if (!code) return;
+function handleBarcodeCode(barcode) {
+  if (!barcode) return;
 
-  if (typeof barcodeMap !== "object" || barcodeMap === null) {
-    window.barcodeMap = {};
-  }
+  const map = (window.barcodeMap = window.barcodeMap || {});
+  const entry = map[barcode];
 
-  let names = barcodeMap[code];
-
-  // No known mapping yet → blank dialog, but remember barcode
-  if (!names) {
-    console.log("No known items for this barcode – opening blank dialog");
-    openAddInventoryItemDialog(null, { scannedBarcode: code });
+  // 🆕 Case 1: brand new barcode – no mapping yet
+  if (!entry) {
+    openAddInventoryItemDialog(null, {
+      scannedBarcode: barcode,
+      presetName: "",
+    });
     return;
   }
 
-  // Normalise to array
-  if (!Array.isArray(names)) {
-    names = [names];
+  // Normalise entry to an array of names
+  let names = Array.isArray(entry) ? entry.slice() : [entry];
+
+  // Clean duplicates / blanks
+  names = [...new Set(names.filter(Boolean))];
+
+  // 🧾 Case 2: exactly one known name
+  if (names.length === 1) {
+    const name = names[0];
+
+    // Try find existing inventory item with that name
+    const existing =
+      inventory.find(
+        (i) => i.name && i.name.toLowerCase() === name.toLowerCase()
+      ) || null;
+
+    openAddInventoryItemDialog(existing, {
+      scannedBarcode: barcode,
+      presetName: name,
+    });
+    return;
   }
 
-  if (names.length === 1) {
-    // Single known name → prefill
-    console.log("Single known name for barcode:", names[0]);
-    openAddInventoryItemDialog(null, {
-      scannedBarcode: code,
-      presetName: names[0],
-    });
-  } else {
-    // Multiple known names → picker
-    console.log("Multiple known names for barcode:", names);
-    openBarcodeNamePicker(code, names);
-  }
+  // 📋 Case 3: multiple possible names → show picker
+  openBarcodeNamePicker(barcode, names);
 }
 
 function openBarcodeNamePicker(barcode, names) {
-  // Normalise / guard
-  if (!Array.isArray(names) || !names.length) {
-    openAddInventoryItemDialog(null, { scannedBarcode: barcode });
-    return;
+  // Normalise the list (turn single string → array)
+  if (!Array.isArray(names)) {
+    names = names ? [names] : [];
   }
 
-  // If there’s only one, just use the normal flow
-  if (names.length === 1) {
+  // No names → treat as new barcode
+  if (names.length === 0) {
     openAddInventoryItemDialog(null, {
       scannedBarcode: barcode,
-      presetName: names[0],
+      presetName: "",
     });
     return;
   }
 
-  // Remove any existing picker overlay
+  // Only one → open dialog prefilled
+  if (names.length === 1) {
+    const name = names[0];
+
+    // Try to locate this item in your inventory
+    const existing =
+      inventory.find(
+        (i) => i.name && i.name.toLowerCase() === name.toLowerCase()
+      ) || null;
+
+    openAddInventoryItemDialog(existing, {
+      scannedBarcode: barcode,
+      presetName: name,
+    });
+    return;
+  }
+
+  // Multiple names → show picker
   const oldOverlay = document.getElementById("barcode-choice-overlay");
   if (oldOverlay) oldOverlay.remove();
 
-  // Overlay (reuse your optional-overlay styling)
   const overlay = document.createElement("div");
   overlay.id = "barcode-choice-overlay";
   overlay.className = "optional-overlay";
@@ -2499,26 +2519,35 @@ function openBarcodeNamePicker(barcode, names) {
   const modal = document.createElement("div");
   modal.className = "optional-modal";
 
+  // Title
   const title = document.createElement("h3");
   title.textContent = "Which item is this?";
   modal.appendChild(title);
 
+  // Description
   const desc = document.createElement("p");
-  desc.textContent = "This barcode is already linked to multiple items. Pick one, or choose Something else to add a new one.";
+  desc.textContent =
+    "This barcode is linked to multiple items. Choose one, or tap Something else to add another.";
   modal.appendChild(desc);
 
-  // Buttons for each known name
+  // --- Buttons for each known name ---
   names.forEach((name) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "inventory-edit-btn"; // nice pill style
     btn.textContent = name;
+    btn.className = "inventory-edit-btn"; // your nice pill style
     btn.style.display = "block";
-    btn.style.marginTop = "0.35rem";
+    btn.style.marginTop = "0.4rem";
 
     btn.addEventListener("click", () => {
       overlay.remove();
-      openAddInventoryItemDialog(null, {
+
+      const existing =
+        inventory.find(
+          (i) => i.name && i.name.toLowerCase() === name.toLowerCase()
+        ) || null;
+
+      openAddInventoryItemDialog(existing, {
         scannedBarcode: barcode,
         presetName: name,
       });
@@ -2527,37 +2556,37 @@ function openBarcodeNamePicker(barcode, names) {
     modal.appendChild(btn);
   });
 
-  // Row for Something else + Cancel
-  const footer = document.createElement("div");
-  footer.className = "optional-buttons";
+  // --- Something else button ---
+  const otherBtn = document.createElement("button");
+  otherBtn.type = "button";
+  otherBtn.textContent = "Something else…";
+  otherBtn.className = "secondary";
+  otherBtn.style.marginTop = "0.8rem";
 
-  const somethingElseBtn = document.createElement("button");
-  somethingElseBtn.type = "button";
-  somethingElseBtn.textContent = "Something else";
-  // default pill style (deep grey) is fine here
-  somethingElseBtn.addEventListener("click", () => {
+  otherBtn.addEventListener("click", () => {
     overlay.remove();
     openAddInventoryItemDialog(null, {
-      scannedBarcode: barcode,
-      // no presetName => fresh name field but still tied to this barcode
+      scannedBarcode: barcode, // <-- CRITICAL so new item is added to barcodeMap
+      presetName: "",
     });
   });
 
+  modal.appendChild(otherBtn);
+
+  // --- Cancel button ---
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "secondary";
   cancelBtn.textContent = "Cancel";
-  cancelBtn.addEventListener("click", () => {
-    overlay.remove();
-  });
+  cancelBtn.className = "secondary";
+  cancelBtn.style.marginTop = "0.5rem";
 
-  footer.appendChild(somethingElseBtn);
-  footer.appendChild(cancelBtn);
-  modal.appendChild(footer);
+  cancelBtn.addEventListener("click", () => overlay.remove());
 
-  // Click outside to close
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
+  modal.appendChild(cancelBtn);
+
+  // Close picker when tapping background
+  overlay.addEventListener("click", (evt) => {
+    if (evt.target === overlay) overlay.remove();
   });
 
   overlay.appendChild(modal);
