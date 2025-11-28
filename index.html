@@ -872,13 +872,13 @@ function renderInventory() {
       actions.className = "inventory-actions";
 
       // Edit
-const editBtn = document.createElement("button");
-editBtn.type = "button";
-editBtn.className = "inventory-edit-btn";
-editBtn.textContent = "Edit";
-editBtn.addEventListener("click", () => {
-    openAddInventoryItemDialog(item);  // prefilled edit
-});
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "inventory-edit-btn";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => {
+        openAddInventoryItemDialog(item, null);  // existing item, no barcode
+      });
 
      // Delete
 const delBtn = document.createElement("button");
@@ -939,47 +939,69 @@ delBtn.addEventListener("click", (e) => {
 
         // ---------- BARCODE → ITEM MAPPINGS (SIMPLE NAMES ONLY) ----------
 
-// Simple "Add item" dialog for manual inventory entry
-function openAddInventoryItemDialog(opts = {}) {
-  const scannedBarcode = opts.scannedBarcode || null;
+function openAddInventoryItemDialog(existingItem = null, scannedBarcode = null) {
+  console.log("openAddInventoryItemDialog() called", { existingItem, scannedBarcode });
 
-  // Does this barcode have a record?
-  if (scannedBarcode && barcodeMap[scannedBarcode]) {
-      const savedName = barcodeMap[scannedBarcode];
-      console.log("Previously scanned barcode → using known item:", savedName);
+  // ---------------------------
+  // Decide initial values
+  // ---------------------------
+  let initialName = "";
+  let initialQty  = "";
+  let initialUnit = "";
 
-      // Auto-fill the item name
-      document.getElementById("item-name-input").value = savedName;
+  if (existingItem) {
+    // Called from "Edit" button
+    initialName = existingItem.name || "";
+    if (existingItem.quantity !== undefined && existingItem.quantity !== null) {
+      initialQty = String(existingItem.quantity);
+    }
+    if (existingItem.unit) {
+      initialUnit = existingItem.unit;
+    }
+  } else if (scannedBarcode && typeof barcodeMap === "object" && barcodeMap[scannedBarcode]) {
+    // Called from barcode scanner with a known barcode
+    const savedName = barcodeMap[scannedBarcode];
+    console.log("Previously scanned barcode – using name from barcodeMap:", savedName);
+    initialName = savedName;
 
-      // IF the item already exists in inventory, pre-fill it
-      const existing = inventory.find(i => i.name.toLowerCase() === savedName.toLowerCase());
-      if (existing) {
-          document.getElementById("item-name-input").value = existing.name;
-          document.getElementById("item-qty-input").value = existing.quantity;
-          document.getElementById("item-unit-input").value = existing.unit || "";
+    // If the inventory already has this item, prefill with that data
+    if (Array.isArray(inventory)) {
+      const invItem = inventory.find(
+        (i) => i.name && i.name.toLowerCase() === savedName.toLowerCase()
+      );
+      if (invItem) {
+        initialName = invItem.name || savedName;
+        if (invItem.quantity !== undefined && invItem.quantity !== null) {
+          initialQty = String(invItem.quantity);
+        }
+        if (invItem.unit) {
+          initialUnit = invItem.unit;
+        }
       }
+    }
   }
 
-  // ...rest of your dialog code
-}
-  console.log("openAddInventoryItemDialog() called");  // <-- debug
-
+  // ---------------------------
   // Remove any old overlay
+  // ---------------------------
   let overlay = document.getElementById("add-item-overlay");
-  if (overlay) animateCloseAddItemDialog(480);
+  if (overlay && overlay.parentNode) {
+    overlay.parentNode.removeChild(overlay);
+  }
 
-  // Overlay
+  // ---------------------------
+  // Build overlay + panel
+  // ---------------------------
   overlay = document.createElement("div");
   overlay.id = "add-item-overlay";
   overlay.className = "barcode-scanner-overlay";
 
-  // Panel
   const panel = document.createElement("div");
   panel.className = "barcode-scanner-panel add-item-panel";
 
   // Title
   const title = document.createElement("h2");
-  title.textContent = "Add item";
+  title.textContent = existingItem ? "Edit item" : "Add item";
   panel.appendChild(title);
 
   // ----- Item name row -----
@@ -994,7 +1016,7 @@ function openAddInventoryItemDialog(opts = {}) {
   nameInput.type = "text";
   nameInput.autocomplete = "off";
   nameInput.placeholder = "e.g. Beef mince";
-  nameInput.value = existingItem ? existingItem.name : "";
+  nameInput.value = initialName;
 
   nameLabel.appendChild(nameInput);
   nameRow.appendChild(nameLabel);
@@ -1014,7 +1036,7 @@ function openAddInventoryItemDialog(opts = {}) {
   qtyInput.min = "0";
   qtyInput.step = "0.1";
   qtyInput.placeholder = "e.g. 500";
-  qtyInput.value = existingItem ? String(existingItem.quantity) : "";       // let placeholder show
+  qtyInput.value = initialQty;      // empty string shows the placeholder
 
   qtyLabel.appendChild(qtyInput);
   qtyRow.appendChild(qtyLabel);
@@ -1029,19 +1051,18 @@ function openAddInventoryItemDialog(opts = {}) {
   unitLabel.style.display = "block";
 
   const unitSelect = document.createElement("select");
-const units = ["", "g", "kg", "ml", "l", "pack", "packs", "pcs"];
-units.forEach((u) => {
+  const units = ["", "g", "kg", "ml", "l", "pack", "packs", "pcs"];
+  units.forEach((u) => {
     const opt = document.createElement("option");
     opt.value = u;
     opt.textContent = u || "(none)";
     unitSelect.appendChild(opt);
-});
+  });
+  if (initialUnit) {
+    unitSelect.value = initialUnit;
+  }
 
-if (existingItem && existingItem.unit) {
-  unitSelect.value = existingItem.unit;
-}
   unitLabel.appendChild(unitSelect);
-
   unitRow.appendChild(unitLabel);
   panel.appendChild(unitRow);
 
@@ -1055,14 +1076,14 @@ if (existingItem && existingItem.unit) {
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => {
     animateCloseAddItemDialog(480);
-  });  
+  });
 
   const addBtn = document.createElement("button");
   addBtn.type = "button";
-  addBtn.textContent = "Add item";
+  addBtn.textContent = existingItem ? "Save changes" : "Add item";
   addBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
-    const qty = parseFloat(qtyInput.value || "0");
+    const qty  = parseFloat(qtyInput.value || "0");
     const unit = unitSelect.value || "";
 
     if (!name) {
@@ -1076,12 +1097,19 @@ if (existingItem && existingItem.unit) {
       return;
     }
 
-    // Save straight into inventory
+    // Save / update inventory
     upsertInventoryItem(name, qty, unit);
     renderInventory();
     renderInventoryNameSuggestions();
-    saveState();
 
+    // If this came from a barcode scan, remember the mapping
+    if (scannedBarcode) {
+      if (typeof barcodeMap === "object") {
+        barcodeMap[scannedBarcode] = name;
+      }
+    }
+
+    saveState();
     animateCloseAddItemDialog(480);
   });
 
@@ -1092,9 +1120,9 @@ if (existingItem && existingItem.unit) {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
-  // 🔑 Smooth "pop" in – make overlay visible AND animate panel
+  // Smooth "pop" in
   requestAnimationFrame(() => {
-    overlay.classList.add("is-visible");  // <-- this was missing
+    overlay.classList.add("is-visible");
     panel.classList.add("visible");
   });
 
@@ -1110,7 +1138,7 @@ if (existingItem && existingItem.unit) {
   if (evt.target === overlay) {
     animateCloseAddItemDialog(480);
   }
-});
+  });
 
   // Keyboard-aware positioning (only if helper exists)
   if (typeof attachAddItemKeyboardShim === "function") {
@@ -1120,16 +1148,24 @@ if (existingItem && existingItem.unit) {
 
 function animateCloseAddItemDialog(durationMs = 480) {
   const overlay = document.getElementById("add-item-overlay");
-  if (!overlay) return;
+  if (!overlay) {
+    console.log("No add-item-overlay to close");
+    return;
+  }
+
+  // Fade out overlay + panel
+  overlay.classList.remove("is-visible");
 
   const panel = overlay.querySelector(".add-item-panel");
   if (panel) {
-    panel.classList.remove("visible"); // reverse the open animation
+    panel.classList.remove("visible");
   }
 
+  // After animation, remove from DOM
   setTimeout(() => {
-    if (overlay && overlay.parentNode) {
-      overlay.parentNode.removeChild(overlay);
+    const current = document.getElementById("add-item-overlay");
+    if (current && current.parentNode) {
+      current.parentNode.removeChild(current);
     }
   }, durationMs);
 }
@@ -2417,10 +2453,10 @@ function openBarcodeScanner() {
       console.log("Confirmed barcode:", code);
       barcodeScanHandled = true;
 
-      closeBarcodeScannerOverlay(); // stops reader + stream
+      closeBarcodeScannerOverlay();
 
-      // Open your new Add Item dialog instead of the old barcode dialog
-      openAddInventoryItemDialog({ scannedBarcode: code });
+      // No existing item (null), but we pass the scanned code
+      openAddInventoryItemDialog(null, code);   
     }
   );
 }
