@@ -860,3 +860,27 @@ p {
   opacity: 1;
   transform: translateY(var(--offset-y)) scale(1);
 }
+
+/* EDIT pill button */
+.inventory-edit-btn {
+  padding: 0.28rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 999px;           /* pill */
+  border: 1px solid rgba(255,255,255,0.9);  /* white border */
+  background: rgba(0,122,255,0.18);         /* transparent blue */
+  color: white;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+/* Subtle hover effect */
+.inventory-edit-btn:hover {
+  background: rgba(0,122,255,0.28);
+  border-color: white;
+}
+
+/* Tap feedback on iOS */
+.inventory-edit-btn:active {
+  transform: scale(0.96);
+}

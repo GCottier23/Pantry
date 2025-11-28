@@ -877,12 +877,12 @@ function renderInventory() {
       actions.className = "inventory-actions";
 
       // Edit
-  const editBtn = document.createElement("button");
+const editBtn = document.createElement("button");
 editBtn.type = "button";
-editBtn.textContent = "✎";
-editBtn.title = "Edit";
+editBtn.className = "inventory-edit-btn";
+editBtn.textContent = "Edit";
 editBtn.addEventListener("click", () => {
-  openAddInventoryItemDialog(item);
+    openAddInventoryItemDialog(item);  // prefilled edit
 });
 
       // Delete
