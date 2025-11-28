@@ -2749,13 +2749,25 @@ function attachAddItemKeyboardShim(panel) {
 
   // === INVENTORY EVENTS ===
   const addInventoryBtn = document.getElementById("add-inventory-item-btn");
-  const realScanBtn = document.getElementById("real-scan-btn");
+  const realScanBtn     = document.getElementById("real-scan-btn");
 
   // Add Item → opens the Add Item overlay dialog
   if (addInventoryBtn) {
     addInventoryBtn.addEventListener("click", () => {
       console.log("Add item button clicked");
-      openAddInventoryItemDialog();
+
+      // extra debug so we SEE what the browser thinks this is
+      console.log("typeof window.openAddInventoryItemDialog =",
+        typeof window.openAddInventoryItemDialog
+      );
+
+      if (typeof window.openAddInventoryItemDialog !== "function") {
+        console.error("openAddInventoryItemDialog is not a function:", window.openAddInventoryItemDialog);
+        alert("Add item dialog is not available (JS error) – check console.");
+        return;
+      }
+
+      window.openAddInventoryItemDialog();
     });
   } else {
     console.warn("No #add-inventory-item-btn found in DOM");
