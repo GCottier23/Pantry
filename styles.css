@@ -1,19 +1,24 @@
 /* ---------- Base theme ---------- */
 
 :root {
-  --bg: #101010;
-  --bg-elevated: #181818;
-  --bg-elevated-2: #202020;
-  --border-subtle: #333;
-  --accent: #ff7a00;
-  --accent-soft: rgba(255, 122, 0, 0.16);
-  --text-main: #f5f5f5;
-  --text-muted: #bbbbbb;
-  --danger: #ff4b4b;
+  --bg: #05060a;
+  --bg-elevated: #10121b;
+  --bg-elevated-2: #151826;
+
+  --border-subtle: #2a3042;
+
+  /* New accent: electric blue / cyan */
+  --accent: #4da6ff;
+  --accent-soft: rgba(77, 166, 255, 0.18);
+
+  --text-main: #f5f7ff;
+  --text-muted: #a6b0c5;
+  --danger: #ff4b5c;
+
   --radius-lg: 18px;
   --radius-md: 12px;
   --radius-pill: 999px;
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.6);
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.65);
 }
 
 *,
@@ -82,31 +87,47 @@ body {
   z-index: 40;
 }
 
+/* Nav buttons – match Edit/Delete pill style in deep grey */
 .app-nav button {
   flex: 1 1 calc(50% - 0.5rem);
   min-width: 7rem;
   padding: 0.55rem 0.9rem;
+
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: radial-gradient(circle at top left, #262626 0, #121212 60%, #101010 100%);
-  color: var(--text-main);
+  border: 1px solid rgba(255, 255, 255, 0.95); /* crisp white */
+
+  background: #050608;                         /* almost-black grey */
+  color: #ffffff;
+
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.03em;
   text-align: center;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.7);
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
+  transition: background 0.15s ease,
+              transform 0.08s ease,
+              box-shadow 0.12s ease,
+              border-color 0.12s ease;
 }
 
+.app-nav button:hover {
+  background: #090b10; /* tiny lift on hover */
+}
+
+.app-nav button:active {
+  transform: scale(0.97);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
+}
+
+/* Selected tab – just a touch lighter + stronger shadow */
 .app-nav button[aria-selected="true"] {
-  border-color: rgba(255, 122, 0, 0.7);
+  background: #0b0e15;  /* still very dark, slightly lighter than idle */
+  border-color: #ffffff;
   box-shadow:
-    0 0 0 1px rgba(255, 122, 0, 0.5),
-    0 10px 24px rgba(255, 122, 0, 0.35);
-  background:
-    radial-gradient(circle at top, rgba(255, 122, 0, 0.35), transparent 55%),
-    radial-gradient(circle at bottom, #1b1b1b 0, #101010 60%, #050505 100%);
+    0 0 0 1px rgba(255, 255, 255, 0.95),
+    0 10px 24px rgba(0, 0, 0, 0.9);
 }
 
 /* Larger screens: nav buttons shrink a bit, hamburger not really needed */
@@ -251,27 +272,32 @@ button {
   font-family: inherit;
 }
 
+/* GLOBAL default pill button (deep grey, white border, white text) */
 button[type="submit"],
 button:not(.secondary):not(.menu-toggle):not(.inventory-edit-btn):not(.inventory-delete-button) {
   border-radius: var(--radius-pill);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.95);  /* crisp white */
   padding: 0.55rem 1rem;
-  background: radial-gradient(circle at top, #ff9c3a 0, #ff7a00 40%, #d95e00 100%);
-  color: #1b0a00;
+
+  background: #050608;                          /* almost-black grey */
+  color: #ffffff;
+
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 10px 24px rgba(0, 0, 0, 0.9);
-  transition: transform 0.08s ease, box-shadow 0.12s ease, filter 0.12s ease;
+
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
+  transition:
+    background 0.15s ease,
+    transform 0.08s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
 }
 
 button[type="submit"]:active,
-button:not(.secondary):not(.menu-toggle):active {
-  transform: translateY(1px) scale(0.98);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.8);
-  filter: brightness(0.96);
+button:not(.secondary):not(.menu-toggle):not(.inventory-edit-btn):not(.inventory-delete-button):active {
+  transform: scale(0.97);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
 
 button.secondary {
