@@ -1094,6 +1094,22 @@ function openAddInventoryItemDialog() {
   }
 }
 
+function animateCloseAddItemDialog(durationMs = 480) {
+  const overlay = document.getElementById("add-item-overlay");
+  if (!overlay) return;
+
+  const panel = overlay.querySelector(".add-item-panel");
+  if (panel) {
+    panel.classList.remove("visible"); // reverse the open animation
+  }
+
+  setTimeout(() => {
+    if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
+  }, durationMs);
+}
+
     // ---------- RECIPES ----------
 
 function renderCurrentRecipeIngredients() {
