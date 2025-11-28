@@ -940,17 +940,25 @@ delBtn.addEventListener("click", (e) => {
         // ---------- BARCODE → ITEM MAPPINGS (SIMPLE NAMES ONLY) ----------
 
 function openAddInventoryItemDialog(existingItem = null, opts = {}) {
-  console.log("openAddInventoryItemDialog() called", { existingItem, opts });
+  const { scannedBarcode = null, presetName = "" } = opts || {};
 
-  const scannedBarcode = opts.scannedBarcode || null;
-  const presetName     = opts.presetName || "";
+  console.log("openAddInventoryItemDialog() called", {
+    existingItem,
+    scannedBarcode,
+    presetName,
+  });
 
-  // Remove any existing overlay instantly
-  let overlay = document.getElementById("add-item-overlay");
-  if (overlay) overlay.remove();
+  // Make sure the barcode map exists if we're in a barcode flow
+  if (scannedBarcode) {
+    window.barcodeMap = window.barcodeMap || {};
+  }
+
+  // Remove any previous overlay instantly (we only animate on close)
+  const oldOverlay = document.getElementById("add-item-overlay");
+  if (oldOverlay) oldOverlay.remove();
 
   // Overlay
-  overlay = document.createElement("div");
+  const overlay = document.createElement("div");
   overlay.id = "add-item-overlay";
   overlay.className = "barcode-scanner-overlay";
 
@@ -960,7 +968,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
 
   // Title
   const title = document.createElement("h2");
-  title.textContent = existingItem ? "Edit item" : "Add item";
+  title.textContent = "Add item";
   panel.appendChild(title);
 
   // ----- Item name row -----
@@ -976,6 +984,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
   nameInput.autocomplete = "off";
   nameInput.placeholder = "e.g. Beef mince";
 
+  // Prefill priority: existingItem (edit) → presetName (known barcode) → blank
   if (existingItem) {
     nameInput.value = existingItem.name;
   } else if (presetName) {
@@ -998,15 +1007,15 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
 
   const qtyInput = document.createElement("input");
   qtyInput.type = "number";
-  qtyInput.inputMode = "decimal";   // iOS number keypad
+  qtyInput.inputMode = "decimal"; // iOS number keypad
   qtyInput.min = "0";
   qtyInput.step = "0.1";
   qtyInput.placeholder = "e.g. 500";
 
-  if (existingItem && existingItem.quantity != null) {
+  if (existingItem && typeof existingItem.quantity === "number") {
     qtyInput.value = String(existingItem.quantity);
   } else {
-    qtyInput.value = "";
+    qtyInput.value = ""; // let placeholder show
   }
 
   qtyLabel.appendChild(qtyInput);
@@ -1023,6 +1032,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
 
   const unitSelect = document.createElement("select");
   const units = ["", "g", "kg", "ml", "l", "pack", "packs", "pcs"];
+
   units.forEach((u) => {
     const opt = document.createElement("option");
     opt.value = u;
@@ -1047,16 +1057,15 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
   cancelBtn.className = "secondary";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => {
-    console.log("Add-item Cancel clicked");
     animateCloseAddItemDialog(480);
   });
 
   const addBtn = document.createElement("button");
   addBtn.type = "button";
-  addBtn.textContent = existingItem ? "Save changes" : "Add item";
+  addBtn.textContent = "Add item";
   addBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
-    const qty  = parseFloat(qtyInput.value || "0");
+    const qty = parseFloat(qtyInput.value || "0");
     const unit = unitSelect.value || "";
 
     if (!name) {
@@ -1073,21 +1082,21 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
     // Save straight into inventory
     upsertInventoryItem(name, qty, unit);
 
-    // 🔗 Tie this name to the scanned barcode (supporting multiple names)
+    // 🔗 If this came from a barcode scan, update barcodeMap
     if (scannedBarcode) {
-      if (typeof barcodeMap !== "object" || barcodeMap === null) {
-        window.barcodeMap = window.barcodeMap || {};
-      }
-      let names = barcodeMap[scannedBarcode];
+      const map = (window.barcodeMap = window.barcodeMap || {});
+      let names = map[scannedBarcode];
 
       if (!names) {
-        barcodeMap[scannedBarcode] = [name];
+        // First time we've seen this barcode
+        map[scannedBarcode] = name;
       } else if (Array.isArray(names)) {
+        // Already an array of names
         if (!names.includes(name)) names.push(name);
       } else {
-        // Old single-string style → migrate to array
+        // Was a single name string, convert to array if different
         if (names !== name) {
-          barcodeMap[scannedBarcode] = [names, name];
+          map[scannedBarcode] = [names, name];
         }
       }
     }
@@ -1106,7 +1115,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
-  // Animate open
+  // Smooth "pop" in
   requestAnimationFrame(() => {
     overlay.classList.add("is-visible");
     panel.classList.add("visible");
@@ -1114,7 +1123,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
 
   // Focus without page jump
   setTimeout(() => {
-    if (nameInput && nameInput.focus) {
+    if (nameInput.focus) {
       nameInput.focus({ preventScroll: true });
     }
   }, 40);
@@ -1126,7 +1135,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
     }
   });
 
-  // Keyboard-aware positioning (if you still have this helper)
+  // Keyboard-aware positioning (only if helper exists)
   if (typeof attachAddItemKeyboardShim === "function") {
     attachAddItemKeyboardShim(panel);
   }
@@ -2413,52 +2422,33 @@ function openBarcodeScanner() {
   let lastCodeThisSession = null;
 
   activeBarcodeReader.decodeFromVideoDevice(
-    null,
-    "barcode-video",
-    (result, err) => {
-      // If this session is outdated, ignore
-      if (thisSession !== scanSessionId) return;
-      if (barcodeScanHandled) return;
+  null,
+  "barcode-video",
+  (result, err) => {
+    if (!result || !result.text) return;
+    const code = result.text.trim();
+    if (!code) return;
 
-      if (!result || !result.text) return;
+    console.log("Confirmed barcode:", code);
+    barcodeScanHandled = true;
 
-      const code = result.text.trim();
-      if (!code) return;
-
-      // First time we see this code in this session -> store and ignore
-      if (code !== lastCodeThisSession) {
-        lastCodeThisSession = code;
-        console.log(
-          "First time seeing code this session, waiting for confirmation:",
-          code
-        );
-        return;
-      }
-
-      // Second time in a row -> now we trust it
-      console.log("Confirmed barcode:", code);
-      barcodeScanHandled = true;
-
-      closeBarcodeScannerOverlay();
-
-      // No existing item (null), but we pass the scanned code
-      openAddInventoryItemDialog(null, code);   
-    }
-  );
+    closeBarcodeScannerOverlay();
+    handleBarcodeCode(code);
+  }
+);
 }
 
 function handleBarcodeCode(code) {
   console.log("handleBarcodeCode:", code);
   if (!code) return;
 
-  // Ensure the map exists
   if (typeof barcodeMap !== "object" || barcodeMap === null) {
-    window.barcodeMap = window.barcodeMap || {};
+    window.barcodeMap = {};
   }
 
   let names = barcodeMap[code];
 
-  // No known mapping → open a blank Add Item dialog, but remember barcode
+  // No known mapping yet → blank dialog, but remember barcode
   if (!names) {
     console.log("No known items for this barcode – opening blank dialog");
     openAddInventoryItemDialog(null, { scannedBarcode: code });
@@ -2471,14 +2461,14 @@ function handleBarcodeCode(code) {
   }
 
   if (names.length === 1) {
-    // Single known item → prefill
+    // Single known name → prefill
     console.log("Single known name for barcode:", names[0]);
     openAddInventoryItemDialog(null, {
       scannedBarcode: code,
       presetName: names[0],
     });
   } else {
-    // Multiple known names → show picker
+    // Multiple known names → picker
     console.log("Multiple known names for barcode:", names);
     openBarcodeNamePicker(code, names);
   }
