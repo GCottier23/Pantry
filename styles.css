@@ -838,28 +838,6 @@ p {
   }
 }
 
-/* Smooth open animation just for the Add Item dialog */
-#add-item-overlay {
-  opacity: 0;
-  transition: opacity 0.48s ease-out;
-}
-
-#add-item-overlay.is-visible {
-  opacity: 1;
-}
-
-/* Animate the panel itself (slide + slight scale) */
-#add-item-overlay .barcode-scanner-panel {
-  transform: translateY(16px) scale(0.96);
-  opacity: 0.85;
-  transition: transform 0.48s ease-out, opacity 0.48s ease-out;
-}
-
-#add-item-overlay.is-visible .barcode-scanner-panel {
-  transform: translateY(0) scale(1);
-  opacity: 1;
-}
-
 /* When the keyboard is up on small screens, lift the dialog */
 @media (max-width: 800px) {
   #add-item-overlay.overlay-keyboard-up {
@@ -874,7 +852,7 @@ p {
   --offset-y: 0px;                 /* JS will update this */
   transform: translateY(var(--offset-y)) scale(0.96);
   opacity: 0;
-  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+  transition: transform 0.48s ease-out, opacity 0.48s ease-out;
   will-change: transform, opacity;
 }
 
