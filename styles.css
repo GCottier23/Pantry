@@ -314,6 +314,46 @@ button.inventory-edit-btn:active {
   transform: scale(0.96);
 }
 
+/* Blue "Edit" pill (for reference – keep whatever you already have) */
+.inventory-edit-button {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(40, 90, 160, 0.35);  /* transparent blue */
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
+}
+
+/* Red "Delete" pill – same size/shape as Edit, different colour */
+.inventory-delete-button {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(220, 60, 60, 0.35);   /* transparent red */
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+}
+
+.inventory-delete-button:active {
+  transform: translateY(1px) scale(0.97);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+}
+
+
+
 /* ---------- Inventory list ---------- */
 
 .inventory-list {

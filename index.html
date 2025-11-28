@@ -885,25 +885,26 @@ editBtn.addEventListener("click", () => {
     openAddInventoryItemDialog(item);  // prefilled edit
 });
 
-      // Delete
-      const delBtn = document.createElement("button");
-      delBtn.type = "button";
-      delBtn.className = "iventory-delete-button";
-      delBtn.title = "Delete";
-      delBtn.setAttribute("aria-label", "Delete item");
-      delBtn.textContent = "🗑";
-      delBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (!confirm(`Delete ${item.name} from inventory?`)) return;
+     // Delete
+const delBtn = document.createElement("button");
+delBtn.type = "button";
+delBtn.className = "inventory-delete-button";
+delBtn.title = "Delete";
+delBtn.setAttribute("aria-label", "Delete item");
+delBtn.textContent = "Delete";
 
-        deleteInventoryItem(item.key);
-        if (editingInventoryKey === item.key) {
-          clearInventoryEditState();
-        }
-        renderInventory();
-        renderInventoryNameSuggestions();
-        saveState();
-      });
+delBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (!confirm(`Delete ${item.name} from inventory?`)) return;
+
+  deleteInventoryItem(item.key);
+  if (editingInventoryKey === item.key) {
+    clearInventoryEditState();
+  }
+  renderInventory();
+  renderInventoryNameSuggestions();
+  saveState();
+});
 
       actions.appendChild(editBtn);
       actions.appendChild(delBtn);
