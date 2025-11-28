@@ -2298,16 +2298,14 @@ function closeBarcodeScannerOverlay() {
 }
 
 function openBarcodeScanner() {
-  // Remove any previous overlay
-  let overlay = document.getElementById("barcode-input-overlay");
+  // Remove any old scanner overlay
+  let overlay = document.getElementById("barcode-overlay");
   if (overlay) overlay.remove();
 
-  // ----- Overlay -----
   overlay = document.createElement("div");
-  overlay.id = "barcode-input-overlay";
+  overlay.id = "barcode-overlay";
   overlay.className = "barcode-scanner-overlay";
 
-  // ----- Panel -----
   const panel = document.createElement("div");
   panel.className = "barcode-scanner-panel";
 
@@ -2315,13 +2313,13 @@ function openBarcodeScanner() {
   title.textContent = "Scan barcode";
   panel.appendChild(title);
 
-  // Video element
   const video = document.createElement("video");
   video.id = "barcode-video";
-  video.setAttribute("playsinline", "true");
+  video.playsInline = true;
+  video.autoplay = true;
+  video.muted = true;
   panel.appendChild(video);
 
-  // Actions row
   const actions = document.createElement("div");
   actions.className = "barcode-scanner-actions";
 
@@ -2336,16 +2334,14 @@ function openBarcodeScanner() {
 
   actions.appendChild(cancelBtn);
   panel.appendChild(actions);
-
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
   let stream = null;
-  let detector = null;
   let stopped = false;
+  let detector = null;
 
   function stopStream() {
-    if (stopped) return;
     stopped = true;
     if (stream) {
       stream.getTracks().forEach((t) => t.stop());
@@ -2353,68 +2349,79 @@ function openBarcodeScanner() {
     }
   }
 
-  async function startCamera() {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false,
-      });
-
-      video.srcObject = stream;
-      await video.play();
-
-      if ("BarcodeDetector" in window) {
-        detector = new BarcodeDetector({
-          formats: [
-            "ean_13",
-            "ean_8",
-            "upc_a",
-            "upc_e",
-            "code_128",
-            "code_39",
-            "qr_code",
-          ],
-        });
-        requestAnimationFrame(tick);
-      } else {
-        console.warn("BarcodeDetector not supported; cannot scan.");
-      }
-    } catch (err) {
-      console.error("Could not start camera", err);
-      stopStream();
-      overlay.remove();
-      alert("Could not access camera for barcode scanning.");
-    }
+  // If BarcodeDetector isn't available, bail out nicely
+  if (!("BarcodeDetector" in window)) {
+    alert("Barcode scanning isn’t supported in this browser.");
+    overlay.remove();
+    return;
   }
+
+  detector = new BarcodeDetector({
+    formats: [
+      "upc_a",
+      "upc_e",
+      "ean_13",
+      "ean_8",
+      "code_128",
+      "code_39",
+      "qr_code",
+    ],
+  });
+
+  navigator.mediaDevices
+    .getUserMedia({
+      video: { facingMode: "environment" },
+      audio: false,
+    })
+    .then((s) => {
+      stream = s;
+      video.srcObject = stream;
+      video.play();
+      requestAnimationFrame(tick);
+    })
+    .catch((err) => {
+      console.error("Camera error:", err);
+      alert("Could not access camera.");
+      overlay.remove();
+    });
 
   async function tick() {
     if (stopped || !detector) return;
 
+    // Make sure the video has real pixels before detecting
+    if (video.readyState < 2 || video.videoWidth === 0) {
+      return requestAnimationFrame(tick);
+    }
+
     try {
       const barcodes = await detector.detect(video);
-      if (barcodes && barcodes.length) {
-        const value = barcodes[0].rawValue || barcodes[0].rawValue;
-        console.log("Scanned barcode:", value);
+      if (barcodes && barcodes.length > 0) {
+        const value = barcodes[0].rawValue;
+        console.log("Barcode detected:", value);
 
-        // Stop camera + close overlay
         stopStream();
         overlay.remove();
 
-        // Open your Add Item dialog after a successful scan
-        // (we can wire barcode-based prefill later if you like)
+        // If you later want to pass the barcode into the dialog, you can:
+        // openAddInventoryItemDialog({ barcode: value });
         openAddInventoryItemDialog();
         return;
       }
     } catch (err) {
-      console.error("Barcode detect error", err);
+      console.warn("Barcode detect error:", err);
     }
 
     requestAnimationFrame(tick);
   }
 
-  startCamera();
+  // Tap outside panel to close
+  overlay.addEventListener("click", (evt) => {
+    if (evt.target === overlay) {
+      stopStream();
+      overlay.remove();
+    }
+  });
 }
-
 function attachAddItemKeyboardShim(panel) {
   if (!window.visualViewport) return;
 
