@@ -295,7 +295,7 @@ button.secondary:active {
 
 /* Force override for Edit pill button */
 button.inventory-edit-btn {
-  background: rgba(0,122,255,0.18) !important;   /* transparent blue */
+  background: rgba(0,122,255,0.38) !important;   /* transparent blue */
   border: 1px solid rgba(255,255,255,0.9) !important;
   color: white !important;
   padding: 0.28rem 0.7rem;
