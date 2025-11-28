@@ -867,8 +867,8 @@ p {
   font-size: 0.8rem;
   font-weight: 600;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.9);   /* white border */
-  background: rgba(0, 122, 255, 0.18);          /* transparent blue */
+  border: 1px solid rgba(255, 255, 255, 1);   /* white border */
+  background: rgba(0, 122, 255, 0.34);          /* transparent blue */
   color: #ffffff;
   min-width: 72px;
   display: inline-flex;
@@ -893,8 +893,8 @@ p {
   font-size: 0.8rem;
   font-weight: 600;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.9);   /* white border */
-  background: rgba(255, 60, 60, 0.22);          /* transparent red */
+  border: 1px solid rgba(255, 255, 255, 1);   /* white border */
+  background: rgba(255, 60, 60, 0.38);          /* transparent red */
   color: #ffffff;
   min-width: 72px;
   display: inline-flex;
