@@ -949,7 +949,7 @@ function openAddInventoryItemDialog() {
 
   // Remove any old overlay
   let overlay = document.getElementById("add-item-overlay");
-  if (overlay) animateCloseOverlay(overlay, panel);
+  if (overlay) overlay.remove();
 
   // Overlay
   overlay = document.createElement("div");
@@ -1032,9 +1032,8 @@ function openAddInventoryItemDialog() {
   cancelBtn.className = "secondary";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => {
-  animateCloseOverlay(overlay, panel);
-});  
-  });
+    overlay.remove();
+  });  
 
   const addBtn = document.createElement("button");
   addBtn.type = "button";
