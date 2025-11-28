@@ -2471,66 +2471,99 @@ function handleBarcodeCode(code) {
   }
 }
 
-function openBarcodeNamePicker(code, names) {
-  let overlay = document.getElementById("barcode-name-overlay");
-  if (overlay) overlay.remove();
+function openBarcodeNamePicker(barcode, names) {
+  // Normalise / guard
+  if (!Array.isArray(names) || !names.length) {
+    openAddInventoryItemDialog(null, { scannedBarcode: barcode });
+    return;
+  }
 
-  overlay = document.createElement("div");
-  overlay.id = "barcode-name-overlay";
+  // If there’s only one, just use the normal flow
+  if (names.length === 1) {
+    openAddInventoryItemDialog(null, {
+      scannedBarcode: barcode,
+      presetName: names[0],
+    });
+    return;
+  }
+
+  // Remove any existing picker overlay
+  const oldOverlay = document.getElementById("barcode-choice-overlay");
+  if (oldOverlay) oldOverlay.remove();
+
+  // Overlay (reuse your optional-overlay styling)
+  const overlay = document.createElement("div");
+  overlay.id = "barcode-choice-overlay";
   overlay.className = "optional-overlay";
 
   const modal = document.createElement("div");
   modal.className = "optional-modal";
 
-  const h3 = document.createElement("h3");
-  h3.textContent = "Which item is this?";
-  modal.appendChild(h3);
+  const title = document.createElement("h3");
+  title.textContent = "Which item is this?";
+  modal.appendChild(title);
 
-  const p = document.createElement("p");
-  p.textContent = "This barcode is linked to multiple items. Choose one:";
-  modal.appendChild(p);
+  const desc = document.createElement("p");
+  desc.textContent = "This barcode is already linked to multiple items. Pick one, or choose Something else to add a new one.";
+  modal.appendChild(desc);
 
-  const list = document.createElement("div");
+  // Buttons for each known name
   names.forEach((name) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "inventory-edit-btn";
+    btn.className = "inventory-edit-btn"; // nice pill style
     btn.textContent = name;
-    btn.style.width = "100%";
+    btn.style.display = "block";
     btn.style.marginTop = "0.35rem";
 
     btn.addEventListener("click", () => {
       overlay.remove();
       openAddInventoryItemDialog(null, {
-        scannedBarcode: code,
+        scannedBarcode: barcode,
         presetName: name,
       });
     });
 
-    list.appendChild(btn);
+    modal.appendChild(btn);
   });
-  modal.appendChild(list);
 
-  const buttons = document.createElement("div");
-  buttons.className = "optional-buttons";
+  // Row for Something else + Cancel
+  const footer = document.createElement("div");
+  footer.className = "optional-buttons";
 
-  const cancel = document.createElement("button");
-  cancel.type = "button";
-  cancel.className = "secondary";
-  cancel.textContent = "Cancel";
-  cancel.addEventListener("click", () => overlay.remove());
+  const somethingElseBtn = document.createElement("button");
+  somethingElseBtn.type = "button";
+  somethingElseBtn.textContent = "Something else";
+  // default pill style (deep grey) is fine here
+  somethingElseBtn.addEventListener("click", () => {
+    overlay.remove();
+    openAddInventoryItemDialog(null, {
+      scannedBarcode: barcode,
+      // no presetName => fresh name field but still tied to this barcode
+    });
+  });
 
-  buttons.appendChild(cancel);
-  modal.appendChild(buttons);
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "secondary";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => {
+    overlay.remove();
+  });
+
+  footer.appendChild(somethingElseBtn);
+  footer.appendChild(cancelBtn);
+  modal.appendChild(footer);
+
+  // Click outside to close
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
 
   overlay.appendChild(modal);
-
-  overlay.addEventListener("click", (evt) => {
-    if (evt.target === overlay) overlay.remove();
-  });
-
   document.body.appendChild(overlay);
 }
+
 function attachAddItemKeyboardShim(panel) {
   if (!window.visualViewport) return;
 
