@@ -293,6 +293,27 @@ button.secondary:active {
   transform: scale(0.97);
 }
 
+/* Force override for Edit pill button */
+button.inventory-edit-btn {
+  background: rgba(0,122,255,0.18) !important;   /* transparent blue */
+  border: 1px solid rgba(255,255,255,0.9) !important;
+  color: white !important;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+button.inventory-edit-btn:hover {
+  background: rgba(0,122,255,0.28) !important;
+}
+
+button.inventory-edit-btn:active {
+  transform: scale(0.96);
+}
+
 /* ---------- Inventory list ---------- */
 
 .inventory-list {
