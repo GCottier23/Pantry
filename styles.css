@@ -252,7 +252,7 @@ button {
 }
 
 button[type="submit"],
-button:not(.secondary):not(.menu-toggle) {
+button:not(.secondary):not(.menu-toggle):not(.inventory-edit-btn):not(.inventory-delete-button) {
   border-radius: var(--radius-pill);
   border: none;
   padding: 0.55rem 1rem;
@@ -292,67 +292,6 @@ button.secondary:hover {
 button.secondary:active {
   transform: scale(0.97);
 }
-
-/* Force override for Edit pill button */
-button.inventory-edit-btn {
-  background: rgba(0,122,255,0.38) !important;   /* transparent blue */
-  border: 1px solid rgba(255,255,255,0.9) !important;
-  color: white !important;
-  padding: 0.28rem 0.7rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: 0.18s ease;
-}
-
-button.inventory-edit-btn:hover {
-  background: rgba(0,122,255,0.28) !important;
-}
-
-button.inventory-edit-btn:active {
-  transform: scale(0.96);
-}
-
-/* Blue "Edit" pill (for reference – keep whatever you already have) */
-.inventory-edit-button {
-  padding: 0.35rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(40, 90, 160, 0.35);  /* transparent blue */
-  color: #ffffff;
-  font-size: 0.8rem;
-  font-weight: 600;
-  min-width: 72px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
-}
-
-/* Red "Delete" pill – same size/shape as Edit, different colour */
-.inventory-delete-button {
-  padding: 0.35rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(220, 60, 60, 0.35);   /* transparent red */
-  color: #ffffff;
-  font-size: 0.8rem;
-  font-weight: 600;
-  min-width: 72px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
-  cursor: pointer;
-}
-
-.inventory-delete-button:active {
-  transform: translateY(1px) scale(0.97);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
-}
-
-
 
 /* ---------- Inventory list ---------- */
 
@@ -924,52 +863,52 @@ p {
 
 /* EDIT pill button */
 .inventory-edit-btn {
-  padding: 0.28rem 0.7rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  border-radius: 999px;           /* pill */
-  border: 1px solid rgba(255,255,255,0.9);  /* white border */
-  background: rgba(0,122,255,0.18);         /* transparent blue */
-  color: white;
+  padding: 0.28rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.9);   /* white border */
+  background: rgba(0, 122, 255, 0.18);          /* transparent blue */
+  color: #ffffff;
+  min-width: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
   cursor: pointer;
   transition: 0.18s ease;
 }
 
-/* Subtle hover effect */
 .inventory-edit-btn:hover {
-  background: rgba(0,122,255,0.28);
-  border-color: white;
+  background: rgba(0, 122, 255, 0.28);
 }
 
-/* Tap feedback on iOS */
 .inventory-edit-btn:active {
   transform: scale(0.96);
 }
 
-/* ----- Inventory Delete Pill ----- */
+/* DELETE pill button */
 .inventory-delete-button {
-  /* override global button styles */
-  background: rgba(255, 60, 60, 0.28) !important; /* transparent red */
-  border: 1px solid rgba(255, 255, 255, 0.35) !important;
-  color: #ffffff !important;
-
-  padding: 0.35rem 0.9rem;
-  border-radius: 999px;
+  padding: 0.28rem 0.9rem;
   font-size: 0.8rem;
   font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.9);   /* white border */
+  background: rgba(255, 60, 60, 0.22);          /* transparent red */
+  color: #ffffff;
   min-width: 72px;
   display: inline-flex;
-  justify-content: center;
   align-items: center;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.7);
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
   cursor: pointer;
+  transition: 0.18s ease;
+}
 
-  /* Disable your global gradient styles completely */
-  background-image: none !important;
-  filter: none !important;
+.inventory-delete-button:hover {
+  background: rgba(255, 60, 60, 0.32);
 }
 
 .inventory-delete-button:active {
-  transform: translateY(1px) scale(0.97);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+  transform: scale(0.96);
 }
