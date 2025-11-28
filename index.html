@@ -882,13 +882,16 @@ function renderInventory() {
       actions.className = "inventory-actions";
 
       // Edit
-      const editBtn = document.createElement("button");
-      editBtn.type = "button";
-      editBtn.className = "inventory-edit-btn";
-      editBtn.textContent = "Edit";
-      editBtn.addEventListener("click", () => {
-        openAddInventoryItemDialog(item, null);  // existing item, no barcode
-      });
+     const editBtn = document.createElement("button");
+editBtn.type = "button";
+editBtn.className = "inventory-edit-btn";
+editBtn.textContent = "Edit";
+editBtn.addEventListener("click", () => {
+  openAddInventoryItemDialog(item, {
+    scannedBarcode: null,
+    presetName: "",
+  });
+});
 
      // Delete
 const delBtn = document.createElement("button");
@@ -951,11 +954,13 @@ delBtn.addEventListener("click", (e) => {
 
 function openAddInventoryItemDialog(existingItem = null, opts = {}) {
   const { scannedBarcode = null, presetName = "" } = opts || {};
+  const isEditMode = !!existingItem;
 
   console.log("openAddInventoryItemDialog() called", {
     existingItem,
     scannedBarcode,
     presetName,
+    isEditMode,
   });
 
   // Make sure the barcode map exists if we're in a barcode flow
@@ -978,7 +983,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
 
   // Title
   const title = document.createElement("h2");
-  title.textContent = "Add item";
+  title.textContent = isEditMode ? "Edit item" : "Add item";
   panel.appendChild(title);
 
   // ----- Item name row -----
@@ -996,7 +1001,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
 
   // Prefill priority: existingItem (edit) → presetName (known barcode) → blank
   if (existingItem) {
-    nameInput.value = existingItem.name;
+    nameInput.value = existingItem.name || "";
   } else if (presetName) {
     nameInput.value = presetName;
   } else {
@@ -1072,52 +1077,70 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
 
   const addBtn = document.createElement("button");
   addBtn.type = "button";
-  addBtn.textContent = "Add item";
- addBtn.addEventListener("click", () => {
-  const rawName = nameInput.value.trim();
-  const name    = formatItemNameForDisplay(rawName);  // 🔹 normalise here
-  const qty     = parseFloat(qtyInput.value || "0");
-  const unit    = unitSelect.value || "";
+  addBtn.textContent = isEditMode ? "Save changes" : "Add item";
+  addBtn.addEventListener("click", () => {
+    const rawName = nameInput.value.trim();
+    const qty = parseFloat(qtyInput.value || "0");
+    const unit = unitSelect.value || "";
 
-  if (!name) {
-    alert("Please enter an item name.");
-    nameInput.focus();
-    return;
-  }
-  if (!qty || qty <= 0 || Number.isNaN(qty)) {
-    alert("Please enter a valid quantity.");
-    qtyInput.focus();
-    return;
-  }
+    if (!rawName) {
+      alert("Please enter an item name.");
+      nameInput.focus();
+      return;
+    }
+    if (!qty || qty <= 0 || Number.isNaN(qty)) {
+      alert("Please enter a valid quantity.");
+      qtyInput.focus();
+      return;
+    }
 
-  // Save straight into inventory (already formatted)
-  upsertInventoryItem(name, qty, unit);
+    // 🧼 Normalise/capitalise name (all words)
+    const name = titleCase ? titleCase(rawName) : rawName;
 
-  // 🔗 If this came from a barcode scan, update barcodeMap
-  if (scannedBarcode) {
-    const map = (window.barcodeMap = window.barcodeMap || {});
-    let names = map[scannedBarcode];
+    if (isEditMode && existingItem) {
+      // ✅ TRUE EDIT: overwrite this specific row instead of merging
+      const keyToUpdate = existingItem.key;
+      const idx = inventory.findIndex((i) => i.key === keyToUpdate);
 
-    if (!names) {
-      // First time we've seen this barcode
-      map[scannedBarcode] = name;
-    } else if (Array.isArray(names)) {
-      // Already an array of names
-      if (!names.includes(name)) names.push(name);
+      if (idx !== -1) {
+        inventory[idx] = {
+          ...inventory[idx],
+          name,
+          quantity: qty,
+          unit,
+        };
+      }
+      // Note: no barcodeMap changes here; this came from Edit, not a scan
     } else {
-      // Was a single name string, convert to array if different
-      if (names !== name) {
-        map[scannedBarcode] = [names, name];
+      // ➕ NEW ITEM FLOW (manual add OR barcode add)
+      upsertInventoryItem(name, qty, unit);
+
+      // If this came from a barcode scan, update barcodeMap
+      if (scannedBarcode) {
+        const map = (window.barcodeMap = window.barcodeMap || {});
+        let names = map[scannedBarcode];
+
+        if (!names) {
+          // First time we've seen this barcode
+          map[scannedBarcode] = name;
+        } else if (Array.isArray(names)) {
+          // Already an array of names
+          if (!names.includes(name)) names.push(name);
+        } else {
+          // Was a single string, convert to array if different
+          if (names !== name) {
+            map[scannedBarcode] = [names, name];
+          }
+        }
       }
     }
-  }
 
-  renderInventory();
-  renderInventoryNameSuggestions();
-  saveState();
+    renderInventory();
+    renderInventoryNameSuggestions();
+    saveState();
 
-  animateCloseAddItemDialog(480);
-});
+    animateCloseAddItemDialog(480);
+  });
 
   btnRow.appendChild(cancelBtn);
   btnRow.appendChild(addBtn);
