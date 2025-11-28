@@ -832,6 +832,16 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
   });
 }
 
+function formatItemNameForDisplay(str) {
+  if (!str) return "";
+
+  return str
+    .toLowerCase()
+    .split(/\s+/)  // split on any whitespace
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function renderInventory() {
   const container = document.getElementById("inventory-list");
   if (!container) return;
@@ -854,7 +864,7 @@ function renderInventory() {
 
       const nameEl = document.createElement("div");
       nameEl.className = "inventory-item-name";
-      nameEl.textContent = item.name;
+      nameEl.textContent = formatItemNameForDisplay(item.name);
 
       const qtyEl = document.createElement("div");
       qtyEl.className = "inventory-item-qty";
@@ -1063,84 +1073,51 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.textContent = "Add item";
-  addBtn.addEventListener("click", () => {
-    const name = nameInput.value.trim();
-    const qty = parseFloat(qtyInput.value || "0");
-    const unit = unitSelect.value || "";
+ addBtn.addEventListener("click", () => {
+  const rawName = nameInput.value.trim();
+  const name    = formatItemNameForDisplay(rawName);  // 🔹 normalise here
+  const qty     = parseFloat(qtyInput.value || "0");
+  const unit    = unitSelect.value || "";
 
-    if (!name) {
-      alert("Please enter an item name.");
-      nameInput.focus();
-      return;
-    }
-    if (!qty || qty <= 0 || Number.isNaN(qty)) {
-      alert("Please enter a valid quantity.");
-      qtyInput.focus();
-      return;
-    }
+  if (!name) {
+    alert("Please enter an item name.");
+    nameInput.focus();
+    return;
+  }
+  if (!qty || qty <= 0 || Number.isNaN(qty)) {
+    alert("Please enter a valid quantity.");
+    qtyInput.focus();
+    return;
+  }
 
-    // 🧠 EDIT vs ADD logic
-    if (existingItem) {
-      // Try to locate the specific row in inventory and overwrite it
-      let idx = -1;
+  // Save straight into inventory (already formatted)
+  upsertInventoryItem(name, qty, unit);
 
-      // Prefer a stable key if present
-      if (existingItem.key !== undefined && existingItem.key !== null) {
-        idx = inventory.findIndex((i) => i.key === existingItem.key);
-      }
+  // 🔗 If this came from a barcode scan, update barcodeMap
+  if (scannedBarcode) {
+    const map = (window.barcodeMap = window.barcodeMap || {});
+    let names = map[scannedBarcode];
 
-      // Fallback: match by name if key not available
-      if (idx === -1) {
-        idx = inventory.findIndex(
-          (i) =>
-            i.name &&
-            existingItem.name &&
-            i.name.toLowerCase() === existingItem.name.toLowerCase()
-        );
-      }
-
-      if (idx !== -1) {
-        // Overwrite that entry
-        inventory[idx] = {
-          ...inventory[idx],
-          name,
-          quantity: qty,
-          unit,
-        };
-      } else {
-        // If we somehow can't find it, fall back to upsert
-        upsertInventoryItem(name, qty, unit);
-      }
+    if (!names) {
+      // First time we've seen this barcode
+      map[scannedBarcode] = name;
+    } else if (Array.isArray(names)) {
+      // Already an array of names
+      if (!names.includes(name)) names.push(name);
     } else {
-      // Normal add
-      upsertInventoryItem(name, qty, unit);
-    }
-
-    // 🔗 If this came from a barcode scan, update barcodeMap
-    if (scannedBarcode) {
-      const map = (window.barcodeMap = window.barcodeMap || {});
-      let names = map[scannedBarcode];
-
-      if (!names) {
-        // First time we've seen this barcode
-        map[scannedBarcode] = name;
-      } else if (Array.isArray(names)) {
-        // Already an array of names
-        if (!names.includes(name)) names.push(name);
-      } else {
-        // Was a single name string, convert to array if different
-        if (names !== name) {
-          map[scannedBarcode] = [names, name];
-        }
+      // Was a single name string, convert to array if different
+      if (names !== name) {
+        map[scannedBarcode] = [names, name];
       }
     }
+  }
 
-    renderInventory();
-    renderInventoryNameSuggestions();
-    saveState();
+  renderInventory();
+  renderInventoryNameSuggestions();
+  saveState();
 
-    animateCloseAddItemDialog(480);
-  });
+  animateCloseAddItemDialog(480);
+});
 
   btnRow.appendChild(cancelBtn);
   btnRow.appendChild(addBtn);
@@ -2494,13 +2471,9 @@ function handleBarcodeCode(barcode) {
   if (names.length === 1) {
     const name = names[0];
 
-    // Try find existing inventory item with that name
-    const existing =
-      inventory.find(
-        (i) => i.name && i.name.toLowerCase() === name.toLowerCase()
-      ) || null;
-
-    openAddInventoryItemDialog(existing, {
+    // ❌ Do NOT pass existing item here – treat as a *new* entry,
+    //     just with the name pre-filled.
+    openAddInventoryItemDialog(null, {
       scannedBarcode: barcode,
       presetName: name,
     });
@@ -2521,7 +2494,7 @@ function openBarcodeNamePicker(barcode, names) {
   if (names.length === 0) {
     openAddInventoryItemDialog(null, {
       scannedBarcode: barcode,
-      presetName: "",
+      presetName: name,
     });
     return;
   }
