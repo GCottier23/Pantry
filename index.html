@@ -2516,26 +2516,48 @@ tdBuy.textContent = fixedQtyStr;
   });
 }
 
-// ---------- BARCODE CAMERA SCANNER ----------
+// ---------- BARCODE CAMERA SCANNER (CLEAN VERSION) ----------
 
 let activeBarcodeReader = null;
-let barcodeScanHandled = false;     // prevents multiple runs for one scan
-let lastScannedCode = null;         // remember the last successful barcode
+let barcodeScanHandled = false;
+let scanSessionId = 0;
 
-function closeBarcodeScannerOverlay() {
-  const overlay = document.getElementById("barcode-scanner-overlay");
-  if (overlay) overlay.remove();
-
-  barcodeScanHandled = true;
-
+// Stop ZXing + camera stream safely
+function stopBarcodeReader() {
   if (activeBarcodeReader) {
     try {
       activeBarcodeReader.reset();
     } catch (e) {
-      console.error(e);
+      console.error("Error resetting ZXing reader:", e);
     }
     activeBarcodeReader = null;
   }
+
+  // Also stop the camera stream explicitly
+  const video = document.getElementById("barcode-video");
+  if (video && video.srcObject) {
+    try {
+      const tracks = video.srcObject.getTracks();
+      tracks.forEach((t) => t.stop());
+    } catch (e) {
+      console.error("Error stopping video tracks:", e);
+    }
+    video.srcObject = null;
+  }
+}
+
+// Close overlay + stop scanning
+function closeBarcodeScannerOverlay() {
+  const overlay = document.getElementById("barcode-scanner-overlay");
+  if (overlay) overlay.remove();
+
+  // Mark this scan as "done" so callbacks ignore further results
+  barcodeScanHandled = true;
+
+  // Bump the session so any old callbacks auto-ignore themselves
+  scanSessionId++;
+
+  stopBarcodeReader();
 }
 
 function openBarcodeScanner() {
@@ -2544,24 +2566,19 @@ function openBarcodeScanner() {
     return;
   }
 
-  // Kill any previous reader completely
-  if (activeBarcodeReader) {
-    try {
-      activeBarcodeReader.reset();
-    } catch (e) {
-      console.error(e);
-    }
-    activeBarcodeReader = null;
-  }
-
+  // New scan session
+  scanSessionId++;
+  const thisSession = scanSessionId;
   barcodeScanHandled = false;
-  lastScannedCode = null;
+
+  // Kill any leftover reader/stream, just in case
+  stopBarcodeReader();
 
   // Remove any old overlay
   let overlay = document.getElementById("barcode-scanner-overlay");
   if (overlay) overlay.remove();
 
-  // Build a fresh overlay
+  // Build fresh overlay
   overlay = document.createElement("div");
   overlay.id = "barcode-scanner-overlay";
   overlay.className = "barcode-scanner-overlay";
@@ -2594,7 +2611,7 @@ function openBarcodeScanner() {
   panel.appendChild(btnRow);
   overlay.appendChild(panel);
 
-  // Tap on dim background = cancel
+  // Tap dark background to cancel
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) {
       closeBarcodeScannerOverlay();
@@ -2611,30 +2628,35 @@ function openBarcodeScanner() {
 
   activeBarcodeReader = new ZX.BrowserMultiFormatReader();
 
-  let firstResultIgnored = false; // 🔑 ignore the first decode every time
+  // We will *only* accept a code if we see it twice in a row
+  // in this session. This kills the “instant ghost reuse” bug.
+  let lastCodeThisSession = null;
 
   activeBarcodeReader.decodeFromVideoDevice(
     null,
     "barcode-video",
     (result, err) => {
-      if (barcodeScanHandled) return;         // we’ve already dealt with a scan / cancel
+      // If this session is outdated, ignore
+      if (thisSession !== scanSessionId) return;
+      if (barcodeScanHandled) return;
+
       if (!result || !result.text) return;
 
       const code = result.text.trim();
       if (!code) return;
 
-      // Always ignore the very first decoded barcode
-      if (!firstResultIgnored) {
-        firstResultIgnored = true;
-        console.log("IGNORING first decode:", code);
+      // First time we see this code in this session -> store and ignore
+      if (code !== lastCodeThisSession) {
+        lastCodeThisSession = code;
+        console.log("First time seeing code this session, waiting for confirmation:", code);
         return;
       }
 
-      // From here: accept just once
+      // Second time in a row -> now we trust it
+      console.log("Confirmed barcode:", code);
       barcodeScanHandled = true;
-      lastScannedCode = code;
 
-      closeBarcodeScannerOverlay(); // also stops the reader
+      closeBarcodeScannerOverlay(); // stops reader + stream
       handleBarcodeCode(code);      // opens your "Add item from barcode" dialog
     }
   );
