@@ -949,7 +949,7 @@ function openAddInventoryItemDialog() {
 
   // Remove any old overlay
   let overlay = document.getElementById("add-item-overlay");
-  if (overlay) overlay.remove();
+  if (overlay) animateCloseAddItemDialog(480);
 
   // Overlay
   overlay = document.createElement("div");
