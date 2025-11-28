@@ -943,9 +943,8 @@ editBtn.addEventListener("click", () => {
 
         // ---------- BARCODE → ITEM MAPPINGS (SIMPLE NAMES ONLY) ----------
 
-    // barcodeMap[barcode] = ["Sausages", "Beef", ...]
 // Simple "Add item" dialog for manual inventory entry
-function openAddInventoryItemDialog(existingItem) {
+function openAddInventoryItemDialog() {
   // Remove any old overlay
   let overlay = document.getElementById("add-item-overlay");
   if (overlay) overlay.remove();
@@ -961,10 +960,10 @@ function openAddInventoryItemDialog(existingItem) {
 
   // Title
   const title = document.createElement("h2");
-  title.textContent = existingItem ? "Edit item" : "Add item";
+  title.textContent = "Add item";
   panel.appendChild(title);
 
-  // ----- Item name row (matches barcode dialog style) -----
+  // ----- Item name row (stacked like barcode dialog) -----
   const nameRow = document.createElement("div");
   nameRow.className = "barcode-input-row";
 
@@ -976,15 +975,12 @@ function openAddInventoryItemDialog(existingItem) {
   nameInput.type = "text";
   nameInput.autocomplete = "off";
   nameInput.placeholder = "e.g. Beef mince";
-  if (existingItem && existingItem.name) {
-    nameInput.value = existingItem.name;
-  }
 
   nameLabel.appendChild(nameInput);
   nameRow.appendChild(nameLabel);
   panel.appendChild(nameRow);
 
-  // ----- Quantity row (stacked, numpad, placeholder) -----
+  // ----- Quantity row (numpad + placeholder) -----
   const qtyRow = document.createElement("div");
   qtyRow.className = "barcode-input-row";
 
@@ -997,19 +993,14 @@ function openAddInventoryItemDialog(existingItem) {
   qtyInput.inputMode = "decimal";   // iOS number keypad
   qtyInput.min = "0";
   qtyInput.step = "0.1";
-  qtyInput.placeholder = "e.g. 500";
-
-  if (existingItem && typeof existingItem.quantity === "number") {
-    qtyInput.value = String(existingItem.quantity);
-  } else {
-    qtyInput.value = ""; // let the placeholder show
-  }
+  qtyInput.placeholder = "e.g. 500";  // show example
+  qtyInput.value = "";                // let placeholder show
 
   qtyLabel.appendChild(qtyInput);
   qtyRow.appendChild(qtyLabel);
   panel.appendChild(qtyRow);
 
-  // ----- Unit row (stacked like barcode dialog) -----
+  // ----- Unit row (stacked) -----
   const unitRow = document.createElement("div");
   unitRow.className = "barcode-input-row";
 
@@ -1025,12 +1016,8 @@ function openAddInventoryItemDialog(existingItem) {
     opt.textContent = u || "(none)";
     unitSelect.appendChild(opt);
   });
-
-  if (existingItem && existingItem.unit) {
-    unitSelect.value = existingItem.unit;
-  }
-
   unitLabel.appendChild(unitSelect);
+
   unitRow.appendChild(unitLabel);
   panel.appendChild(unitRow);
 
@@ -1048,7 +1035,7 @@ function openAddInventoryItemDialog(existingItem) {
 
   const addBtn = document.createElement("button");
   addBtn.type = "button";
-  addBtn.textContent = existingItem ? "Save changes" : "Add item";
+  addBtn.textContent = "Add item";
   addBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
     const qty = parseFloat(qtyInput.value || "0");
@@ -1065,14 +1052,8 @@ function openAddInventoryItemDialog(existingItem) {
       return;
     }
 
-    if (existingItem && existingItem.key) {
-      // Exact edit path for later if you want it
-      setInventoryItemExact(existingItem.key, name, qty, unit);
-    } else {
-      // Normal "add" path
-      upsertInventoryItem(name, qty, unit);
-    }
-
+    // Save straight into inventory
+    upsertInventoryItem(name, qty, unit);
     renderInventory();
     renderInventoryNameSuggestions();
     saveState();
@@ -1087,12 +1068,12 @@ function openAddInventoryItemDialog(existingItem) {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
-  // Smooth "pop" in (using your existing .add-item-panel.visible CSS)
+  // Smooth "pop" in
   requestAnimationFrame(() => {
     panel.classList.add("visible");
   });
 
-  // Focus name without jumping
+  // Focus without page jump
   setTimeout(() => {
     if (nameInput.focus) {
       nameInput.focus({ preventScroll: true });
@@ -1104,7 +1085,7 @@ function openAddInventoryItemDialog(existingItem) {
     if (evt.target === overlay) overlay.remove();
   });
 
-  // Keyboard-aware positioning (if helper exists)
+  // Keyboard-aware positioning (only if helper exists)
   if (typeof attachAddItemKeyboardShim === "function") {
     attachAddItemKeyboardShim(panel);
   }
