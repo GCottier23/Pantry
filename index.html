@@ -948,7 +948,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
     presetName,
   });
 
-  // If this dialog is part of a barcode flow, make sure barcodeMap exists
+  // Make sure the barcode map exists if we're in a barcode flow
   if (scannedBarcode) {
     window.barcodeMap = window.barcodeMap || {};
   }
@@ -1079,8 +1079,42 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
       return;
     }
 
-    // Save straight into inventory
-    upsertInventoryItem(name, qty, unit);
+    // 🧠 EDIT vs ADD logic
+    if (existingItem) {
+      // Try to locate the specific row in inventory and overwrite it
+      let idx = -1;
+
+      // Prefer a stable key if present
+      if (existingItem.key !== undefined && existingItem.key !== null) {
+        idx = inventory.findIndex((i) => i.key === existingItem.key);
+      }
+
+      // Fallback: match by name if key not available
+      if (idx === -1) {
+        idx = inventory.findIndex(
+          (i) =>
+            i.name &&
+            existingItem.name &&
+            i.name.toLowerCase() === existingItem.name.toLowerCase()
+        );
+      }
+
+      if (idx !== -1) {
+        // Overwrite that entry
+        inventory[idx] = {
+          ...inventory[idx],
+          name,
+          quantity: qty,
+          unit,
+        };
+      } else {
+        // If we somehow can't find it, fall back to upsert
+        upsertInventoryItem(name, qty, unit);
+      }
+    } else {
+      // Normal add
+      upsertInventoryItem(name, qty, unit);
+    }
 
     // 🔗 If this came from a barcode scan, update barcodeMap
     if (scannedBarcode) {
@@ -1088,13 +1122,13 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
       let names = map[scannedBarcode];
 
       if (!names) {
-        // First time we've seen this barcode → single string
+        // First time we've seen this barcode
         map[scannedBarcode] = name;
       } else if (Array.isArray(names)) {
         // Already an array of names
         if (!names.includes(name)) names.push(name);
       } else {
-        // Was a single string, convert to array if different
+        // Was a single name string, convert to array if different
         if (names !== name) {
           map[scannedBarcode] = [names, name];
         }
@@ -1140,6 +1174,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
     attachAddItemKeyboardShim(panel);
   }
 }
+
 function animateCloseAddItemDialog(durationMs = 480) {
   const overlay = document.getElementById("add-item-overlay");
   if (!overlay) {
