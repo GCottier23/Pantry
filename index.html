@@ -2518,12 +2518,9 @@ tdBuy.textContent = fixedQtyStr;
 
 // ---------- BARCODE CAMERA SCANNER ----------
 
-// ---------- BARCODE CAMERA SCANNER ----------
-
 let activeBarcodeReader = null;
-let barcodeScanHandled = false;
-let lastScannedCode = null;   // last successful barcode across sessions
-let scannerSessionStart = 0;  // timestamp when current scan session started
+let barcodeScanHandled = false;     // prevents multiple runs for one scan
+let lastScannedCode = null;         // remember the last successful barcode
 
 function closeBarcodeScannerOverlay() {
   const overlay = document.getElementById("barcode-scanner-overlay");
@@ -2547,11 +2544,24 @@ function openBarcodeScanner() {
     return;
   }
 
-  // Remove any stale overlay
+  // Kill any previous reader completely
+  if (activeBarcodeReader) {
+    try {
+      activeBarcodeReader.reset();
+    } catch (e) {
+      console.error(e);
+    }
+    activeBarcodeReader = null;
+  }
+
+  barcodeScanHandled = false;
+  lastScannedCode = null;
+
+  // Remove any old overlay
   let overlay = document.getElementById("barcode-scanner-overlay");
   if (overlay) overlay.remove();
 
-  // Create a fresh overlay
+  // Build a fresh overlay
   overlay = document.createElement("div");
   overlay.id = "barcode-scanner-overlay";
   overlay.className = "barcode-scanner-overlay";
@@ -2569,7 +2579,6 @@ function openBarcodeScanner() {
   video.playsInline = true;
   panel.appendChild(video);
 
-  // Cancel button
   const btnRow = document.createElement("div");
   btnRow.className = "barcode-scanner-actions";
 
@@ -2585,8 +2594,11 @@ function openBarcodeScanner() {
   panel.appendChild(btnRow);
   overlay.appendChild(panel);
 
+  // Tap on dim background = cancel
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) closeBarcodeScannerOverlay();
+    if (e.target === overlay) {
+      closeBarcodeScannerOverlay();
+    }
   });
 
   document.body.appendChild(overlay);
@@ -2597,38 +2609,33 @@ function openBarcodeScanner() {
     return;
   }
 
-  // ALWAYS destroy the old reader completely
-  if (activeBarcodeReader) {
-    try { activeBarcodeReader.reset(); } catch(e){}
-    activeBarcodeReader = null;
-  }
-
-  // Start absolutely fresh
   activeBarcodeReader = new ZX.BrowserMultiFormatReader();
 
-  let firstResultIgnored = false;   // KEY FIX 🔥
+  let firstResultIgnored = false; // 🔑 ignore the first decode every time
 
   activeBarcodeReader.decodeFromVideoDevice(
     null,
     "barcode-video",
     (result, err) => {
+      if (barcodeScanHandled) return;         // we’ve already dealt with a scan / cancel
       if (!result || !result.text) return;
 
       const code = result.text.trim();
       if (!code) return;
 
-      // 🔥 IGNORE THE FIRST DECODED BARCODE, ALWAYS.
+      // Always ignore the very first decoded barcode
       if (!firstResultIgnored) {
         firstResultIgnored = true;
-        console.log("IGNORED first result:", code);
+        console.log("IGNORING first decode:", code);
         return;
       }
 
-      // Real scan
-      console.log("ACCEPTED scan:", code);
+      // From here: accept just once
+      barcodeScanHandled = true;
       lastScannedCode = code;
-      closeBarcodeScannerOverlay();
-      handleBarcodeCode(code);
+
+      closeBarcodeScannerOverlay(); // also stops the reader
+      handleBarcodeCode(code);      // opens your "Add item from barcode" dialog
     }
   );
 }
