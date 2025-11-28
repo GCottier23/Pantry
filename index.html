@@ -943,13 +943,24 @@ editBtn.addEventListener("click", () => {
 
         // ---------- BARCODE → ITEM MAPPINGS (SIMPLE NAMES ONLY) ----------
 
+function animateCloseOverlay(overlay, panel) {
+  // Remove visible classes → triggers fade-out animation
+  overlay.classList.remove("is-visible");
+  panel.classList.remove("visible");
+
+  // After animation ends, remove overlay from DOM
+  setTimeout(() => {
+    overlay.remove();
+  }, 480); // Same as your 0.78s animation time
+}
+
 // Simple "Add item" dialog for manual inventory entry
 function openAddInventoryItemDialog() {
   console.log("openAddInventoryItemDialog() called");  // <-- debug
 
   // Remove any old overlay
   let overlay = document.getElementById("add-item-overlay");
-  if (overlay) overlay.remove();
+  if (overlay) animateCloseOverlay(overlay, panel);
 
   // Overlay
   overlay = document.createElement("div");
@@ -1032,7 +1043,8 @@ function openAddInventoryItemDialog() {
   cancelBtn.className = "secondary";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => {
-    overlay.remove();
+  animateCloseOverlay(overlay, panel);
+});  
   });
 
   const addBtn = document.createElement("button");
