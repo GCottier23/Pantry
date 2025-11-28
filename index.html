@@ -945,6 +945,8 @@ editBtn.addEventListener("click", () => {
 
 // Simple "Add item" dialog for manual inventory entry
 function openAddInventoryItemDialog() {
+  console.log("openAddInventoryItemDialog() called");  // <-- debug
+
   // Remove any old overlay
   let overlay = document.getElementById("add-item-overlay");
   if (overlay) overlay.remove();
@@ -963,7 +965,7 @@ function openAddInventoryItemDialog() {
   title.textContent = "Add item";
   panel.appendChild(title);
 
-  // ----- Item name row (stacked like barcode dialog) -----
+  // ----- Item name row -----
   const nameRow = document.createElement("div");
   nameRow.className = "barcode-input-row";
 
@@ -980,7 +982,7 @@ function openAddInventoryItemDialog() {
   nameRow.appendChild(nameLabel);
   panel.appendChild(nameRow);
 
-  // ----- Quantity row (numpad + placeholder) -----
+  // ----- Quantity row -----
   const qtyRow = document.createElement("div");
   qtyRow.className = "barcode-input-row";
 
@@ -993,14 +995,14 @@ function openAddInventoryItemDialog() {
   qtyInput.inputMode = "decimal";   // iOS number keypad
   qtyInput.min = "0";
   qtyInput.step = "0.1";
-  qtyInput.placeholder = "e.g. 500";  // show example
-  qtyInput.value = "";                // let placeholder show
+  qtyInput.placeholder = "e.g. 500";
+  qtyInput.value = "";              // let placeholder show
 
   qtyLabel.appendChild(qtyInput);
   qtyRow.appendChild(qtyLabel);
   panel.appendChild(qtyRow);
 
-  // ----- Unit row (stacked) -----
+  // ----- Unit row -----
   const unitRow = document.createElement("div");
   unitRow.className = "barcode-input-row";
 
@@ -2745,14 +2747,15 @@ function attachAddItemKeyboardShim(panel) {
 
   showPage("page-inventory");
 
-   // === INVENTORY EVENTS ===
+  // === INVENTORY EVENTS ===
   const addInventoryBtn = document.getElementById("add-inventory-item-btn");
-  const realScanBtn     = document.getElementById("real-scan-btn");
+  const realScanBtn = document.getElementById("real-scan-btn");
 
-  // Add Item → opens the Add Item overlay dialog (empty)
+  // Add Item → opens the Add Item overlay dialog
   if (addInventoryBtn) {
     addInventoryBtn.addEventListener("click", () => {
-      openAddInventoryItemDialog();  // ADD mode
+      console.log("Add item button clicked");
+      openAddInventoryItemDialog();
     });
   } else {
     console.warn("No #add-inventory-item-btn found in DOM");
