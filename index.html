@@ -882,7 +882,7 @@ editBtn.type = "button";
 editBtn.textContent = "✎";
 editBtn.title = "Edit";
 editBtn.addEventListener("click", () => {
-  openAddInventoryItemDialog(item.key);   // <-- use dialog in EDIT mode
+  openAddInventoryItemDialog(item);
 });
 
       // Delete
@@ -944,7 +944,7 @@ editBtn.addEventListener("click", () => {
         // ---------- BARCODE → ITEM MAPPINGS (SIMPLE NAMES ONLY) ----------
 
 // Simple "Add item" dialog for manual inventory entry
-function openAddInventoryItemDialog() {
+function openAddInventoryItemDialog(existingItem = null) {
   console.log("openAddInventoryItemDialog() called");  // <-- debug
 
   // Remove any old overlay
@@ -977,6 +977,7 @@ function openAddInventoryItemDialog() {
   nameInput.type = "text";
   nameInput.autocomplete = "off";
   nameInput.placeholder = "e.g. Beef mince";
+  nameInput.value = existingItem ? existingItem.name : "";
 
   nameLabel.appendChild(nameInput);
   nameRow.appendChild(nameLabel);
@@ -996,7 +997,7 @@ function openAddInventoryItemDialog() {
   qtyInput.min = "0";
   qtyInput.step = "0.1";
   qtyInput.placeholder = "e.g. 500";
-  qtyInput.value = "";              // let placeholder show
+  qtyInput.value = existingItem ? String(existingItem.quantity) : "";       // let placeholder show
 
   qtyLabel.appendChild(qtyInput);
   qtyRow.appendChild(qtyLabel);
@@ -1011,13 +1012,17 @@ function openAddInventoryItemDialog() {
   unitLabel.style.display = "block";
 
   const unitSelect = document.createElement("select");
-  const units = ["", "g", "kg", "ml", "l", "pack", "packs", "pcs"];
-  units.forEach((u) => {
+const units = ["", "g", "kg", "ml", "l", "pack", "packs", "pcs"];
+units.forEach((u) => {
     const opt = document.createElement("option");
     opt.value = u;
     opt.textContent = u || "(none)";
     unitSelect.appendChild(opt);
-  });
+});
+
+if (existingItem && existingItem.unit) {
+  unitSelect.value = existingItem.unit;
+}
   unitLabel.appendChild(unitSelect);
 
   unitRow.appendChild(unitLabel);
