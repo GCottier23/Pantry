@@ -940,7 +940,28 @@ delBtn.addEventListener("click", (e) => {
         // ---------- BARCODE → ITEM MAPPINGS (SIMPLE NAMES ONLY) ----------
 
 // Simple "Add item" dialog for manual inventory entry
-function openAddInventoryItemDialog(existingItem = null) {
+function openAddInventoryItemDialog(opts = {}) {
+  const scannedBarcode = opts.scannedBarcode || null;
+
+  // Does this barcode have a record?
+  if (scannedBarcode && barcodeMap[scannedBarcode]) {
+      const savedName = barcodeMap[scannedBarcode];
+      console.log("Previously scanned barcode → using known item:", savedName);
+
+      // Auto-fill the item name
+      document.getElementById("item-name-input").value = savedName;
+
+      // IF the item already exists in inventory, pre-fill it
+      const existing = inventory.find(i => i.name.toLowerCase() === savedName.toLowerCase());
+      if (existing) {
+          document.getElementById("item-name-input").value = existing.name;
+          document.getElementById("item-qty-input").value = existing.quantity;
+          document.getElementById("item-unit-input").value = existing.unit || "";
+      }
+  }
+
+  // ...rest of your dialog code
+}
   console.log("openAddInventoryItemDialog() called");  // <-- debug
 
   // Remove any old overlay
@@ -2399,7 +2420,7 @@ function openBarcodeScanner() {
       closeBarcodeScannerOverlay(); // stops reader + stream
 
       // Open your new Add Item dialog instead of the old barcode dialog
-      openAddInventoryItemDialog();
+      openAddInventoryItemDialog({ scannedBarcode: code });
     }
   );
 }
