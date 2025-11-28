@@ -2305,48 +2305,44 @@ tdBuy.textContent = fixedQtyStr;
   });
 }
 
-// ---------- BARCODE CAMERA SCANNER (CLEAN VERSION) ----------
-
+// ----- BARCODE GLOBALS -----
 let activeBarcodeReader = null;
 let barcodeScanHandled = false;
 let scanSessionId = 0;
 
+// make sure we have a barcode map object
+window.barcodeMap = window.barcodeMap || {};
+
 // Stop ZXing + camera stream safely
 function stopBarcodeReader() {
-  if (activeBarcodeReader) {
-    try {
+  try {
+    if (activeBarcodeReader && typeof activeBarcodeReader.reset === "function") {
       activeBarcodeReader.reset();
-    } catch (e) {
-      console.error("Error resetting ZXing reader:", e);
     }
-    activeBarcodeReader = null;
+  } catch (err) {
+    console.error("Error resetting barcode reader:", err);
   }
+  activeBarcodeReader = null;
 
-  // Also stop the camera stream explicitly
   const video = document.getElementById("barcode-video");
   if (video && video.srcObject) {
     try {
-      const tracks = video.srcObject.getTracks();
-      tracks.forEach((t) => t.stop());
-    } catch (e) {
-      console.error("Error stopping video tracks:", e);
+      video.srcObject.getTracks().forEach((t) => t.stop());
+    } catch (err) {
+      console.error("Error stopping video tracks:", err);
     }
     video.srcObject = null;
   }
 }
-
 // Close overlay + stop scanning
 function closeBarcodeScannerOverlay() {
-  const overlay = document.getElementById("barcode-scanner-overlay");
-  if (overlay) overlay.remove();
-
-  // Mark this scan as "done" so callbacks ignore further results
-  barcodeScanHandled = true;
-
-  // Bump the session so any old callbacks auto-ignore themselves
-  scanSessionId++;
-
+  barcodeScanHandled = true;          // guard so callback ignores further reads
   stopBarcodeReader();
+
+  const overlay = document.getElementById("barcode-scanner-overlay");
+  if (overlay && overlay.parentNode) {
+    overlay.parentNode.removeChild(overlay);
+  }
 }
 
 function openBarcodeScanner() {
@@ -2360,15 +2356,13 @@ function openBarcodeScanner() {
   const thisSession = scanSessionId;
   barcodeScanHandled = false;
 
-  // Kill any leftover reader/stream, just in case
+  // Clean up any previous reader/overlay
   stopBarcodeReader();
+  const oldOverlay = document.getElementById("barcode-scanner-overlay");
+  if (oldOverlay) oldOverlay.remove();
 
-  // Remove any old overlay
-  let overlay = document.getElementById("barcode-scanner-overlay");
-  if (overlay) overlay.remove();
-
-  // Build fresh overlay
-  overlay = document.createElement("div");
+  // Build overlay
+  const overlay = document.createElement("div");
   overlay.id = "barcode-scanner-overlay";
   overlay.className = "barcode-scanner-overlay";
 
@@ -2409,6 +2403,7 @@ function openBarcodeScanner() {
 
   document.body.appendChild(overlay);
 
+  // Start ZXing
   const ZX = window.ZXingBrowser || window.ZXing;
   if (!ZX || !ZX.BrowserMultiFormatReader) {
     alert("Barcode scanner library not loaded.");
@@ -2417,25 +2412,27 @@ function openBarcodeScanner() {
 
   activeBarcodeReader = new ZX.BrowserMultiFormatReader();
 
-  // We will *only* accept a code if we see it twice in a row
-  // in this session. This kills the “instant ghost reuse” bug.
-  let lastCodeThisSession = null;
-
   activeBarcodeReader.decodeFromVideoDevice(
-  null,
-  "barcode-video",
-  (result, err) => {
-    if (!result || !result.text) return;
-    const code = result.text.trim();
-    if (!code) return;
+    null,
+    "barcode-video",
+    (result, err) => {
+      // Ignore if:
+      //  - this is an old session
+      //  - we've already handled a scan
+      if (thisSession !== scanSessionId || barcodeScanHandled) return;
 
-    console.log("Confirmed barcode:", code);
-    barcodeScanHandled = true;
+      if (!result || !result.text) return;
 
-    closeBarcodeScannerOverlay();
-    handleBarcodeCode(code);
-  }
-);
+      const code = result.text.trim();
+      if (!code) return;
+
+      console.log("Barcode scanned:", code);
+
+      barcodeScanHandled = true;
+      closeBarcodeScannerOverlay();   // stop camera + remove overlay
+      handleBarcodeCode(code);        // open your add-item flow ONCE
+    }
+  );
 }
 
 function handleBarcodeCode(code) {
