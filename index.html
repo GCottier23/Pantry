@@ -605,60 +605,89 @@ function parseBbcIngredient(rawLine, ingredientNames) {
       }));
     }
 
- function loadState() {
+function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
+
     if (!raw) {
-      initDefaultMealPlan();
+      // First run / nothing saved yet
+      inventory    = [];
+      recipes      = [];
+      mealPlan     = [];
+      userStaples  = [];
+      barcodeMap   = {};
+      window.barcodeMap = barcodeMap;   // keep in sync
       return;
     }
-    const data = JSON.parse(raw);
-    if (Array.isArray(data.inventory)) inventory = data.inventory;
-    if (Array.isArray(data.recipes)) recipes = data.recipes;
-    if (Array.isArray(data.mealPlan)) mealPlan = data.mealPlan;
 
-    // user staples
+    const data = JSON.parse(raw);
+
+    // Inventory
+    if (Array.isArray(data.inventory)) {
+      inventory = data.inventory;
+    } else {
+      inventory = [];
+    }
+
+    // Recipes
+    if (Array.isArray(data.recipes)) {
+      recipes = data.recipes;
+    } else {
+      recipes = [];
+    }
+
+    // Meal plan
+    if (Array.isArray(data.mealPlan)) {
+      mealPlan = data.mealPlan;
+    } else {
+      mealPlan = [];
+    }
+
+    // User staples (if you use this elsewhere)
     if (Array.isArray(data.userStaples)) {
-      userStaples = data.userStaples
-        .map((n) => String(n).toLowerCase().trim())
-        .filter(Boolean);
+      userStaples = data.userStaples;
     } else {
       userStaples = [];
     }
 
-    // --- migrate barcodeMap into the new "array of names" shape ---
-    barcodeMap = {};
+    // ⭐ Barcode map
     if (data.barcodeMap && typeof data.barcodeMap === "object") {
-      Object.keys(data.barcodeMap).forEach((code) => {
-        const entry = data.barcodeMap[code];
-
-        if (Array.isArray(entry)) {
-          // already new-style
-          barcodeMap[code] = entry.slice();
-        } else if (entry && typeof entry === "object" && entry.name) {
-          // old-style { name, baseQty, unit }
-          barcodeMap[code] = [titleCase(entry.name)];
-        }
-        // anything else is ignored
-      });
+      barcodeMap = data.barcodeMap;
+    } else {
+      barcodeMap = {};
     }
+    window.barcodeMap = barcodeMap;  // one canonical object
 
-    if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
-  } catch {
-    initDefaultMealPlan();
+  } catch (e) {
+    console.error("Failed to load state", e);
+
+    // Fallback to completely clean defaults if anything goes wrong
+    inventory    = [];
+    recipes      = [];
+    mealPlan     = [];
+    userStaples  = [];
+    barcodeMap   = {};
+    window.barcodeMap = barcodeMap;
   }
 }
 
 function saveState() {
   try {
+    // Make sure we have one canonical barcodeMap object
+    const safeBarcodeMap = window.barcodeMap || barcodeMap || {};
+
+    // Keep both globals in sync
+    barcodeMap = safeBarcodeMap;
+    window.barcodeMap = safeBarcodeMap;
+
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         inventory,
         recipes,
         mealPlan,
-        barcodeMap,
-        userStaples      // ⬅️ persist user staples
+        barcodeMap: safeBarcodeMap,  // be explicit
+        userStaples
       })
     );
   } catch (e) {
