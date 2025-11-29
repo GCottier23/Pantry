@@ -2038,8 +2038,8 @@ function openRecipeImportPreviewDialog(parsed) {
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "secondary";
-  cancelBtn.textContent = "Cancel";
+  cancelBtn.className = "inventory-delete-button";
+  cancelBtn.textContent = "test";
   cancelBtn.addEventListener("click", () => {
     const ov = document.getElementById("recipe-import-preview-overlay");
     if (ov && ov.parentNode) ov.parentNode.removeChild(ov);

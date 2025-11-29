@@ -998,3 +998,10 @@ p {
   width: 100%;
   height: 100%;
 }
+
+/* Make tall preview dialogs scrollable on small screens */
+#recipe-import-preview-overlay .barcode-scanner-panel {
+  max-height: 90vh;              /* never taller than the viewport */
+  overflow-y: auto;              /* scroll panel content if needed */
+  -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
+}
