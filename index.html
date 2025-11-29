@@ -1145,7 +1145,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "secondary";
+  cancelBtn.className = "inventory-delete-button";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => {
     animateCloseAddItemDialog(480);
@@ -2039,7 +2039,7 @@ function openRecipeImportPreviewDialog(parsed) {
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
   cancelBtn.className = "inventory-delete-button";
-  cancelBtn.textContent = "test";
+  cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => {
     const ov = document.getElementById("recipe-import-preview-overlay");
     if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
@@ -2745,7 +2745,7 @@ function openCookDialog(dayId) {
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "secondary";
+  cancelBtn.className = "inventory-delete-button";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => overlay.remove());
 
@@ -3024,7 +3024,7 @@ function openRecipeImportPreviewDialog(parsed) {
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "secondary";
+  cancelBtn.className = "inventory-delete-button";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => {
     const ov = document.getElementById("recipe-import-preview-overlay");
@@ -3583,7 +3583,7 @@ function openBarcodeScanner() {
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
   cancelBtn.textContent = "Cancel";
-  cancelBtn.className = "secondary";
+  cancelBtn.className = "inventory-delete-button";
   cancelBtn.addEventListener("click", () => {
     closeBarcodeScannerOverlay();
   });
@@ -3772,7 +3772,7 @@ function openBarcodeNamePicker(barcode, names) {
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
   cancelBtn.textContent = "Cancel";
-  cancelBtn.className = "secondary";
+  cancelBtn.className = "inventory-delete-button";
   cancelBtn.style.marginTop = "0.5rem";
 
   cancelBtn.addEventListener("click", () => overlay.remove());
