@@ -1721,7 +1721,7 @@ function openRecipeIngredientsDialog() {
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "secondary";
+  cancelBtn.className = "inventory-delete-button";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => {
     const ov = document.getElementById("recipe-ingredients-overlay");
@@ -1730,7 +1730,7 @@ function openRecipeIngredientsDialog() {
 
   const nextBtn = document.createElement("button");
   nextBtn.type = "button";
-  nextBtn.textContent = "Next ingredient";
+  nextBtn.textContent = "Next";
   nextBtn.addEventListener("click", () => {
     if (!saveIngredientFromFields()) return;
     // cleared & reset inside helper
@@ -1739,7 +1739,7 @@ function openRecipeIngredientsDialog() {
 
   const submitBtn = document.createElement("button");
   submitBtn.type = "button";
-  submitBtn.textContent = "Submit recipe";
+  submitBtn.textContent = "Submit";
   submitBtn.addEventListener("click", () => {
     // Try to save the current fields if there’s anything in them
     const hasData =
