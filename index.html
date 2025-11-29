@@ -1453,6 +1453,42 @@ function openRecipeIngredientsDialog() {
   title.textContent = `Ingredients for ${currentRecipe.name}`;
   panel.appendChild(title);
 
+  // ---------------------------
+  // Ingredient picker dropdown
+  // ---------------------------
+  const pickerRow = document.createElement("div");
+  pickerRow.className = "barcode-input-row";
+
+  const pickerLabel = document.createElement("label");
+  pickerLabel.textContent = "Choose ingredient to edit";
+  pickerLabel.style.display = "block";
+
+  const pickerSelect = document.createElement("select");
+
+  // First option = add new ingredient
+  const optNew = document.createElement("option");
+  optNew.value = "";
+  optNew.textContent = "Add new ingredient…";
+  pickerSelect.appendChild(optNew);
+
+  // Existing ingredients
+  if (Array.isArray(currentRecipe.ingredients)) {
+    currentRecipe.ingredients.forEach((ing, index) => {
+      const opt = document.createElement("option");
+      opt.value = String(index);
+      opt.textContent = ing.name || `Ingredient ${index + 1}`;
+      pickerSelect.appendChild(opt);
+    });
+  }
+
+  pickerLabel.appendChild(pickerSelect);
+  pickerRow.appendChild(pickerLabel);
+  panel.appendChild(pickerRow);
+
+  // ---------------------------
+  // Name / quantity / unit rows
+  // ---------------------------
+
   // --- Ingredient name row ---
   const nameRow = document.createElement("div");
   nameRow.className = "barcode-input-row";
@@ -1509,14 +1545,44 @@ function openRecipeIngredientsDialog() {
   unitRow.appendChild(unitLabel);
   panel.appendChild(unitRow);
 
-  // Helper for actually adding an ingredient
-  function pushIngredientFromFields() {
+  // Track whether we’re editing an existing ingredient or adding a new one
+  let editingIngredientIndex = null;
+
+  // When user picks an ingredient from the dropdown
+  pickerSelect.addEventListener("change", () => {
+    const val = pickerSelect.value;
+
+    if (val === "") {
+      // New ingredient mode
+      editingIngredientIndex = null;
+      nameInput.value = "";
+      qtyInput.value = "";
+      unitSelect.value = "";
+      return;
+    }
+
+    const idx = parseInt(val, 10);
+    const ing = currentRecipe.ingredients[idx];
+    if (!ing) return;
+
+    editingIngredientIndex = idx;
+
+    nameInput.value = ing.name || "";
+    qtyInput.value =
+      typeof ing.quantity === "number" && !Number.isNaN(ing.quantity)
+        ? String(ing.quantity)
+        : "";
+    unitSelect.value = ing.unit || "";
+  });
+
+  // Helper to save/update the ingredient currently in the fields
+  function saveIngredientFromFields() {
     const rawName = nameInput.value.trim();
     const rawQty = qtyInput.value.trim();
     const unit = unitSelect.value || "";
 
+    // If totally empty → treat as "nothing to save"
     if (!rawName && !rawQty) {
-      // Treat empty fields as "no ingredient right now"
       return false;
     }
 
@@ -1537,11 +1603,43 @@ function openRecipeIngredientsDialog() {
       ? titleCase(rawName)
       : rawName;
 
-    currentRecipe.ingredients.push({
-      name: cleanName,
-      quantity: qtyNum,
-      unit,
+    if (!Array.isArray(currentRecipe.ingredients)) {
+      currentRecipe.ingredients = [];
+    }
+
+    if (editingIngredientIndex === null) {
+      // Add new
+      currentRecipe.ingredients.push({
+        name: cleanName,
+        quantity: qtyNum,
+        unit,
+      });
+    } else {
+      // Overwrite existing
+      currentRecipe.ingredients[editingIngredientIndex] = {
+        name: cleanName,
+        quantity: qtyNum,
+        unit,
+      };
+    }
+
+    // Rebuild the dropdown so names stay in sync with edits
+    while (pickerSelect.options.length > 1) {
+      pickerSelect.remove(1);
+    }
+    currentRecipe.ingredients.forEach((ing, index) => {
+      const opt = document.createElement("option");
+      opt.value = String(index);
+      opt.textContent = ing.name || `Ingredient ${index + 1}`;
+      pickerSelect.appendChild(opt);
     });
+
+    // Reset to "Add new" mode after saving
+    editingIngredientIndex = null;
+    pickerSelect.value = "";
+    nameInput.value = "";
+    qtyInput.value = "";
+    unitSelect.value = "";
 
     return true;
   }
@@ -1563,13 +1661,8 @@ function openRecipeIngredientsDialog() {
   nextBtn.type = "button";
   nextBtn.textContent = "Next ingredient";
   nextBtn.addEventListener("click", () => {
-    if (!pushIngredientFromFields()) return;
-
-    // Clear for next
-    nameInput.value = "";
-    qtyInput.value = "";
-    unitSelect.value = "";
-
+    if (!saveIngredientFromFields()) return;
+    // cleared & reset inside helper
     nameInput.focus();
   });
 
@@ -1577,15 +1670,18 @@ function openRecipeIngredientsDialog() {
   submitBtn.type = "button";
   submitBtn.textContent = "Submit recipe";
   submitBtn.addEventListener("click", () => {
-    // Try to add the current ingredient if fields are filled
-    const hadNameOrQty =
+    // Try to save the current fields if there’s anything in them
+    const hasData =
       nameInput.value.trim() !== "" || qtyInput.value.trim() !== "";
 
-    if (hadNameOrQty) {
-      if (!pushIngredientFromFields()) return;
+    if (hasData) {
+      if (!saveIngredientFromFields()) return;
     }
 
-    if (!currentRecipe.ingredients || !currentRecipe.ingredients.length) {
+    if (
+      !currentRecipe.ingredients ||
+      !currentRecipe.ingredients.length
+    ) {
       alert("Please add at least one ingredient.");
       return;
     }
@@ -1603,7 +1699,6 @@ function openRecipeIngredientsDialog() {
     renderRecipesList();
     saveState();
 
-    // Clear in-memory editing state
     currentRecipe = null;
     editingRecipeId = null;
 
@@ -1624,12 +1719,10 @@ function openRecipeIngredientsDialog() {
     panel.classList.add("visible");
   });
 
-  // Focus first field
   setTimeout(() => {
     if (nameInput.focus) nameInput.focus({ preventScroll: true });
   }, 40);
 
-  // Tap outside to close
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) {
       const ov = document.getElementById("recipe-ingredients-overlay");
@@ -1741,7 +1834,7 @@ function renderCurrentRecipeIngredients() {
       clearIngredientEditState();
     }
 
-        function renderRecipesList() {
+      function renderRecipesList() {
   const container = document.getElementById("recipes-list");
   if (!container) return;
   container.innerHTML = "";
@@ -1759,7 +1852,7 @@ function renderCurrentRecipeIngredients() {
     card.className = "recipe-card";
     card.dataset.recipeId = r.id;
 
-      // Thumbnail
+    // Thumbnail
     const thumb = document.createElement("div");
     thumb.className = "recipe-card-thumb";
     if (r.imageUrl) {
@@ -1770,16 +1863,13 @@ function renderCurrentRecipeIngredients() {
     } else {
       const placeholder = document.createElement("div");
       placeholder.className = "recipe-card-placeholder";
-      placeholder.textContent = (r.name || "R")
-        .charAt(0)
-        .toUpperCase();
+      placeholder.textContent = (r.name || "R").charAt(0).toUpperCase();
       thumb.appendChild(placeholder);
     }
 
-    // NEW: clicking the image/placeholder opens the detail view
+    // Clicking image opens detail
     thumb.style.cursor = "pointer";
     thumb.addEventListener("click", () => openRecipeDetail(r.id));
-
     card.appendChild(thumb);
 
     // Body
@@ -1800,16 +1890,19 @@ function renderCurrentRecipeIngredients() {
 
     card.appendChild(body);
 
-    // Footer buttons (Edit + Delete only)
+    // Footer buttons (Edit + Delete)
     const footer = document.createElement("div");
     footer.className = "recipe-card-footer";
 
     const editBtn = document.createElement("button");
     editBtn.type = "button";
-    editBtn.className = "secondary";
     editBtn.textContent = "Edit";
-    editBtn.addEventListener("click", () => {
-      startRecipeEdit(r.id);
+    editBtn.className = "inventory-edit-btn";
+
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      console.log("Edit recipe clicked:", r.id, r.name);
+      openRecipeMetaDialog(r);
     });
 
     const delBtn = document.createElement("button");
