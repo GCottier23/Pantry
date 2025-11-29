@@ -1803,16 +1803,16 @@ function openRecipeIngredientsDialog() {
 }
 
 function openRecipeImportDialog() {
-  // Kill any previous import overlay
+  // Kill old dialog
   const old = document.getElementById("recipe-import-overlay");
   if (old) old.remove();
 
-  // Overlay (reuse your dark scrim)
+  // Overlay
   const overlay = document.createElement("div");
   overlay.id = "recipe-import-overlay";
   overlay.className = "barcode-scanner-overlay";
 
-  // Panel (reuse add-item panel styling / animation)
+  // Panel
   const panel = document.createElement("div");
   panel.className = "barcode-scanner-panel add-item-panel";
 
@@ -1821,73 +1821,53 @@ function openRecipeImportDialog() {
   title.textContent = "Import recipe";
   panel.appendChild(title);
 
-  // --- URL row ---
-  const urlRow = document.createElement("div");
-  urlRow.className = "barcode-input-row";
+  // URL row
+  const row = document.createElement("div");
+  row.className = "barcode-input-row";
 
-  const urlLabel = document.createElement("label");
-  urlLabel.textContent = "Recipe URL";
-  urlLabel.style.display = "block";
+  const label = document.createElement("label");
+  label.textContent = "Recipe URL";
+  label.style.display = "block";
 
-  const urlInput = document.createElement("input");
-  urlInput.type = "url";
-  urlInput.placeholder = "Paste recipe link…";
-  urlInput.autocomplete = "off";
+  const input = document.createElement("input");
+  input.type = "url";
+  input.placeholder = "Paste recipe link…";
+  input.autocomplete = "off";
 
-  urlLabel.appendChild(urlInput);
-  urlRow.appendChild(urlLabel);
-  panel.appendChild(urlRow);
+  label.appendChild(input);
+  row.appendChild(label);
+  panel.appendChild(row);
 
-  // --- Buttons row ---
+  // Buttons
   const btnRow = document.createElement("div");
   btnRow.className = "barcode-scanner-actions";
 
-  // Cancel (red pill, same as your delete style)
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
   cancelBtn.className = "inventory-delete-button";
   cancelBtn.textContent = "Cancel";
-  cancelBtn.addEventListener("click", () => {
-    closeRecipeImportDialog();
-  });
+  cancelBtn.addEventListener("click", closeRecipeImportDialog);
 
-  // Submit / Import
   const importBtn = document.createElement("button");
   importBtn.type = "button";
-  importBtn.textContent = "Import";
-  importBtn.addEventListener("click", () => {
-    const rawUrl = urlInput.value.trim();
-    if (!rawUrl) {
-      alert("Please paste a recipe URL.");
-      urlInput.focus();
+  importBtn.textContent = "Fetch";
+  importBtn.addEventListener("click", async () => {
+    const url = input.value.trim();
+    if (!url) {
+      alert("Please enter a URL");
+      input.focus();
       return;
     }
 
-    // 🔗 Hand off to your EXISTING BBC import pipeline
-    const realInput   = document.getElementById("recipe-import-url");
-    const realFetchBtn = document.getElementById("recipe-fetch-image");
-
-    if (!realInput || !realFetchBtn) {
-      alert("Recipe import controls not found in the page.");
-      return;
+    // Use your existing parser:
+    try {
+      const parsed = await importRecipeFromUrl(url);
+      openRecipeImportPreviewDialog(parsed); // ⬅️ NEW PHASE
+      closeRecipeImportDialog();
+    } catch (err) {
+      console.error(err);
+      alert("Could not import recipe from that URL.");
     }
-
-    // Put the URL into the real hidden field
-    realInput.value = rawUrl;
-
-    // Make sure the import panel is visible (if you ever hide it)
-    const importPanel = document.querySelector(".recipe-import");
-    if (importPanel) {
-      importPanel.classList.remove("hidden");
-      // optional: scroll to it
-      importPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-
-    // Trigger your existing fetch/parse logic
-    realFetchBtn.click();
-
-    // Close the dialog
-    closeRecipeImportDialog();
   });
 
   btnRow.appendChild(cancelBtn);
@@ -1897,22 +1877,7 @@ function openRecipeImportDialog() {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
-  // Animate in (same pattern as other dialogs)
-  requestAnimationFrame(() => {
-    panel.classList.add("visible");
-  });
-
-  // Focus the URL input
-  setTimeout(() => {
-    if (urlInput.focus) urlInput.focus({ preventScroll: true });
-  }, 40);
-
-  // Click outside to close
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) {
-      closeRecipeImportDialog();
-    }
-  });
+  requestAnimationFrame(() => panel.classList.add("visible"));
 }
 
 function closeRecipeImportDialog() {
@@ -1922,12 +1887,111 @@ function closeRecipeImportDialog() {
   const panel = overlay.querySelector(".add-item-panel");
   if (panel) panel.classList.remove("visible");
 
-  // Match your 480ms fade-out if you like
-  setTimeout(() => {
-    if (overlay && overlay.parentNode) {
-      overlay.parentNode.removeChild(overlay);
-    }
-  }, 480);
+  setTimeout(() => overlay.remove(), 480);
+}
+
+function openRecipeImportPreviewDialog(data) {
+  const { title, servings, ingredients, imageUrl } = data;
+
+  // Kill old preview if open
+  const old = document.getElementById("recipe-preview-overlay");
+  if (old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "recipe-preview-overlay";
+  overlay.className = "barcode-scanner-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "barcode-scanner-panel add-item-panel";
+
+  const h = document.createElement("h2");
+  h.textContent = "Preview recipe";
+  panel.appendChild(h);
+
+  // Image preview
+  if (imageUrl) {
+    const img = document.createElement("img");
+    img.src = imageUrl;
+    img.style.width = "100%";
+    img.style.borderRadius = "12px";
+    img.style.marginBottom = "0.75rem";
+    panel.appendChild(img);
+  }
+
+  // Title preview
+  const t = document.createElement("p");
+  t.style.fontSize = "1rem";
+  t.style.fontWeight = "600";
+  t.style.margin = "0.3rem 0";
+  t.textContent = title || "(No title found)";
+  panel.appendChild(t);
+
+  // Ingredients preview
+  const ingLabel = document.createElement("p");
+  ingLabel.textContent = "Ingredients:";
+  ingLabel.style.margin = "0.4rem 0 0.2rem";
+  ingLabel.style.fontWeight = "500";
+  panel.appendChild(ingLabel);
+
+  const ingList = document.createElement("ul");
+  ingList.style.paddingLeft = "1.2rem";
+  ingList.style.marginTop = "0";
+
+  ingredients.forEach((line) => {
+    const li = document.createElement("li");
+    li.textContent = line;
+    ingList.appendChild(li);
+  });
+
+  panel.appendChild(ingList);
+
+  // Buttons
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "inventory-delete-button";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", closeRecipePreviewDialog);
+
+  const confirmBtn = document.createElement("button");
+  confirmBtn.type = "button";
+  confirmBtn.textContent = "Import";
+  confirmBtn.addEventListener("click", () => {
+    // 🎯 Build currentRecipe object exactly like meta dialog
+    currentRecipe = {
+      id: String(Date.now()),
+      name: title || "Imported recipe",
+      servings: servings || 0,
+      ingredients: ingredients.slice(),
+      instructions: [],
+      imageUrl: imageUrl || "",
+      sourceUrl: "",
+    };
+
+    editingRecipeId = null; // ensure new recipe
+
+    closeRecipePreviewDialog();
+    openRecipeIngredientsDialog(); // Continue workflow
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(confirmBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(() => panel.classList.add("visible"));
+}
+
+function closeRecipePreviewDialog() {
+  const overlay = document.getElementById("recipe-preview-overlay");
+  if (!overlay) return;
+  const panel = overlay.querySelector(".add-item-panel");
+  if (panel) panel.classList.remove("visible");
+  setTimeout(() => overlay.remove(), 480);
 }
 
 function renderCurrentRecipeIngredients() {
