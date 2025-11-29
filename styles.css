@@ -838,7 +838,9 @@ p {
 
 .barcode-scanner-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;   /* centre horizontally */
+  gap: 0.75rem;              /* nice space between buttons */
+  margin-top: 1.25rem;
 }
 
 .barcode-scanner-actions button {
