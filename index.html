@@ -1274,6 +1274,81 @@ function animateCloseAddItemDialog(durationMs = 480) {
 
     // ---------- RECIPES ----------
 
+// =======================================
+// Import recipe from URL → show preview
+// =======================================
+async function importRecipeFromUrl(url) {
+  const rawUrl = (url || "").trim();
+  if (!rawUrl) return;
+
+  // Optional: if you still have a status element in the DOM, this will update it.
+  const statusEl = document.getElementById("recipe-import-status");
+  if (statusEl) {
+    statusEl.textContent = "Fetching recipe…";
+    statusEl.classList.remove("error");
+  }
+
+  try {
+    const endpoint = WORKER_BASE + "?url=" + encodeURIComponent(rawUrl);
+    const res = await fetch(endpoint);
+    if (!res.ok) throw new Error("Proxy returned " + res.status);
+
+    const data = await res.json();
+    if (!data || data.ok === false) {
+      if (statusEl) {
+        statusEl.textContent =
+          (data && data.error) || "Recipe not found on that page.";
+        statusEl.classList.add("error");
+      }
+      return;
+    }
+
+    // Normalised parsed object
+    const parsed = {
+      sourceUrl: data.source || rawUrl,
+      title: data.title || "",
+      imageUrl: data.image || "",
+      servingsText: data.servings || "",
+      servingsNumber:
+        typeof parseServingsNumber === "function"
+          ? parseServingsNumber(data.servings || "")
+          : null,
+      ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
+      ingredientNames: Array.isArray(data.ingredientNames)
+        ? data.ingredientNames
+        : [],
+      instructions: Array.isArray(data.instructions)
+        ? data.instructions
+        : [],
+    };
+
+    // Keep around in case you use it anywhere else
+    window.lastImportedRecipeMeta = {
+      instructions: parsed.instructions.slice(),
+      sourceUrl: parsed.sourceUrl,
+      servingsText: parsed.servingsText,
+      image: parsed.imageUrl,
+      title: parsed.title,
+      ingredientNames: parsed.ingredientNames.slice(),
+    };
+
+    if (statusEl) {
+      statusEl.textContent = "Recipe info loaded – review and import.";
+      statusEl.classList.remove("error");
+    }
+
+    // 👉 Show your preview dialog
+    openRecipeImportPreviewDialog(parsed);
+  } catch (err) {
+    console.error(err);
+    if (statusEl) {
+      statusEl.textContent = "Could not import recipe from URL.";
+      statusEl.classList.add("error");
+    }
+  }
+}
+
+
 function openRecipeMetaDialog(existingRecipe = null) {
   console.log("openRecipeMetaDialog()", existingRecipe);
 
@@ -1838,7 +1913,7 @@ function openRecipeImportDialog() {
   row.appendChild(label);
   panel.appendChild(row);
 
-  // Buttons
+  // Buttons row
   const btnRow = document.createElement("div");
   btnRow.className = "barcode-scanner-actions";
 
@@ -1851,28 +1926,19 @@ function openRecipeImportDialog() {
   const importBtn = document.createElement("button");
   importBtn.type = "button";
   importBtn.textContent = "Fetch";
+
+  // 🔑 When user clicks "Fetch", call our helper
   importBtn.addEventListener("click", async () => {
-  const url = input.value.trim();
-  if (!url) {
-    alert("Please enter a URL");
-    input.focus();
-    return;
-  }
+    const url = input.value.trim();
+    if (!url) {
+      alert("Please paste a recipe URL.");
+      input.focus();
+      return;
+    }
 
-  console.log("About to call importRecipeFromUrl with:", url);
-
-  try {
-    console.log("typeof importRecipeFromUrl =", typeof importRecipeFromUrl);
-    const result = await importRecipeFromUrl(url);
-    console.log("Result from importRecipeFromUrl:", result);
-
-    openRecipeImportPreviewDialog(result);
+    await importRecipeFromUrl(url); // this will open the preview dialog
     closeRecipeImportDialog();
-  } catch (err) {
-    console.error("Import failed:", err);
-    alert("Could not import recipe from that URL.");
-  }
-});
+  });
 
   btnRow.appendChild(cancelBtn);
   btnRow.appendChild(importBtn);
@@ -1881,7 +1947,20 @@ function openRecipeImportDialog() {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
+  // Animate in
   requestAnimationFrame(() => panel.classList.add("visible"));
+
+  // Focus the URL box
+  setTimeout(() => {
+    if (input.focus) input.focus({ preventScroll: true });
+  }, 40);
+
+  // Tap outside → close
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      closeRecipeImportDialog();
+    }
+  });
 }
 
 function closeRecipeImportDialog() {
@@ -1894,54 +1973,58 @@ function closeRecipeImportDialog() {
   setTimeout(() => overlay.remove(), 480);
 }
 
-function openRecipeImportPreviewDialog(data) {
-  const { title, servings, ingredients, imageUrl } = data;
-
-  // Kill old preview if open
-  const old = document.getElementById("recipe-preview-overlay");
+function openRecipeImportPreviewDialog(parsed) {
+  // Remove any old overlay
+  const old = document.getElementById("recipe-import-preview-overlay");
   if (old) old.remove();
 
   const overlay = document.createElement("div");
-  overlay.id = "recipe-preview-overlay";
-  overlay.className = "barcode-scanner-overlay";
+  overlay.id = "recipe-import-preview-overlay";
+  overlay.className = "barcode-scanner-overlay"; // reuse dark scrim
 
   const panel = document.createElement("div");
   panel.className = "barcode-scanner-panel add-item-panel";
 
-  const h = document.createElement("h2");
-  h.textContent = "Preview recipe";
-  panel.appendChild(h);
+  // --- Title ---
+  const titleEl = document.createElement("h2");
+  titleEl.textContent = parsed.title || "Imported recipe";
+  panel.appendChild(titleEl);
 
-  // Image preview
-  if (imageUrl) {
+  // --- Image preview (if present) ---
+  if (parsed.imageUrl) {
+    const imgWrap = document.createElement("div");
+    imgWrap.className = "recipe-image-preview-wrapper";
+
     const img = document.createElement("img");
-    img.src = imageUrl;
-    img.style.width = "100%";
-    img.style.borderRadius = "12px";
-    img.style.marginBottom = "0.75rem";
-    panel.appendChild(img);
+    img.src = parsed.imageUrl;
+    img.alt = parsed.title || "Recipe image";
+    img.className = "recipe-image-preview";
+
+    imgWrap.appendChild(img);
+    panel.appendChild(imgWrap);
   }
 
-  // Title preview
-  const t = document.createElement("p");
-  t.style.fontSize = "1rem";
-  t.style.fontWeight = "600";
-  t.style.margin = "0.3rem 0";
-  t.textContent = title || "(No title found)";
-  panel.appendChild(t);
+  // --- Servings text (if any) ---
+  if (parsed.servingsText || parsed.servingsNumber) {
+    const meta = document.createElement("p");
+    meta.className = "recipe-card-meta";
+    if (parsed.servingsNumber) {
+      meta.textContent = `Serves ${parsed.servingsNumber} (${parsed.servingsText || ""})`;
+    } else {
+      meta.textContent = parsed.servingsText;
+    }
+    panel.appendChild(meta);
+  }
 
-  // Ingredients preview
-  const ingLabel = document.createElement("p");
-  ingLabel.textContent = "Ingredients:";
-  ingLabel.style.margin = "0.4rem 0 0.2rem";
-  ingLabel.style.fontWeight = "500";
-  panel.appendChild(ingLabel);
+  // --- Ingredients preview ---
+  const ingTitle = document.createElement("h3");
+  ingTitle.textContent = "Ingredients detected";
+  panel.appendChild(ingTitle);
 
   const ingList = document.createElement("ul");
-  ingList.style.paddingLeft = "1.2rem";
-  ingList.style.marginTop = "0";
+  ingList.className = "recipe-detail-ingredients";
 
-  ingredients.forEach((line) => {
+  (parsed.ingredients || []).forEach((line) => {
     const li = document.createElement("li");
     li.textContent = line;
     ingList.appendChild(li);
@@ -1949,53 +2032,135 @@ function openRecipeImportPreviewDialog(data) {
 
   panel.appendChild(ingList);
 
-  // Buttons
+  // --- Buttons row ---
   const btnRow = document.createElement("div");
   btnRow.className = "barcode-scanner-actions";
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "inventory-delete-button";
+  cancelBtn.className = "secondary";
   cancelBtn.textContent = "Cancel";
-  cancelBtn.addEventListener("click", closeRecipePreviewDialog);
+  cancelBtn.addEventListener("click", () => {
+    const ov = document.getElementById("recipe-import-preview-overlay");
+    if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+  });
 
-  const confirmBtn = document.createElement("button");
-  confirmBtn.type = "button";
-  confirmBtn.textContent = "Import";
-  confirmBtn.addEventListener("click", () => {
-    // 🎯 Build currentRecipe object exactly like meta dialog
-    currentRecipe = {
+  const importBtn = document.createElement("button");
+  importBtn.type = "button";
+  importBtn.textContent = "Import recipe";
+
+  importBtn.addEventListener("click", () => {
+    // 1) Build a clean recipe name
+    const rawName = parsed.title || "Imported recipe";
+    const name =
+      typeof titleCase === "function" ? titleCase(rawName) : rawName;
+
+    // 2) Work out servings
+    const servings =
+      parsed.servingsNumber && parsed.servingsNumber > 0
+        ? parsed.servingsNumber
+        : 2; // default
+
+    // 3) Parse ingredients using your BBC-aware logic where possible
+    const lines = Array.isArray(parsed.ingredients)
+      ? parsed.ingredients
+      : [];
+
+    const ingredientNames = Array.isArray(parsed.ingredientNames)
+      ? parsed.ingredientNames
+      : [];
+
+    const newIngredients = [];
+
+    lines.forEach((line) => {
+      const trimmed = (line || "").trim();
+      if (!trimmed) return;
+
+      let parsedIng = null;
+
+      // Prefer BBC-specific parser if available
+      if (
+        ingredientNames.length &&
+        typeof parseBbcIngredient === "function"
+      ) {
+        parsedIng = parseBbcIngredient(trimmed, ingredientNames);
+      }
+
+      // Fallback: generic parser
+      if (!parsedIng && typeof parseIngredientLine === "function") {
+        parsedIng = parseIngredientLine(trimmed);
+      }
+
+      // Last resort: just keep the line as a name
+      if (!parsedIng) {
+        parsedIng = {
+          name: trimmed,
+          quantity: null,
+          unit: "",
+        };
+      }
+
+      if (!parsedIng.name) return;
+
+      if (
+        parsedIng.quantity !== null &&
+        parsedIng.quantity !== undefined
+      ) {
+        if (Number.isNaN(parsedIng.quantity) || parsedIng.quantity <= 0) {
+          // ignore obviously bad quantities
+          return;
+        }
+      }
+
+      newIngredients.push(parsedIng);
+    });
+
+    if (!newIngredients.length) {
+      const ok = confirm(
+        "No valid ingredients were parsed. Save this recipe anyway?"
+      );
+      if (!ok) return;
+    }
+
+    // 4) Build final recipe object
+    const newRecipe = {
       id: String(Date.now()),
-      name: title || "Imported recipe",
-      servings: servings || 0,
-      ingredients: ingredients.slice(),
-      instructions: [],
-      imageUrl: imageUrl || "",
-      sourceUrl: "",
+      name,
+      servings,
+      ingredients: newIngredients,
+      instructions: Array.isArray(parsed.instructions)
+        ? parsed.instructions.slice()
+        : [],
+      imageUrl: parsed.imageUrl || "",
+      sourceUrl: parsed.sourceUrl || "",
     };
 
-    editingRecipeId = null; // ensure new recipe
+    // 5) Save
+    recipes.push(newRecipe);
+    saveState();
+    renderRecipesList();
 
-    closeRecipePreviewDialog();
-    openRecipeIngredientsDialog(); // Continue workflow
+    // Close preview
+    const ov = document.getElementById("recipe-import-preview-overlay");
+    if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+
+    // Optionally jump to Recipes tab
+    if (typeof showPage === "function") {
+      showPage("page-recipes");
+    }
   });
 
   btnRow.appendChild(cancelBtn);
-  btnRow.appendChild(confirmBtn);
+  btnRow.appendChild(importBtn);
   panel.appendChild(btnRow);
 
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
-  requestAnimationFrame(() => panel.classList.add("visible"));
-}
-
-function closeRecipePreviewDialog() {
-  const overlay = document.getElementById("recipe-preview-overlay");
-  if (!overlay) return;
-  const panel = overlay.querySelector(".add-item-panel");
-  if (panel) panel.classList.remove("visible");
-  setTimeout(() => overlay.remove(), 480);
+  // Animate in
+  requestAnimationFrame(() => {
+    panel.classList.add("visible");
+  });
 }
 
 function renderCurrentRecipeIngredients() {
@@ -2788,6 +2953,208 @@ function openCookDialog(dayId) {
   } else {
     clearIngredientEditState();
   }
+}
+
+
+
+function openRecipeImportPreviewDialog(parsed) {
+  // parsed is the object returned by importRecipeFromUrl
+
+  // Remove any old overlay
+  const old = document.getElementById("recipe-import-preview-overlay");
+  if (old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "recipe-import-preview-overlay";
+  overlay.className = "barcode-scanner-overlay"; // reuse dark scrim
+
+  const panel = document.createElement("div");
+  panel.className = "barcode-scanner-panel add-item-panel";
+
+  // --- Title ---
+  const title = document.createElement("h2");
+  title.textContent = parsed.title || "Imported recipe";
+  panel.appendChild(title);
+
+  // --- Image preview (if any) ---
+  if (parsed.imageUrl) {
+    const imgWrap = document.createElement("div");
+    imgWrap.className = "recipe-image-preview-wrapper";
+
+    const img = document.createElement("img");
+    img.src = parsed.imageUrl;
+    img.alt = parsed.title || "Recipe image";
+    img.className = "recipe-image-preview";
+
+    imgWrap.appendChild(img);
+    panel.appendChild(imgWrap);
+  }
+
+  // --- Servings text (if any) ---
+  if (parsed.servingsText || parsed.servingsNumber) {
+    const meta = document.createElement("p");
+    meta.className = "recipe-card-meta";
+    if (parsed.servingsNumber) {
+      meta.textContent = `Serves ${parsed.servingsNumber} (${parsed.servingsText || ""})`;
+    } else {
+      meta.textContent = parsed.servingsText;
+    }
+    panel.appendChild(meta);
+  }
+
+  // --- Ingredients preview ---
+  const ingTitle = document.createElement("h3");
+  ingTitle.textContent = "Ingredients detected";
+  panel.appendChild(ingTitle);
+
+  const ingList = document.createElement("ul");
+  ingList.className = "recipe-detail-ingredients";
+
+  (parsed.ingredients || []).forEach((line) => {
+    const li = document.createElement("li");
+    li.textContent = line;
+    ingList.appendChild(li);
+  });
+
+  panel.appendChild(ingList);
+
+  // --- Buttons row ---
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "secondary";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => {
+    const ov = document.getElementById("recipe-import-preview-overlay");
+    if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+  });
+
+  const importBtn = document.createElement("button");
+  importBtn.type = "button";
+  importBtn.textContent = "Import recipe";
+
+  importBtn.addEventListener("click", () => {
+    // Pull bits out of parsed
+    const rawName  = parsed.title || "Imported recipe";
+    const name = (typeof titleCase === "function")
+      ? titleCase(rawName)
+      : rawName;
+
+    const servings =
+      parsed.servingsNumber && parsed.servingsNumber > 0
+        ? parsed.servingsNumber
+        : 2; // safe default
+
+    const lines = Array.isArray(parsed.ingredients)
+      ? parsed.ingredients
+      : [];
+
+    // BBC-aware ingredient parsing (same logic as your old import button)
+    const ingredientNames =
+      (parsed.ingredientNames && parsed.ingredientNames.length)
+        ? parsed.ingredientNames
+        : (
+            window.lastImportedRecipeMeta &&
+            Array.isArray(window.lastImportedRecipeMeta.ingredientNames)
+              ? window.lastImportedRecipeMeta.ingredientNames
+              : []
+          );
+
+    const newIngredients = [];
+
+    lines.forEach((line) => {
+      const trimmed = (line || "").trim();
+      if (!trimmed) return;
+
+      let parsedIng = null;
+
+      // If we have BBC ingredient names & parseBbcIngredient – use that
+      if (
+        ingredientNames.length &&
+        typeof parseBbcIngredient === "function"
+      ) {
+        parsedIng = parseBbcIngredient(trimmed, ingredientNames);
+      }
+      // Fallback: generic parser
+      if (!parsedIng && typeof parseIngredientLine === "function") {
+        parsedIng = parseIngredientLine(trimmed);
+      }
+
+      // Last resort: just store the line as a name
+      if (!parsedIng) {
+        parsedIng = {
+          name: trimmed,
+          quantity: null,
+          unit: "",
+        };
+      }
+
+      if (!parsedIng.name) return;
+
+      // If quantity is present, it must be a positive number
+      if (
+        parsedIng.quantity !== null &&
+        parsedIng.quantity !== undefined
+      ) {
+        if (Number.isNaN(parsedIng.quantity) || parsedIng.quantity <= 0) {
+          return;
+        }
+      }
+
+      newIngredients.push(parsedIng);
+    });
+
+    if (!newIngredients.length) {
+      if (!confirm("No valid ingredients were parsed. Save recipe anyway?")) {
+        return;
+      }
+    }
+
+    // Build the final recipe object
+    const newRecipe = {
+      id: String(Date.now()),
+      name,
+      servings,
+      ingredients: newIngredients,
+      instructions:
+        window.lastImportedRecipeMeta &&
+        Array.isArray(window.lastImportedRecipeMeta.instructions)
+          ? window.lastImportedRecipeMeta.instructions.slice()
+          : [],
+      imageUrl: parsed.imageUrl || "",
+      sourceUrl: parsed.sourceUrl || "",
+    };
+
+    // Push into global recipes list
+    recipes.push(newRecipe);
+
+    // Persist and re-render
+    saveState();
+    renderRecipesList();
+
+    // Close preview overlay
+    const ov = document.getElementById("recipe-import-preview-overlay");
+    if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+
+    // Optional: jump to Recipes tab if you like
+    if (typeof showPage === "function") {
+      showPage("page-recipes");
+    }
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(importBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  // Animate in
+  requestAnimationFrame(() => {
+    panel.classList.add("visible");
+  });
 }
 
     // ---------- MEAL PLAN ----------
