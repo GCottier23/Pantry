@@ -130,16 +130,51 @@
   <!-- ======================================= -->
   <!-- PAGE 3 – MEAL PLAN                      -->
   <!-- ======================================= -->
-  <section id="page-mealplan" class="page hidden" role="tabpanel" aria-labelledby="nav-mealplan">
-    <section class="panel">
-      <h2>Meal plan</h2>
-      <p>Select meals for each day and portions.</p>
+  <section id="page-mealplan" class="page hidden">
+  <div class="panel">
+    <h2>Meal plan</h2>
 
-      <div id="meal-plan-container"></div>
+    <div class="mealplan-header-row">
+      <span id="mealplan-week-label" class="mealplan-week-label">This week · 24–30 Nov</span>
+      <div class="mealplan-header-actions">
+        <button type="button" class="secondary">Today</button>
+        <button id="mealplan-clear-btn" type="button" class="inventory-delete-button">Clear week</button>
+      </div>
+    </div>
+  </div>
 
-      <button id="generate-shopping-list" type="button">Generate shopping list</button>
-    </section>
-  </section>
+  <div id="mealplan-days">
+
+    <!-- TEMP PREVIEW — Monday -->
+    <article class="mealplan-day-card">
+      <header class="mealplan-day-header">
+        <div>
+          <div class="mealplan-day-name">Monday</div>
+          <div class="mealplan-day-date">24 Nov</div>
+        </div>
+      </header>
+
+      <div class="mealplan-meals">
+        <div class="mealplan-meal-row">
+          <span class="mealplan-meal-label">Breakfast</span>
+          <button class="action-pill">Add recipe</button>
+        </div>
+
+        <div class="mealplan-meal-row">
+          <span class="mealplan-meal-label">Lunch</span>
+          <button class="action-pill">Add recipe</button>
+        </div>
+
+        <div class="mealplan-meal-row">
+          <span class="mealplan-meal-label">Dinner</span>
+          <button class="action-pill">Add recipe</button>
+        </div>
+      </div>
+    </article>
+
+    <!-- TEMP PREVIEW — Copy/paste for other days if you want -->
+  </div>
+</section>
 
   <!-- ======================================= -->
   <!-- PAGE 4 – SHOPPING LIST                  -->
@@ -2348,12 +2383,16 @@ delBtn.textContent = "Delete";
     delBtn.addEventListener("click", () => {
       if (confirm(`Delete recipe "${r.name}"?`)) {
         recipes = recipes.filter((x) => x.id !== r.id);
-        mealPlan.forEach((entry) => {
-          if (entry.recipeId === r.id) {
-            entry.recipeId = "";
-            entry.servings = 0;
-          }
-        });
+      normaliseMealPlan();
+mealPlan.forEach((day) => {
+  MEAL_SLOTS.forEach(({ key }) => {
+    const slot = day[key];
+    if (slot && slot.recipeId === r.id) {
+      slot.recipeId = "";
+      slot.servings = 0;
+    }
+  });
+});
         renderRecipesList();
         renderMealPlan();
         saveState();
@@ -3164,120 +3203,285 @@ function openRecipeImportPreviewDialog(parsed) {
 
     // ---------- MEAL PLAN ----------
 
-    function renderMealPlan() {
-      const container = document.getElementById("meal-plan-container");
-      if (!container) return;
-      container.innerHTML = "";
+    // ---------- MEAL PLAN CONFIG ----------
 
-      if (!mealPlan || !mealPlan.length) initDefaultMealPlan();
+// 3 slots per day – you can add "snack" etc later if you want
+const MEAL_SLOTS = [
+  { key: "breakfast", label: "Breakfast" },
+  { key: "lunch",     label: "Lunch"     },
+  { key: "dinner",    label: "Dinner"    },
+];
 
-      const validIds = new Set(recipes.map((r) => r.id));
-      mealPlan.forEach((entry) => {
-        if (entry.recipeId && !validIds.has(entry.recipeId)) {
-          entry.recipeId = "";
-          entry.servings = 0;
+const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// Ensure mealPlan is always 7 days with the right shape
+function normaliseMealPlan() {
+  const today = new Date();
+  if (!Array.isArray(mealPlan)) mealPlan = [];
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const iso = d.toISOString().slice(0, 10);
+
+    if (!mealPlan[i] || typeof mealPlan[i] !== "object") {
+      mealPlan[i] = {
+        dateISO: iso,
+        breakfast: { recipeId: "", servings: 0 },
+        lunch:     { recipeId: "", servings: 0 },
+        dinner:    { recipeId: "", servings: 0 },
+      };
+    } else {
+      mealPlan[i].dateISO = mealPlan[i].dateISO || iso;
+      MEAL_SLOTS.forEach(({ key }) => {
+        if (!mealPlan[i][key]) {
+          mealPlan[i][key] = { recipeId: "", servings: 0 };
         }
-      });
-
-      mealPlan.forEach((entry) => {
-        const row = document.createElement("div");
-        row.className = "subpanel";
-
-        const label = document.createElement("h3");
-        label.textContent = entry.dayLabel;
-        row.appendChild(label);
-
-        const recipeLabel = document.createElement("label");
-        recipeLabel.textContent = "Recipe";
-
-        const select = document.createElement("select");
-        select.dataset.dayId = entry.dayId;
-
-        const defaultOpt = document.createElement("option");
-        defaultOpt.value = "";
-        defaultOpt.textContent = "(no meal selected)";
-        select.appendChild(defaultOpt);
-
-        recipes
-          .slice()
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .forEach((recipe) => {
-            const opt = document.createElement("option");
-            opt.value = recipe.id;
-            opt.textContent = `${recipe.name} (serves ${recipe.servings})`;
-            select.appendChild(opt);
-          });
-
-        select.value = entry.recipeId || "";
-        select.addEventListener("change", (e) => {
-         const id = e.target.dataset.dayId;
-         const planEntry = mealPlan.find((p) => p.dayId === id);
-         if (!planEntry) return;
-         planEntry.recipeId = e.target.value;
-         if (!planEntry.recipeId) {
-          planEntry.servings = 0;
-          const sInput = document.querySelector(
-            `input[data-day-id="${id}"]`
-          );
-          if (sInput) sInput.value = "0";
-        }
-        saveState();
-        updateCookBtnState();
-      });
-
-        recipeLabel.appendChild(select);
-        row.appendChild(recipeLabel);
-
-        const servingsLabel = document.createElement("label");
-        servingsLabel.textContent = "Planned servings";
-
-        const servingsInput = document.createElement("input");
-        servingsInput.type = "number";
-        servingsInput.min = "0";
-        servingsInput.step = "1";
-        servingsInput.dataset.dayId = entry.dayId;
-        servingsInput.value =
-          entry.servings && entry.servings > 0 ? entry.servings : "0";
-
-        servingsInput.addEventListener("change", (e) => {
-  const id = e.target.dataset.dayId;
-  const planEntry = mealPlan.find((p) => p.dayId === id);
-  if (!planEntry) return;
-  let val = parseFloat(e.target.value || "0");
-  if (isNaN(val) || val < 0) val = 0;
-  planEntry.servings = val;
-  e.target.value = val === 0 ? "0" : String(val);
-  saveState();
-  updateCookBtnState();
-});
-
-        servingsLabel.appendChild(servingsInput);
-        row.appendChild(servingsLabel);
-
-                // "I'm cooking this" button
-        const cookBtn = document.createElement("button");
-        cookBtn.type = "button";
-        cookBtn.textContent = "I'm cooking this";
-        cookBtn.className = "secondary";
-        cookBtn.style.marginTop = "0.5rem";
-
-        // Enable only if recipe + servings selected
-        function updateCookBtnState() {
-          const hasRecipe = !!entry.recipeId;
-          const hasServings = entry.servings && entry.servings > 0;
-          cookBtn.disabled = !(hasRecipe && hasServings);
-        }
-
-        cookBtn.addEventListener("click", () => {
-          openCookDialog(entry.dayId);
-        });
-
-        updateCookBtnState();
-        row.appendChild(cookBtn);
-
-        container.appendChild(row);
       });
     }
+  }
+}
+
+// Simple helpers for labels
+function formatDayLabel(dayObj) {
+  const d = new Date(dayObj.dateISO || Date.now());
+  const dayName = DAY_NAMES[d.getDay()];
+  const dayNum  = d.getDate();
+  const month   = MONTH_NAMES[d.getMonth()];
+  return { dayName, dateLabel: `${dayNum} ${month}` };
+}
+
+function formatWeekRangeLabel() {
+  normaliseMealPlan();
+  const first = new Date(mealPlan[0].dateISO);
+  const last  = new Date(mealPlan[6].dateISO);
+  const f = `${first.getDate()} ${MONTH_NAMES[first.getMonth()]}`;
+  const l = `${last.getDate()} ${MONTH_NAMES[last.getMonth()]}`;
+  return `${f} – ${l}`;
+}
+
+// Convenience for looking recipes up
+function getRecipeById(id) {
+  if (!id) return null;
+  return recipes.find(r => r.id === id) || null;
+}
+
+
+   function renderMealPlan() {
+  const container = document.getElementById("mealplan-days");
+  const labelEl   = document.getElementById("mealplan-week-label");
+  if (!container) return;
+
+  // Make sure structure is sane
+  normaliseMealPlan();
+
+  // Update week label in header
+  if (labelEl) {
+    labelEl.textContent = `This week · ${formatWeekRangeLabel()}`;
+  }
+
+  container.innerHTML = "";
+
+  mealPlan.forEach((dayObj, dayIndex) => {
+    const { dayName, dateLabel } = formatDayLabel(dayObj);
+
+    const card = document.createElement("article");
+    card.className = "mealplan-day-card";
+
+    // Header
+    const header = document.createElement("header");
+    header.className = "mealplan-day-header";
+
+    const left = document.createElement("div");
+    const nameEl = document.createElement("div");
+    nameEl.className = "mealplan-day-name";
+    nameEl.textContent = dayName;
+
+    const dateEl = document.createElement("div");
+    dateEl.className = "mealplan-day-date";
+    dateEl.textContent = dateLabel;
+
+    left.appendChild(nameEl);
+    left.appendChild(dateEl);
+    header.appendChild(left);
+    card.appendChild(header);
+
+    // Meals
+    const mealsWrap = document.createElement("div");
+    mealsWrap.className = "mealplan-meals";
+
+    MEAL_SLOTS.forEach(({ key, label }) => {
+      const slotState = dayObj[key] || { recipeId: "", servings: 0 };
+      const recipe    = getRecipeById(slotState.recipeId);
+
+      const row = document.createElement("div");
+      row.className = "mealplan-meal-row";
+
+      const lab = document.createElement("span");
+      lab.className = "mealplan-meal-label";
+      lab.textContent = label;
+      row.appendChild(lab);
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "action-pill";
+
+      if (recipe) {
+        // Show recipe name (and servings if present)
+        const servingsTxt = slotState.servings && recipe.servings
+          ? ` · ${slotState.servings} of ${recipe.servings}`
+          : "";
+        btn.textContent = recipe.name + servingsTxt;
+      } else {
+        btn.textContent = "Add recipe";
+      }
+
+      btn.addEventListener("click", () => {
+        openMealSlotPicker(dayIndex, key);
+      });
+
+      row.appendChild(btn);
+      mealsWrap.appendChild(row);
+    });
+
+    card.appendChild(mealsWrap);
+    container.appendChild(card);
+  });
+}
+
+function openMealSlotPicker(dayIndex, slotKey) {
+  normaliseMealPlan();
+
+  const dayObj  = mealPlan[dayIndex];
+  const slotDef = MEAL_SLOTS.find(s => s.key === slotKey);
+  if (!dayObj || !slotDef) return;
+
+  const { dayName, dateLabel } = formatDayLabel(dayObj);
+  const slotState = dayObj[slotKey] || { recipeId: "", servings: 0 };
+  const currentRecipe = getRecipeById(slotState.recipeId);
+
+  // Kill any existing picker
+  const old = document.getElementById("mealplan-slot-overlay");
+  if (old) old.remove();
+
+  // Overlay
+  const overlay = document.createElement("div");
+  overlay.id = "mealplan-slot-overlay";
+  overlay.className = "barcode-scanner-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "barcode-scanner-panel add-item-panel";
+
+  // Title
+  const title = document.createElement("h2");
+  title.textContent = `${slotDef.label} · ${dayName}`;
+  panel.appendChild(title);
+
+  const subtitle = document.createElement("p");
+  subtitle.style.marginTop = "0.1rem";
+  subtitle.style.marginBottom = "0.6rem";
+  subtitle.textContent = dateLabel;
+  panel.appendChild(subtitle);
+
+  // If there are no recipes yet, show a friendly message
+  if (!Array.isArray(recipes) || !recipes.length) {
+    const msg = document.createElement("p");
+    msg.textContent = "No recipes saved yet. Add a recipe first, then come back to plan it.";
+    panel.appendChild(msg);
+  } else {
+    const list = document.createElement("div");
+    list.style.display = "flex";
+    list.style.flexDirection = "column";
+    list.style.gap = "0.35rem";
+    list.style.marginTop = "0.5rem";
+
+    recipes.forEach(r => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "inventory-edit-btn"; // blue pill
+      btn.style.justifyContent = "space-between";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = r.name;
+      btn.appendChild(nameSpan);
+
+      const metaSpan = document.createElement("span");
+      metaSpan.style.fontSize = "0.75rem";
+      metaSpan.style.opacity = "0.85";
+      metaSpan.textContent = r.servings ? `Serves ${r.servings}` : "";
+      btn.appendChild(metaSpan);
+
+      btn.addEventListener("click", () => {
+        // When a recipe is picked, store it in this slot
+        const servings = r.servings && r.servings > 0 ? r.servings : 2;
+
+        dayObj[slotKey] = {
+          recipeId: r.id,
+          servings: servings
+        };
+
+        saveState();
+        renderMealPlan();
+
+        overlay.remove();
+      });
+
+      list.appendChild(btn);
+    });
+
+    panel.appendChild(list);
+  }
+
+  // Buttons row
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  // Clear this slot
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "inventory-delete-button";
+  clearBtn.textContent = currentRecipe ? "Clear slot" : "Clear";
+  clearBtn.addEventListener("click", () => {
+    dayObj[slotKey] = { recipeId: "", servings: 0 };
+    saveState();
+    renderMealPlan();
+    overlay.remove();
+  });
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "secondary";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => overlay.remove());
+
+  btnRow.appendChild(clearBtn);
+  btnRow.appendChild(cancelBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(() => {
+    panel.classList.add("visible");
+  });
+
+  // Close by tapping outside
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
+function clearMealPlanWeek() {
+  normaliseMealPlan();
+  mealPlan.forEach(day => {
+    MEAL_SLOTS.forEach(({ key }) => {
+      day[key] = { recipeId: "", servings: 0 };
+    });
+  });
+  saveState();
+  renderMealPlan();
+}
 
     // ---------- SHOPPING LIST ----------
 function roundUpForShopping(quantity, unit) {
@@ -3819,6 +4023,11 @@ function openBarcodeNamePicker(barcode, names) {
  document.addEventListener("DOMContentLoaded", () => {
   loadState();
 
+  // 🔹 Make sure mealPlan has a sane 7-day structure
+  if (typeof normaliseMealPlan === "function") {
+    normaliseMealPlan();
+  }
+
   // ----- NAV / MENU -----
   const menuToggle = document.getElementById("menu-toggle");
   const appNav = document.getElementById("app-nav");
@@ -3874,12 +4083,10 @@ function openBarcodeNamePicker(barcode, names) {
   const addInventoryBtn = document.getElementById("add-inventory-item-btn");
   const realScanBtn     = document.getElementById("real-scan-btn");
 
-  // Add Item → opens the Add Item overlay dialog
   if (addInventoryBtn) {
     addInventoryBtn.addEventListener("click", () => {
       console.log("Add item button clicked");
 
-      // extra debug so we SEE what the browser thinks this is
       console.log("typeof window.openAddInventoryItemDialog =",
         typeof window.openAddInventoryItemDialog
       );
@@ -3896,7 +4103,6 @@ function openBarcodeNamePicker(barcode, names) {
     console.warn("No #add-inventory-item-btn found in DOM");
   }
 
-  // Scan barcode → opens camera scanner
   if (realScanBtn) {
     realScanBtn.addEventListener("click", () => {
       openBarcodeScanner();
@@ -3905,19 +4111,17 @@ function openBarcodeNamePicker(barcode, names) {
     console.warn("No #real-scan-btn found in DOM");
   }
   
- // ----- RECIPES BUTTONS -----
+  // ----- RECIPES BUTTONS -----
   const addRecipeBtn     = document.getElementById("add-recipe-btn");
   const recipeForm       = document.getElementById("recipe-form");
-  const importRecipeBtn  = document.getElementById("import-recipe-btn"); // ⬅️ new
+  const importRecipeBtn  = document.getElementById("import-recipe-btn");
 
   if (addRecipeBtn && recipeForm) {
     addRecipeBtn.addEventListener("click", () => {
-      // old behaviour for Add recipe (if you’re still using it)
-      openRecipeMetaDialog();   // if you’ve moved to the dialog-based flow
+      openRecipeMetaDialog();
     });
   }
 
-  // ⬅️ NEW: clicking "Import recipe" opens the URL dialog
   if (importRecipeBtn) {
     importRecipeBtn.addEventListener("click", () => {
       openRecipeImportDialog();
@@ -4027,119 +4231,6 @@ function openBarcodeNamePicker(barcode, names) {
   }
 
   // Import ingredients from textarea (BBC-aware parser)
-  if (importBtn) {
-    importBtn.addEventListener("click", () => {
-      if (!currentRecipe) {
-        alert(
-          "Start a recipe first (name + servings, then 'Start new recipe')."
-        );
-        return;
-      }
-
-      const textarea = document.getElementById("import-text");
-      const raw = textarea ? textarea.value : "";
-      const lines = raw
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
-
-      let imported = 0;
-
-      const bbcNames =
-        lastImportedRecipeMeta &&
-        Array.isArray(lastImportedRecipeMeta.ingredientNames) &&
-        lastImportedRecipeMeta.ingredientNames.length
-          ? lastImportedRecipeMeta.ingredientNames
-          : null;
-
-      lines.forEach((line) => {
-        let parsed;
-        if (bbcNames) {
-          parsed = parseBbcIngredient(line, bbcNames);
-        } else {
-          parsed = parseIngredientLine(line);
-        }
-
-        if (!parsed || !parsed.name) return;
-
-        if (parsed.quantity !== null && parsed.quantity !== undefined) {
-          if (Number.isNaN(parsed.quantity) || parsed.quantity <= 0) return;
-        }
-
-        currentRecipe.ingredients.push(parsed);
-        imported++;
-      });
-
-      renderCurrentRecipeIngredients();
-      if (imported) {
-        alert(`Imported ${imported} ingredient(s).`);
-        if (textarea) textarea.value = "";
-      } else {
-        alert("No valid ingredients found.");
-      }
-    });
-  }
-
-  if (saveRecipeBtn) {
-    saveRecipeBtn.addEventListener("click", () => {
-      if (!currentRecipe) {
-        alert("No recipe in progress.");
-        return;
-      }
-      if (
-        !currentRecipe.ingredients ||
-        !currentRecipe.ingredients.length
-      ) {
-        alert("Add at least one ingredient.");
-        return;
-      }
-
-      if (
-        lastImportedRecipeMeta &&
-        Array.isArray(lastImportedRecipeMeta.instructions) &&
-        (!currentRecipe.instructions ||
-          !currentRecipe.instructions.length)
-      ) {
-        currentRecipe.instructions =
-          lastImportedRecipeMeta.instructions.slice();
-      }
-
-      if (lastImportedRecipeMeta) {
-        if (!currentRecipe.imageUrl && lastImportedRecipeMeta.image) {
-          currentRecipe.imageUrl = lastImportedRecipeMeta.image;
-        }
-        if (
-          !currentRecipe.sourceUrl &&
-          lastImportedRecipeMeta.sourceUrl
-        ) {
-          currentRecipe.sourceUrl = lastImportedRecipeMeta.sourceUrl;
-        }
-      }
-
-      if (editingRecipeId) {
-        const idx = recipes.findIndex((r) => r.id === editingRecipeId);
-        if (idx !== -1) {
-          recipes[idx] = {
-            id: editingRecipeId,
-            name: currentRecipe.name,
-            servings: currentRecipe.servings,
-            ingredients: currentRecipe.ingredients,
-            instructions: currentRecipe.instructions || [],
-            imageUrl: currentRecipe.imageUrl || "",
-            sourceUrl: currentRecipe.sourceUrl || "",
-          };
-        }
-      } else {
-        recipes.push(currentRecipe);
-      }
-
-      clearRecipeEditState();
-      renderRecipesList();
-      saveState();
-    });
-  }
-
-  // ----- BBC IMPORT -----
   const recipeImportUrlInput = document.getElementById("recipe-import-url");
   const recipeImageFetchBtn  = document.getElementById("recipe-fetch-image");
   const recipeImportStatus   = document.getElementById("recipe-import-status");
@@ -4271,6 +4362,12 @@ function openBarcodeNamePicker(barcode, names) {
     });
   }
 
+  // 🔹 NEW: wire "Clear week" button on meal planner
+  const mealplanClearBtn = document.getElementById("mealplan-clear-btn");
+  if (mealplanClearBtn && typeof clearMealPlanWeek === "function") {
+    mealplanClearBtn.addEventListener("click", clearMealPlanWeek);
+  }
+
   // ----- INITIAL RENDERS -----
   renderInventory();
   renderInventoryNameSuggestions();
@@ -4278,12 +4375,12 @@ function openBarcodeNamePicker(barcode, names) {
   renderMealPlan();
 });
 
-    // Keep service worker registration small & safe
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("./sw.js")
-        .catch(() => {});
-    }
+// Keep service worker registration small & safe
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("./sw.js")
+    .catch(() => {});
+}
   </script>
 </body>
 </html>
