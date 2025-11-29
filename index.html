@@ -1977,9 +1977,9 @@ function renderCurrentRecipeIngredients() {
     });
 
     const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "secondary";
-    delBtn.textContent = "Delete";
+delBtn.type = "button";
+delBtn.className = "inventory-delete-button";   // 🔴 red pill style
+delBtn.textContent = "Delete";
     delBtn.addEventListener("click", () => {
       if (confirm(`Delete recipe "${r.name}"?`)) {
         recipes = recipes.filter((x) => x.id !== r.id);

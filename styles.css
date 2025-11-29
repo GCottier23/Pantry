@@ -984,3 +984,15 @@ p {
   text-align: center;
   padding: 0.55rem 0.9rem;
 }
+
+.recipe-card-footer {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;  /* two equal columns */
+  gap: 0.5rem;
+  align-items: stretch;            /* equal height */
+}
+
+.recipe-card-footer button {
+  width: 100%;
+  height: 100%;
+}
