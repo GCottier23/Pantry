@@ -1153,6 +1153,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
 
   const addBtn = document.createElement("button");
   addBtn.type = "button";
+  addBtn.className = "ios-green-button";
   addBtn.textContent = isEditMode ? "Save changes" : "Add item";
   addBtn.addEventListener("click", () => {
     const rawName = nameInput.value.trim();
@@ -1926,7 +1927,8 @@ function openRecipeImportDialog() {
 
   const importBtn = document.createElement("button");
   importBtn.type = "button";
-  importBtn.textContent = "Fetch";
+  importBtn.className = "ios-green-button";
+  importBtn.textContent = "Import Recipe";
 
   // 🔑 When user clicks "Fetch", call our helper
   importBtn.addEventListener("click", async () => {
