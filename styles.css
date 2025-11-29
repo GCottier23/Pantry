@@ -500,21 +500,6 @@ button.secondary:active {
   color: #ff8585;
 }
 
-/* Inventory action buttons row under list */
-
-.inventory-actions-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
-
-.inventory-actions-row button {
-  flex: 1 1 calc(50% - 0.5rem);
-  min-width: 7rem;
-  text-align: center;
-}
-
 /* =========================================
    6. SHOPPING TABLE
 ========================================= */
@@ -751,20 +736,20 @@ button.secondary:active {
   height: 100%;
 }
 
-/* Actions row (Add recipe / Import recipe) */
-
+/* Rows that should have two identical pill buttons */
+.inventory-actions-row,
 .recipe-actions-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;   /* two equal columns */
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
 
-.recipe-actions-row button {
-  flex: 1 1 calc(50% - 0.5rem);
-  min-width: 7rem;
-  text-align: center;
-  padding: 0.55rem 0.9rem;
+/* Make each button fill its half of the row */
+.inventory-actions-row > button,
+.recipe-actions-row > button {
+  width: 100%;
+  justify-content: center;          /* keep text centred inside pill */
 }
 
 /* =========================================
