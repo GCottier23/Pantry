@@ -1343,11 +1343,12 @@ function openRecipeMetaDialog(existingRecipe = null) {
     imagePreview.style.display = "none";
   }
 
-  // Icon button that sits visually inside the input on the right
-  const photoBtn = document.createElement("button");
-  photoBtn.type = "button";
-  photoBtn.className = "recipe-photo-icon";
-  photoBtn.setAttribute("aria-label", "Choose recipe photo");
+ // Icon button that sits visually inside the input on the right
+const photoBtn = document.createElement("button");
+photoBtn.type = "button";
+photoBtn.className = "recipe-photo-icon";
+photoBtn.setAttribute("aria-label", "Add something");
+photoBtn.textContent = "+";   // ⬅️ this line
 
   // Clicking the icon opens the file picker
   photoBtn.addEventListener("click", () => {

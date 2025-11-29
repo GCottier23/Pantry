@@ -761,43 +761,43 @@ p {
   user-select: none;
 }
 
-/* Wrapper around the name input so we can position the icon inside it */
 .recipe-name-with-photo {
-  position: relative;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-/* Give the text field extra right padding so text doesn't sit under the icon */
-.recipe-name-input {
-  width: 100%;
-  padding-right: 2.4rem; /* space for the icon */
+.recipe-name-with-photo input {
+  flex: 1;
 }
 
-/* The photo icon that visually sits inside the right side of the input */
+/* Little + pill to the right of the input */
 .recipe-photo-icon {
-  position: absolute;
-  top: 50%;
-  right: 0.6rem;
-  transform: translateY(-50%);
-  width: 1.4rem;
-  height: 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  background: #050608;
+  color: #ffffff;
+  width: 34px;
+  height: 32px;
 
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 1.25rem;
+  font-weight: 600;
   padding: 0;
-  background: transparent;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
   cursor: pointer;
-
-  /* use your white icon */
-  background-image: url("photos-icon-white.png"); /* adjust path if needed */
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
+  transition:
+    background 0.15s ease,
+    transform 0.08s ease,
+    box-shadow 0.12s ease;
 }
 
-/* Keyboard / accessibility focus outline */
-.recipe-photo-icon:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.recipe-photo-icon:active {
+  transform: scale(0.96);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
 
 /* Optional: tidy up the preview under the field if you haven't styled it yet */
