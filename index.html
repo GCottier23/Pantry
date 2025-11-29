@@ -1802,6 +1802,134 @@ function openRecipeIngredientsDialog() {
   });
 }
 
+function openRecipeImportDialog() {
+  // Kill any previous import overlay
+  const old = document.getElementById("recipe-import-overlay");
+  if (old) old.remove();
+
+  // Overlay (reuse your dark scrim)
+  const overlay = document.createElement("div");
+  overlay.id = "recipe-import-overlay";
+  overlay.className = "barcode-scanner-overlay";
+
+  // Panel (reuse add-item panel styling / animation)
+  const panel = document.createElement("div");
+  panel.className = "barcode-scanner-panel add-item-panel";
+
+  // Title
+  const title = document.createElement("h2");
+  title.textContent = "Import recipe";
+  panel.appendChild(title);
+
+  // --- URL row ---
+  const urlRow = document.createElement("div");
+  urlRow.className = "barcode-input-row";
+
+  const urlLabel = document.createElement("label");
+  urlLabel.textContent = "Recipe URL";
+  urlLabel.style.display = "block";
+
+  const urlInput = document.createElement("input");
+  urlInput.type = "url";
+  urlInput.placeholder = "Paste recipe link…";
+  urlInput.autocomplete = "off";
+
+  urlLabel.appendChild(urlInput);
+  urlRow.appendChild(urlLabel);
+  panel.appendChild(urlRow);
+
+  // --- Buttons row ---
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  // Cancel (red pill, same as your delete style)
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "inventory-delete-button";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => {
+    closeRecipeImportDialog();
+  });
+
+  // Submit / Import
+  const importBtn = document.createElement("button");
+  importBtn.type = "button";
+  importBtn.textContent = "Import";
+  importBtn.addEventListener("click", () => {
+    const rawUrl = urlInput.value.trim();
+    if (!rawUrl) {
+      alert("Please paste a recipe URL.");
+      urlInput.focus();
+      return;
+    }
+
+    // 🔗 Hand off to your EXISTING BBC import pipeline
+    const realInput   = document.getElementById("recipe-import-url");
+    const realFetchBtn = document.getElementById("recipe-fetch-image");
+
+    if (!realInput || !realFetchBtn) {
+      alert("Recipe import controls not found in the page.");
+      return;
+    }
+
+    // Put the URL into the real hidden field
+    realInput.value = rawUrl;
+
+    // Make sure the import panel is visible (if you ever hide it)
+    const importPanel = document.querySelector(".recipe-import");
+    if (importPanel) {
+      importPanel.classList.remove("hidden");
+      // optional: scroll to it
+      importPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // Trigger your existing fetch/parse logic
+    realFetchBtn.click();
+
+    // Close the dialog
+    closeRecipeImportDialog();
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(importBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  // Animate in (same pattern as other dialogs)
+  requestAnimationFrame(() => {
+    panel.classList.add("visible");
+  });
+
+  // Focus the URL input
+  setTimeout(() => {
+    if (urlInput.focus) urlInput.focus({ preventScroll: true });
+  }, 40);
+
+  // Click outside to close
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      closeRecipeImportDialog();
+    }
+  });
+}
+
+function closeRecipeImportDialog() {
+  const overlay = document.getElementById("recipe-import-overlay");
+  if (!overlay) return;
+
+  const panel = overlay.querySelector(".add-item-panel");
+  if (panel) panel.classList.remove("visible");
+
+  // Match your 480ms fade-out if you like
+  setTimeout(() => {
+    if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
+  }, 480);
+}
+
 function renderCurrentRecipeIngredients() {
   const ul = document.getElementById("current-recipe-ingredients");
   if (!ul) return;
@@ -3338,14 +3466,23 @@ function openBarcodeNamePicker(barcode, names) {
   }
   
  // ----- RECIPES BUTTONS -----
-const addRecipeBtn = document.getElementById("add-recipe-btn");
+  const addRecipeBtn     = document.getElementById("add-recipe-btn");
+  const recipeForm       = document.getElementById("recipe-form");
+  const importRecipeBtn  = document.getElementById("import-recipe-btn"); // ⬅️ new
 
-if (addRecipeBtn) {
-  addRecipeBtn.addEventListener("click", () => {
-    // Open the new overlay dialog for recipe name + servings
-    openRecipeMetaDialog();
-  });
-}
+  if (addRecipeBtn && recipeForm) {
+    addRecipeBtn.addEventListener("click", () => {
+      // old behaviour for Add recipe (if you’re still using it)
+      openRecipeMetaDialog();   // if you’ve moved to the dialog-based flow
+    });
+  }
+
+  // ⬅️ NEW: clicking "Import recipe" opens the URL dialog
+  if (importRecipeBtn) {
+    importRecipeBtn.addEventListener("click", () => {
+      openRecipeImportDialog();
+    });
+  }
 
   // ----- RECIPES -----
   const startRecipeBtn       = document.getElementById("start-recipe");
