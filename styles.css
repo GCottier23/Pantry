@@ -1005,3 +1005,37 @@ p {
   overflow-y: auto;              /* scroll panel content if needed */
   -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
 }
+
+@media (prefers-color-scheme: dark) {
+  .ios-green-button {
+    border-color: rgba(255,255,255,0.35);
+    box-shadow: 0 0 5px rgba(52,199,89,0.4);
+  }
+}
+
+.ios-green-button {
+  background-color: #34C759;     /* iOS system green */
+  color: white;
+  border: 2px solid rgba(255,255,255,0.25);
+  padding: 0.55rem 1.3rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 999px;          /* full rounded pill */
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hover (desktop) */
+.ios-green-button:hover {
+  background-color: #2ECC54;
+  box-shadow: 0 0 8px rgba(52,199,89,0.5);
+}
+
+/* Tap / Active */
+.ios-green-button:active {
+  background-color: #28A745;
+  transform: scale(0.96);
+}
