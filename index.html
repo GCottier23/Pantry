@@ -1852,23 +1852,27 @@ function openRecipeImportDialog() {
   importBtn.type = "button";
   importBtn.textContent = "Fetch";
   importBtn.addEventListener("click", async () => {
-    const url = input.value.trim();
-    if (!url) {
-      alert("Please enter a URL");
-      input.focus();
-      return;
-    }
+  const url = input.value.trim();
+  if (!url) {
+    alert("Please enter a URL");
+    input.focus();
+    return;
+  }
 
-    // Use your existing parser:
-    try {
-      const parsed = await importRecipeFromUrl(url);
-      openRecipeImportPreviewDialog(parsed); // ⬅️ NEW PHASE
-      closeRecipeImportDialog();
-    } catch (err) {
-      console.error(err);
-      alert("Could not import recipe from that URL.");
-    }
-  });
+  console.log("About to call importRecipeFromUrl with:", url);
+
+  try {
+    console.log("typeof importRecipeFromUrl =", typeof importRecipeFromUrl);
+    const result = await importRecipeFromUrl(url);
+    console.log("Result from importRecipeFromUrl:", result);
+
+    openRecipeImportPreviewDialog(result);
+    closeRecipeImportDialog();
+  } catch (err) {
+    console.error("Import failed:", err);
+    alert("Could not import recipe from that URL.");
+  }
+});
 
   btnRow.appendChild(cancelBtn);
   btnRow.appendChild(importBtn);
