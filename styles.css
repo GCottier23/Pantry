@@ -855,23 +855,6 @@ p {
   }
 }
 
-/* When keyboard is up, lift the Add Item dialog up a bit */
-@media (max-width: 800px) {
-  #add-item-overlay.overlay-keyboard-up {
-    align-items: flex-start;      /* top-ish instead of dead centre */
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-  }
-}
-
-/* When the keyboard is up on small screens, lift the dialog */
-@media (max-width: 800px) {
-  #add-item-overlay.overlay-keyboard-up {
-    align-items: flex-start;
-    padding-top: 0.75rem;
-  }
-}
-
 /* Add-item dialog animation + keyboard offset */
 
 .add-item-panel {

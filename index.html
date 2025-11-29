@@ -979,6 +979,53 @@ delBtn.addEventListener("click", (e) => {
       editingInventoryKey = null;
     }
 
+    function attachAddItemKeyboardShim(panel) {
+  const overlay = document.getElementById("add-item-overlay");
+  if (!overlay || !window.visualViewport) return;
+
+  const vv = window.visualViewport;
+
+  function updateOffset() {
+    // reset
+    panel.style.setProperty("--offset-y", "0px");
+    overlay.classList.remove("overlay-keyboard-up");
+
+    const rect = panel.getBoundingClientRect();
+    const vpHeight = vv.height;
+
+    // How far below the visible viewport bottom is the panel?
+    const overflow = rect.bottom - vpHeight;
+
+    // If panel is fully visible plus a small margin, do nothing
+    if (overflow <= 16) return;
+
+    // Shift the panel up just enough so the bottom is 16px above keyboard
+    let shift = - (overflow + 16);   // negative value = move up
+
+    // 💡 Clamp so it never jumps too far (e.g. max 140px up)
+    const MAX_UP = 140;              // tweak if you want more/less lift
+    if (Math.abs(shift) > MAX_UP) {
+      shift = -MAX_UP;
+    }
+
+    panel.style.setProperty("--offset-y", shift + "px");
+    overlay.classList.add("overlay-keyboard-up");
+  }
+
+  // Run when viewport changes (keyboard open/close, rotate, etc.)
+  vv.addEventListener("resize", updateOffset);
+  window.addEventListener("orientationchange", updateOffset);
+
+  // Initial run once the panel has animated in
+  setTimeout(updateOffset, 120);
+
+  // Store cleanup so we can detach listeners when dialog closes
+  overlay._keyboardCleanup = () => {
+    vv.removeEventListener("resize", updateOffset);
+    window.removeEventListener("orientationchange", updateOffset);
+  };
+}
+
         // ---------- BARCODE → ITEM MAPPINGS (SIMPLE NAMES ONLY) ----------
 
 function openAddInventoryItemDialog(existingItem = null, opts = {}) {
@@ -1206,24 +1253,21 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
 
 function animateCloseAddItemDialog(durationMs = 480) {
   const overlay = document.getElementById("add-item-overlay");
-  if (!overlay) {
-    console.log("No add-item-overlay to close");
-    return;
-  }
-
-  // Fade out overlay + panel
-  overlay.classList.remove("is-visible");
+  if (!overlay) return;
 
   const panel = overlay.querySelector(".add-item-panel");
   if (panel) {
-    panel.classList.remove("visible");
+    panel.classList.remove("visible"); // reverse the open animation
   }
 
-  // After animation, remove from DOM
+  // 👇 clean up the keyboard shim listeners if present
+  if (typeof overlay._keyboardCleanup === "function") {
+    overlay._keyboardCleanup();
+  }
+
   setTimeout(() => {
-    const current = document.getElementById("add-item-overlay");
-    if (current && current.parentNode) {
-      current.parentNode.removeChild(current);
+    if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
     }
   }, durationMs);
 }
@@ -2651,43 +2695,6 @@ function openBarcodeNamePicker(barcode, names) {
 
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
-}
-
-function attachAddItemKeyboardShim(panel) {
-  if (!window.visualViewport) return;
-
-  const vv = window.visualViewport;
-  const baseHeight = window.innerHeight;
-  let lastOffset = 0;
-
-  function setOffset(px) {
-    if (px === lastOffset) return;
-    lastOffset = px;
-    panel.style.setProperty("--offset-y", px + "px");
-  }
-
-  function onResize() {
-    // Approx keyboard height = how much shorter the viewport is
-    const keyboardHeight = Math.max(0, baseHeight - vv.height);
-
-    // Treat tiny changes as "no keyboard"
-    if (keyboardHeight < 80) {
-      setOffset(0);
-      return;
-    }
-
-    // Move panel up by about 60% of keyboard height,
-    // but never more than 25% of the screen height.
-    const maxShift = baseHeight * 0.25;
-    const desired = -Math.min(maxShift, keyboardHeight * 0.6);
-
-    setOffset(desired);
-  }
-
-  vv.addEventListener("resize", onResize);
-
-  // Run once in case keyboard is already open
-  onResize();
 }
 
     // ---------- NAVIGATION ----------
