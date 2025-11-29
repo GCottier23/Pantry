@@ -1015,3 +1015,15 @@ button.secondary:active {
     flex-wrap: wrap;
   }
 }
+
+/* Row of pill buttons where each pill should be the same width */
+.pill-row {
+  display: flex;
+  flex-wrap: nowrap;      /* keep them on one row */
+  gap: 0.5rem;
+}
+
+.pill-row > button {
+  flex: 1 1 0;            /* force equal width, ignore text length */
+  min-width: 0;           /* allow them to shrink if the panel is narrow */
+}
