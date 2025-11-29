@@ -1128,31 +1128,51 @@ button.secondary:active {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
 
-/* ===== Meal-plan rows: label + aligned pill buttons ===== */
+/* ===============================
+   Meal plan slots (new stacked layout)
+   =============================== */
 
-.mealplan-row {
-  display: grid;
-  grid-template-columns: 100px minmax(0, 1fr); /* fixed label, stretchy button */
-  align-items: center;
-  column-gap: 1rem;
-  margin: 0.45rem 0;
+/* A single “Breakfast / Lunch / Dinner” block */
+.mealplan-slot {
+  margin-top: 0.9rem;
 }
 
-/* Left-hand text: Breakfast / Lunch / Dinner */
-.mealplan-label {
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.85);
-  /* no flex / width here – grid handles it */
+/* The small label above each pill */
+.mealplan-slot-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 0.25rem;
 }
 
-/* Right-hand side: wrapper so button can stretch */
-.mealplan-button {
+/* Big pill button – same vibe as nav buttons */
+.mealplan-slot-button {
   width: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  padding: 0.7rem 1rem;
+
+  background: #050608;
+  color: #ffffff;
+
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-align: center;
+  cursor: pointer;
+
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
+  transition:
+    background 0.15s ease,
+    transform 0.08s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
 }
 
-/* The pill itself fills the whole second column */
-.mealplan-button button,
-.mealplan-button .action-button {
-  width: 100%;
-  display: block;
+.mealplan-slot-button:hover {
+  background: #090b10;
+}
+
+.mealplan-slot-button:active {
+  transform: scale(0.97);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
