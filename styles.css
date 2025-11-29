@@ -1176,3 +1176,41 @@ button.secondary:active {
   transform: scale(0.97);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
+
+/* ==========================
+   Meal plan rows – align pills
+   ========================== */
+
+.mealplan-meals {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* One row per meal: fixed label column + flexible pill column */
+.mealplan-meal-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;  /* label | button */
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+.mealplan-meal-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* Make the pill fill the whole second column so all start at same X */
+.mealplan-meal-row .action-pill {
+  width: 100%;
+  justify-content: center;   /* keep text centered inside pill */
+}
+
+/* On slightly wider screens, give labels a touch more room */
+@media (min-width: 500px) {
+  .mealplan-meal-row {
+    grid-template-columns: 120px 1fr;
+  }
+}
