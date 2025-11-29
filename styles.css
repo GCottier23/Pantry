@@ -1127,3 +1127,32 @@ button.secondary:active {
   transform: scale(0.97);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
+
+/* ===== Meal-plan rows: label + aligned pill buttons ===== */
+
+.mealplan-row {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr); /* fixed label, stretchy button */
+  align-items: center;
+  column-gap: 1rem;
+  margin: 0.45rem 0;
+}
+
+/* Left-hand text: Breakfast / Lunch / Dinner */
+.mealplan-label {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.85);
+  /* no flex / width here – grid handles it */
+}
+
+/* Right-hand side: wrapper so button can stretch */
+.mealplan-button {
+  width: 100%;
+}
+
+/* The pill itself fills the whole second column */
+.mealplan-button button,
+.mealplan-button .action-button {
+  width: 100%;
+  display: block;
+}
