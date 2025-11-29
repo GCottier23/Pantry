@@ -1277,6 +1277,12 @@ function animateCloseAddItemDialog(durationMs = 480) {
 function openRecipeMetaDialog(existingRecipe = null) {
   console.log("openRecipeMetaDialog()", existingRecipe);
 
+  // Track the image for this dialog (start from existing recipe if present)
+  let workingImageUrl =
+    existingRecipe && existingRecipe.imageUrl
+      ? existingRecipe.imageUrl
+      : "";
+
   // Remove any previous meta overlay
   const old = document.getElementById("recipe-meta-overlay");
   if (old) old.remove();
@@ -1284,7 +1290,7 @@ function openRecipeMetaDialog(existingRecipe = null) {
   // Overlay
   const overlay = document.createElement("div");
   overlay.id = "recipe-meta-overlay";
-  overlay.className = "barcode-scanner-overlay";    // reuse nice dark scrim
+  overlay.className = "barcode-scanner-overlay"; // reuse nice dark scrim
 
   // Panel (reusing the same look as Add Item dialog)
   const panel = document.createElement("div");
@@ -1295,7 +1301,9 @@ function openRecipeMetaDialog(existingRecipe = null) {
   title.textContent = existingRecipe ? "Edit recipe" : "Add recipe";
   panel.appendChild(title);
 
-  // --- Recipe name row ---
+  // ===============================
+  //  Recipe name + Photo row
+  // ===============================
   const nameRow = document.createElement("div");
   nameRow.className = "barcode-input-row";
 
@@ -1303,17 +1311,77 @@ function openRecipeMetaDialog(existingRecipe = null) {
   nameLabel.textContent = "Recipe name";
   nameLabel.style.display = "block";
 
+  // Wrapper for: [ text input with icon overlaid on the right ]
+  const nameWrapper = document.createElement("div");
+  nameWrapper.className = "recipe-name-with-photo";
+
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.autocomplete = "off";
   nameInput.placeholder = "e.g. Spaghetti Bolognese";
-  nameInput.value = existingRecipe ? (existingRecipe.name || "") : "";
+  nameInput.className = "recipe-name-input";
 
-  nameLabel.appendChild(nameInput);
+  // Prefill from existing recipe if editing
+  if (existingRecipe && existingRecipe.name) {
+    nameInput.value = existingRecipe.name;
+  }
+
+  // Hidden file input (camera / photo library)
+  const photoInput = document.createElement("input");
+  photoInput.type = "file";
+  photoInput.accept = "image/*";
+  photoInput.style.display = "none";
+
+  // Thumbnail preview (under the field)
+  const imagePreview = document.createElement("img");
+  imagePreview.className = "recipe-meta-image-preview";
+
+  if (workingImageUrl) {
+    imagePreview.src = workingImageUrl;
+    imagePreview.style.display = "block";
+  } else {
+    imagePreview.style.display = "none";
+  }
+
+  // Icon button that sits visually inside the input on the right
+  const photoBtn = document.createElement("button");
+  photoBtn.type = "button";
+  photoBtn.className = "recipe-photo-icon";
+  photoBtn.setAttribute("aria-label", "Choose recipe photo");
+
+  // Clicking the icon opens the file picker
+  photoBtn.addEventListener("click", () => {
+    photoInput.click();
+  });
+
+  // When a file is chosen, read as Data URL and show preview
+  photoInput.addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      workingImageUrl = reader.result; // save image in our dialog state
+      imagePreview.src = workingImageUrl;
+      imagePreview.style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Build the row
+  nameWrapper.appendChild(nameInput);
+  nameWrapper.appendChild(photoBtn);
+
+  nameLabel.appendChild(nameWrapper);
   nameRow.appendChild(nameLabel);
-  panel.appendChild(nameRow);
 
-  // --- Servings row ---
+  panel.appendChild(nameRow);
+  panel.appendChild(photoInput);   // hidden input lives in the panel
+  panel.appendChild(imagePreview); // thumbnail under the name row
+
+  // ===============================
+  //  Servings row
+  // ===============================
   const servingsRow = document.createElement("div");
   servingsRow.className = "barcode-input-row";
 
@@ -1335,7 +1403,9 @@ function openRecipeMetaDialog(existingRecipe = null) {
   servingsRow.appendChild(servingsLabel);
   panel.appendChild(servingsRow);
 
-  // --- Buttons row ---
+  // ===============================
+  //  Buttons row
+  // ===============================
   const btnRow = document.createElement("div");
   btnRow.className = "barcode-scanner-actions";
 
@@ -1369,9 +1439,8 @@ function openRecipeMetaDialog(existingRecipe = null) {
     }
 
     // Normalise / title-case the name (reusing your helper)
-    const cleanName = typeof titleCase === "function"
-      ? titleCase(rawName)
-      : rawName;
+    const cleanName =
+      typeof titleCase === "function" ? titleCase(rawName) : rawName;
 
     // Initialise / update currentRecipe in memory
     const baseId = existingRecipe ? existingRecipe.id : String(Date.now());
@@ -1380,18 +1449,19 @@ function openRecipeMetaDialog(existingRecipe = null) {
       id: baseId,
       name: cleanName,
       servings: servingsNum,
-      ingredients: existingRecipe && existingRecipe.ingredients
-        ? existingRecipe.ingredients.slice()
-        : [],
-      instructions: existingRecipe && existingRecipe.instructions
-        ? existingRecipe.instructions.slice()
-        : [],
-      imageUrl: existingRecipe && existingRecipe.imageUrl
-        ? existingRecipe.imageUrl
-        : "",
-      sourceUrl: existingRecipe && existingRecipe.sourceUrl
-        ? existingRecipe.sourceUrl
-        : "",
+      ingredients:
+        existingRecipe && Array.isArray(existingRecipe.ingredients)
+          ? existingRecipe.ingredients.slice()
+          : [],
+      instructions:
+        existingRecipe && Array.isArray(existingRecipe.instructions)
+          ? existingRecipe.instructions.slice()
+          : [],
+      imageUrl: workingImageUrl || "", // 🔑 use the chosen image here
+      sourceUrl:
+        existingRecipe && existingRecipe.sourceUrl
+          ? existingRecipe.sourceUrl
+          : "",
     };
 
     editingRecipeId = existingRecipe ? existingRecipe.id : null;

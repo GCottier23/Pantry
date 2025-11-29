@@ -761,6 +761,54 @@ p {
   user-select: none;
 }
 
+/* Wrapper around the name input so we can position the icon inside it */
+.recipe-name-with-photo {
+  position: relative;
+  display: block;
+}
+
+/* Give the text field extra right padding so text doesn't sit under the icon */
+.recipe-name-input {
+  width: 100%;
+  padding-right: 2.4rem; /* space for the icon */
+}
+
+/* The photo icon that visually sits inside the right side of the input */
+.recipe-photo-icon {
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  transform: translateY(-50%);
+  width: 1.4rem;
+  height: 1.4rem;
+
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+
+  /* use your white icon */
+  background-image: url("photos-icon-white.png"); /* adjust path if needed */
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+/* Keyboard / accessibility focus outline */
+.recipe-photo-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Optional: tidy up the preview under the field if you haven't styled it yet */
+.recipe-meta-image-preview {
+  margin-top: 0.6rem;
+  max-width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  display: block;
+}
+
 /* ---------- BARCODE SCANNER OVERLAY ---------- */
 
 .barcode-scanner-overlay {
