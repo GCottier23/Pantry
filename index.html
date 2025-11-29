@@ -2521,7 +2521,7 @@ function openRecipeDetail(recipeId) {
   // Close button
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
-  closeBtn.className = "inventory-delete-button";
+  closeBtn.className = "recipe-detail-close";
   closeBtn.textContent = "Close";
   closeBtn.addEventListener("click", () => overlay.remove());
   panel.appendChild(closeBtn);
@@ -2694,7 +2694,7 @@ function openCookDialog(dayId) {
   // Close button
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
-  closeBtn.className = "inventory-delete-button";
+  closeBtn.className = "recipe-detail-close";
   closeBtn.textContent = "Close";
   closeBtn.addEventListener("click", () => overlay.remove());
   panel.appendChild(closeBtn);
