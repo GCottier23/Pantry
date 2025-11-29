@@ -282,35 +282,6 @@ button {
   font-family: inherit;
 }
 
-/* Default pill button (dark) */
-button[type="submit"],
-button:not(.secondary)
-      :not(.menu-toggle)
-      :not(.inventory-edit-btn)
-      :not(.inventory-delete-button)
-      :not(.ios-green-button) {
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  padding: 0.55rem 1rem;
-  background: #050608;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
-  transition:
-    background 0.15s ease,
-    transform 0.08s ease,
-    box-shadow 0.12s ease,
-    border-color 0.12s ease;
-}
-
-button[type="submit"]:active,
-button:not(.secondary):not(.menu-toggle):not(.inventory-edit-btn):not(.inventory-delete-button):not(.ios-green-button):active {
-  transform: scale(0.97);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
-}
-
 /* Secondary (ghost) button */
 
 button.secondary {
@@ -332,6 +303,29 @@ button.secondary:hover {
 }
 
 button.secondary:active {
+  transform: scale(0.97);
+}
+
+.action-button {
+  flex: 1 1 auto;
+  padding: 0.75rem 1.2rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  background: #050608;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.7);
+  transition: background 0.15s ease, transform 0.08s ease;
+}
+
+.action-button:hover {
+  background: #090b10;
+}
+
+.action-button:active {
   transform: scale(0.97);
 }
 
@@ -414,14 +408,6 @@ button.secondary:active {
 
 .ios-green-button:active {
   transform: scale(0.96);
-}
-
-/* Slight tweak in dark mode */
-@media (prefers-color-scheme: dark) {
-  .ios-green-button {
-    border-color: rgba(255, 255, 255, 0.35);
-    box-shadow: 0 0 5px rgba(52, 199, 89, 0.4);
-  }
 }
 
 /* =========================================
