@@ -921,3 +921,18 @@ p {
 .inventory-delete-button:active {
   transform: scale(0.96);
 }
+
+
+.recipe-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.recipe-actions-row button {
+  flex: 1 1 calc(50% - 0.5rem);
+  min-width: 7rem;
+  text-align: center;
+  padding: 0.55rem 0.9rem;
+}
