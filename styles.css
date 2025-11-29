@@ -1,4 +1,6 @@
-/* ---------- Base theme ---------- */
+/* =========================================
+   1. BASE THEME / GLOBAL RESET
+========================================= */
 
 :root {
   --bg: #05060a;
@@ -7,7 +9,6 @@
 
   --border-subtle: #2a3042;
 
-  /* New accent: electric blue / cyan */
   --accent: #4da6ff;
   --accent-soft: rgba(77, 166, 255, 0.18);
 
@@ -18,6 +19,7 @@
   --radius-lg: 18px;
   --radius-md: 12px;
   --radius-pill: 999px;
+
   --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.65);
 }
 
@@ -31,12 +33,31 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: radial-gradient(circle at top, #202020 0, #050505 50%, #000000 100%);
+  background: radial-gradient(
+    circle at top,
+    #202020 0,
+    #050505 50%,
+    #000000 100%
+  );
   color: var(--text-main);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    sans-serif;
 }
 
-/* ---------- Top bar + hamburger ---------- */
+p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* =========================================
+   2. TOP BAR + NAV
+========================================= */
+
+/* ---- Top bar ---- */
 
 .top-bar {
   position: sticky;
@@ -56,7 +77,7 @@ body {
   letter-spacing: 0.03em;
 }
 
-/* Hamburger button (we’ll leave it as a visual element) */
+/* ---- Hamburger ---- */
 
 .menu-toggle {
   border: none;
@@ -74,7 +95,7 @@ body {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-/* ---------- Navigation bar (always visible under top bar) ---------- */
+/* ---- Navigation bar ---- */
 
 .app-nav {
   display: flex;
@@ -87,16 +108,16 @@ body {
   z-index: 40;
 }
 
-/* Nav buttons – match Edit/Delete pill style in deep grey */
+/* Nav buttons – deep grey pill */
 .app-nav button {
   flex: 1 1 calc(50% - 0.5rem);
   min-width: 7rem;
   padding: 0.55rem 0.9rem;
 
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.95); /* crisp white */
+  border: 1px solid rgba(255, 255, 255, 0.95);
 
-  background: #050608;                         /* almost-black grey */
+  background: #050608;
   color: #ffffff;
 
   font-size: 0.85rem;
@@ -106,14 +127,15 @@ body {
   cursor: pointer;
 
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
-  transition: background 0.15s ease,
-              transform 0.08s ease,
-              box-shadow 0.12s ease,
-              border-color 0.12s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.08s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .app-nav button:hover {
-  background: #090b10; /* tiny lift on hover */
+  background: #090b10;
 }
 
 .app-nav button:active {
@@ -121,17 +143,16 @@ body {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
 
-/* Selected tab – just a touch lighter + stronger shadow */
+/* Selected tab */
 .app-nav button[aria-selected="true"] {
-  background: #0b0e15;  /* still very dark, slightly lighter than idle */
+  background: #0b0e15;
   border-color: #ffffff;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.95),
     0 10px 24px rgba(0, 0, 0, 0.9);
 }
 
-/* Larger screens: nav buttons shrink a bit, hamburger not really needed */
-
+/* Larger screens */
 @media (min-width: 768px) {
   .app-nav {
     justify-content: flex-start;
@@ -143,7 +164,9 @@ body {
   }
 }
 
-/* ---------- Page layout ---------- */
+/* =========================================
+   3. PAGE LAYOUT + PANELS + FORMS
+========================================= */
 
 .page {
   padding: 0.75rem 1rem 2rem;
@@ -152,8 +175,6 @@ body {
 .page.hidden {
   display: none;
 }
-
-/* ---------- Panels ---------- */
 
 .panel {
   background: radial-gradient(circle at top left, #232323 0, #131313 55%, #080808 100%);
@@ -172,7 +193,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ---------- Headings ---------- */
+/* Headings */
 
 h1,
 h2,
@@ -189,23 +210,7 @@ h3 {
   font-size: 0.95rem;
 }
 
-/* ---------- Inventory search ---------- */
-
-.inventory-controls {
-  margin: 0 0 0.5rem;
-}
-
-.inventory-controls label {
-  display: block;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.inventory-controls input {
-  margin-top: 0.25rem;
-}
-
-/* ---------- Form elements ---------- */
+/* Forms */
 
 form {
   margin-bottom: 0.75rem;
@@ -229,7 +234,10 @@ select {
   color: var(--text-main);
   font-size: 16px;
   outline: none;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
 }
 
 input::placeholder,
@@ -266,26 +274,29 @@ textarea {
   margin-top: 0.4rem;
 }
 
-/* ---------- Buttons ---------- */
+/* =========================================
+   4. GLOBAL BUTTON STYLES
+========================================= */
 
 button {
   font-family: inherit;
 }
 
-/* GLOBAL default pill button (deep grey, white border, white text) */
+/* Default pill button (dark) */
 button[type="submit"],
-button:not(.secondary):not(.menu-toggle):not(.inventory-edit-btn):not(.inventory-delete-button) {
+button:not(.secondary)
+      :not(.menu-toggle)
+      :not(.inventory-edit-btn)
+      :not(.inventory-delete-button)
+      :not(.ios-green-button) {
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.95);  /* crisp white */
+  border: 1px solid rgba(255, 255, 255, 0.95);
   padding: 0.55rem 1rem;
-
-  background: #050608;                          /* almost-black grey */
+  background: #050608;
   color: #ffffff;
-
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
   transition:
     background 0.15s ease,
@@ -295,10 +306,12 @@ button:not(.secondary):not(.menu-toggle):not(.inventory-edit-btn):not(.inventory
 }
 
 button[type="submit"]:active,
-button:not(.secondary):not(.menu-toggle):not(.inventory-edit-btn):not(.inventory-delete-button):active {
+button:not(.secondary):not(.menu-toggle):not(.inventory-edit-btn):not(.inventory-delete-button):not(.ios-green-button):active {
   transform: scale(0.97);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
+
+/* Secondary (ghost) button */
 
 button.secondary {
   border-radius: var(--radius-pill);
@@ -308,7 +321,10 @@ button.secondary {
   color: var(--text-main);
   font-size: 0.8rem;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    transform 0.08s ease;
 }
 
 button.secondary:hover {
@@ -319,7 +335,115 @@ button.secondary:active {
   transform: scale(0.97);
 }
 
-/* ---------- Inventory list ---------- */
+/* EDIT pill button (blue) */
+
+.inventory-edit-btn {
+  padding: 0.28rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(0, 122, 255, 0.5);
+  color: #ffffff;
+  min-width: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.inventory-edit-btn:hover {
+  background: rgba(0, 122, 255, 0.28);
+}
+
+.inventory-edit-btn:active {
+  transform: scale(0.96);
+}
+
+/* DELETE / CANCEL pill button (red) */
+
+.inventory-delete-button {
+  padding: 0.28rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 60, 60, 0.54);
+  color: #ffffff;
+  min-width: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.inventory-delete-button:hover {
+  background: rgba(255, 60, 60, 0.32);
+}
+
+.inventory-delete-button:active {
+  transform: scale(0.96);
+}
+
+/* iOS-style green primary button */
+
+.ios-green-button {
+  background-color: #34c759;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  padding: 0.55rem 1.3rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    transform 0.15s,
+    box-shadow 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ios-green-button:hover {
+  background-color: #2ecc54;
+  box-shadow: 0 0 8px rgba(52, 199, 89, 0.5);
+}
+
+.ios-green-button:active {
+  background-color: #28a745;
+  transform: scale(0.96);
+}
+
+/* Slight tweak in dark mode */
+@media (prefers-color-scheme: dark) {
+  .ios-green-button {
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 0 5px rgba(52, 199, 89, 0.4);
+  }
+}
+
+/* =========================================
+   5. INVENTORY PAGE
+========================================= */
+
+.inventory-controls {
+  margin: 0 0 0.5rem;
+}
+
+.inventory-controls label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.inventory-controls input {
+  margin-top: 0.25rem;
+}
 
 .inventory-list {
   margin-top: 0.75rem;
@@ -337,36 +461,34 @@ button.secondary:active {
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.04);
-  cursor: pointer;         /* <-- add */
-  touch-action: pan-y;     /* <-- add */
+  cursor: pointer;
+  touch-action: pan-y;
 }
 
 .inventory-item-text {
   font-size: 0.9rem;
 }
 
-/* Left side of each inventory row */
 .inventory-item-main {
   display: flex;
   flex-direction: column;
 }
 
-/* Name (top line) */
 .inventory-item-name {
   font-size: 0.9rem;
   font-weight: 500;
 }
 
-/* Quantity (second line, muted) */
 .inventory-item-qty {
   font-size: 0.8rem;
   color: var(--text-muted);
 }
 
 /* Right side: icon buttons */
+
 .inventory-actions {
   display: inline-flex;
-  gap: 0.35rem;
+  gap: 0.25rem;
   margin-left: 0.35rem;
   opacity: 0.9;
 }
@@ -375,7 +497,6 @@ button.secondary:active {
   opacity: 1;
 }
 
-/* Circular icon buttons (edit/delete) */
 .inventory-actions .icon-button {
   width: 2rem;
   height: 2rem;
@@ -391,22 +512,13 @@ button.secondary:active {
   box-shadow: none;
 }
 
-/* Danger (delete) version */
 .inventory-actions .icon-button.danger {
   border-color: rgba(255, 75, 75, 0.7);
   color: #ff8585;
 }
 
-.inventory-actions {
-  display: inline-flex;
-  gap: 0.25rem;
-}
+/* Inventory action buttons row under list */
 
-.inventory-actions button {
-  padding-inline: 0.5rem;
-}
-
-/* Inventory action buttons – match nav button sizing */
 .inventory-actions-row {
   display: flex;
   flex-wrap: wrap;
@@ -415,27 +527,14 @@ button.secondary:active {
 }
 
 .inventory-actions-row button {
-  flex: 1 1 calc(50% - 0.5rem);  /* same idea as .app-nav buttons */
+  flex: 1 1 calc(50% - 0.5rem);
   min-width: 7rem;
   text-align: center;
 }
 
-/* ---------- Recipes / subpanels ---------- */
-
-.recipe-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.4rem;
-}
-
-.subpanel ul {
-  margin: 0.25rem 0 0;
-  padding-left: 1rem;
-  font-size: 0.85rem;
-}
-
-/* ---------- Shopping table ---------- */
+/* =========================================
+   6. SHOPPING TABLE
+========================================= */
 
 #shopping-table {
   width: 100%;
@@ -459,7 +558,9 @@ button.secondary:active {
   border-bottom: none;
 }
 
-/* ---------- Optional ingredients modal ---------- */
+/* =========================================
+   7. OPTIONAL INGREDIENTS MODAL
+========================================= */
 
 .optional-overlay {
   position: fixed;
@@ -520,35 +621,18 @@ button.secondary:active {
   margin-top: 0.6rem;
 }
 
-/* ---------- Misc ---------- */
+/* =========================================
+   8. RECIPE LIST / CARDS
+========================================= */
 
-.hidden {
-  display: none !important;
+.recipe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
 }
 
-p {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-/* Smaller screens: stack two-column bits */
-
-@media (max-width: 374px) {
-  .grid-2 {
-    grid-template-columns: 1fr;
-  }
-
-  .form-actions {
-    flex-wrap: wrap;
-  }
-}
-
-/* (your existing CSS…) */
-
-
-/* -------------------------------------- */
-/* BBC Food Recipe Import styles (NEW)    */
-/* -------------------------------------- */
+/* Legacy import row (still used for layout if needed) */
 .recipe-import {
   margin-bottom: 1.4rem;
 }
@@ -584,7 +668,7 @@ p {
   display: block;
 }
 
-/* ========== Recipe cards grid ========== */
+/* Grid of recipe cards */
 
 .recipe-grid {
   display: grid;
@@ -593,9 +677,7 @@ p {
   margin-top: 1rem;
 }
 
-/* ================================
-   RECIPE CARD (Floating Modern)
-================================= */
+/* Card */
 
 .recipe-card {
   background: #151515;
@@ -603,8 +685,6 @@ p {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-
-  /* Floating shadow */
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
@@ -614,7 +694,8 @@ p {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.65);
 }
 
-/* --- Thumbnail --- */
+/* Thumbnail */
+
 .recipe-card-thumb {
   position: relative;
   width: 100%;
@@ -626,8 +707,6 @@ p {
   height: 140px;
   object-fit: cover;
   display: block;
-
-  /* Subtle zoom animation */
   transition: transform 0.35s ease;
 }
 
@@ -642,6 +721,7 @@ p {
 }
 
 /* Placeholder if no image */
+
 .recipe-card-placeholder {
   width: 100%;
   height: 140px;
@@ -654,7 +734,8 @@ p {
   background: radial-gradient(circle at top left, #ff7a00, #333);
 }
 
-/* --- Card Body --- */
+/* Card body */
+
 .recipe-card-body {
   padding: 0.75rem 1rem 0.25rem;
 }
@@ -671,22 +752,41 @@ p {
   opacity: 0.8;
 }
 
-/* --- Footer Buttons --- */
+/* Card footer → nice 2-column grid for Edit/Delete */
+
 .recipe-card-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
   padding: 0.4rem 1rem 0.75rem;
   margin-top: auto;
+  align-items: stretch;
 }
 
-.recipe-card-footer .secondary {
-  flex: 1;
-  font-size: 0.8rem;
-  padding-inline: 0.75rem;
-  border-radius: 20px;
+.recipe-card-footer button {
+  width: 100%;
+  height: 100%;
 }
 
-/* ========== Recipe detail overlay ========== */
+/* Actions row (Add recipe / Import recipe) */
+
+.recipe-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.recipe-actions-row button {
+  flex: 1 1 calc(50% - 0.5rem);
+  min-width: 7rem;
+  text-align: center;
+  padding: 0.55rem 0.9rem;
+}
+
+/* =========================================
+   9. RECIPE DETAIL OVERLAY
+========================================= */
 
 .recipe-detail-overlay {
   position: fixed;
@@ -747,6 +847,13 @@ p {
   margin-bottom: 0.35rem;
 }
 
+/* stop iOS text highlight on ingredients */
+.recipe-detail-ingredients li,
+.recipe-detail-ingredients li span {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .recipe-detail-source {
   display: inline-block;
   margin-top: 0.4rem;
@@ -754,12 +861,9 @@ p {
   text-decoration: underline;
 }
 
-/* Don't allow text selection on recipe ingredients (stops iOS highlight) */
-.recipe-detail-ingredients li,
-.recipe-detail-ingredients li span {
-  -webkit-user-select: none;
-  user-select: none;
-}
+/* =========================================
+   10. RECIPE META DIALOG (name + photo)
+========================================= */
 
 .recipe-name-with-photo {
   display: flex;
@@ -771,7 +875,8 @@ p {
   flex: 1;
 }
 
-/* Little + pill to the right of the input */
+/* Small + pill next to recipe name */
+
 .recipe-photo-icon {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.95);
@@ -779,11 +884,9 @@ p {
   color: #ffffff;
   width: 34px;
   height: 32px;
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   font-size: 1.25rem;
   font-weight: 600;
   padding: 0;
@@ -800,7 +903,6 @@ p {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
 
-/* Optional: tidy up the preview under the field if you haven't styled it yet */
 .recipe-meta-image-preview {
   margin-top: 0.6rem;
   max-width: 100%;
@@ -809,7 +911,9 @@ p {
   display: block;
 }
 
-/* ---------- BARCODE SCANNER OVERLAY ---------- */
+/* =========================================
+   11. BARCODE SCANNER + ADD-ITEM DIALOGS
+========================================= */
 
 .barcode-scanner-overlay {
   position: fixed;
@@ -826,7 +930,7 @@ p {
   padding: 1rem;
   border-radius: 0.75rem;
   width: min(500px, 100% - 2rem);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 #barcode-video {
@@ -838,8 +942,8 @@ p {
 
 .barcode-scanner-actions {
   display: flex;
-  justify-content: center;   /* centre horizontally */
-  gap: 0.75rem;              /* nice space between buttons */
+  justify-content: center;
+  gap: 0.75rem;
   margin-top: 1.25rem;
 }
 
@@ -848,27 +952,23 @@ p {
   font-size: 1rem;
 }
 
-/* ===========================
-   Barcode item dialog styling
-   =========================== */
+/* Generic input row used in dialogs */
 
-/* Make the item dialog panel a nice narrow card */
+.barcode-input-row {
+  margin-top: 0.75rem;
+}
+
+/* Barcode item dialog specific */
+
 #barcode-input-overlay .barcode-scanner-panel {
   max-width: 420px;
   width: 90%;
 }
 
-/* Spacing between rows in the dialog */
-.barcode-input-row {
-  margin-top: 0.75rem;
-}
-
-/* Labels inside the dialog */
 #barcode-input-overlay label {
   font-size: 0.95rem;
 }
 
-/* Inputs + dropdowns: full width, modern look */
 #barcode-input-overlay input[type="text"],
 #barcode-input-overlay input[type="number"],
 #barcode-input-overlay select {
@@ -883,14 +983,12 @@ p {
   font-size: 1rem;
 }
 
-/* Focus outline to match your accent colour */
 #barcode-input-overlay input:focus,
 #barcode-input-overlay select:focus {
   outline: 2px solid var(--accent-color, #ff7a00);
   outline-offset: 1px;
 }
 
-/* Button row at the bottom */
 #barcode-input-overlay .barcode-scanner-actions {
   margin-top: 1.25rem;
   display: flex;
@@ -898,17 +996,10 @@ p {
   gap: 0.75rem;
 }
 
-/* On very small screens, give the panel a bit more breathing room */
-@media (max-width: 480px) {
-  #barcode-input-overlay .barcode-scanner-panel {
-    margin: 1.5rem;
-  }
-}
-
-/* Add-item dialog animation + keyboard offset */
+/* Add-item dialog animation / keyboard offset */
 
 .add-item-panel {
-  --offset-y: 0px;                 /* JS will update this */
+  --offset-y: 0px;
   transform: translateY(var(--offset-y)) scale(0.96);
   opacity: 0;
   transition: transform 0.48s ease-out, opacity 0.48s ease-out;
@@ -920,122 +1011,24 @@ p {
   transform: translateY(var(--offset-y)) scale(1);
 }
 
-/* EDIT pill button */
-.inventory-edit-btn {
-  padding: 0.28rem 0.9rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.9);  
-  background: rgba(0, 122, 255, 0.50);          /* transparent blue */
-  color: #ffffff;
-  min-width: 72px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
-  cursor: pointer;
-  transition: 0.18s ease;
-}
+/* Import preview overlay should scroll on small screens */
 
-.inventory-edit-btn:hover {
-  background: rgba(0, 122, 255, 0.28);
-}
-
-.inventory-edit-btn:active {
-  transform: scale(0.96);
-}
-
-/* DELETE pill button */
-.inventory-delete-button {
-  padding: 0.28rem 0.9rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.9);   /* white border */
-  background: rgba(255, 60, 60, 0.54);          /* transparent red */
-  color: #ffffff;
-  min-width: 72px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
-  cursor: pointer;
-  transition: 0.18s ease;
-}
-
-.inventory-delete-button:hover {
-  background: rgba(255, 60, 60, 0.32);
-}
-
-.inventory-delete-button:active {
-  transform: scale(0.96);
-}
-
-
-.recipe-actions-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
-
-.recipe-actions-row button {
-  flex: 1 1 calc(50% - 0.5rem);
-  min-width: 7rem;
-  text-align: center;
-  padding: 0.55rem 0.9rem;
-}
-
-.recipe-card-footer {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr;  /* two equal columns */
-  gap: 0.5rem;
-  align-items: stretch;            /* equal height */
-}
-
-.recipe-card-footer button {
-  width: 100%;
-  height: 100%;
-}
-
-/* Make tall preview dialogs scrollable on small screens */
 #recipe-import-preview-overlay .barcode-scanner-panel {
-  max-height: 90vh;              /* never taller than the viewport */
-  overflow-y: auto;              /* scroll panel content if needed */
-  -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-@media (prefers-color-scheme: dark) {
-  .ios-green-button {
-    border-color: rgba(255,255,255,0.35);
-    box-shadow: 0 0 5px rgba(52,199,89,0.4);
+/* =========================================
+   12. RESPONSIVE TWEAKS
+========================================= */
+
+@media (max-width: 374px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
   }
-}
 
-.ios-green-button {
-  background-color: #34C759;     /* iOS system green */
-  color: white;
-  border: 2px solid rgba(255,255,255,0.25);
-  padding: 0.55rem 1.3rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-radius: 999px;          /* full rounded pill */
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.15s, box-shadow 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Hover (desktop) */
-.ios-green-button:hover {
-  background-color: #2ECC54;
-  box-shadow: 0 0 8px rgba(52,199,89,0.5);
-}
-
-/* Tap / Active */
-.ios-green-button:active {
-  background-color: #28A745;
-  transform: scale(0.96);
+  .form-actions {
+    flex-wrap: wrap;
+  }
 }
