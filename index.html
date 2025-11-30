@@ -2829,51 +2829,63 @@ const staples = dedupeStaplesByName(split.staples);
     const { ing, index } = obj;
     const li = document.createElement("li");
 
-    // Name
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = ing.name || "";
-    li.appendChild(nameSpan);
+ const nameSpan = document.createElement("span");
+nameSpan.className = "ingredient-name";
+nameSpan.textContent = ing.name || "";
+li.appendChild(nameSpan);
 
-    let q = ing.quantity;
-    let u = ing.unit || "";
+let q = ing.quantity;
+let u = ing.unit || "";
 
-    const hideQty = typeof shouldHideQuantityForDisplay === "function"
-      ? shouldHideQuantityForDisplay(ing)
-      : false;
+// Should we hide the quantity entirely?
+const hideQty = typeof shouldHideQuantityForDisplay === "function"
+  ? shouldHideQuantityForDisplay(ing)
+  : false;
 
-    const hasNumericQty = q && q > 0 && !hideQty;
+const hasNumericQty = q && q > 0 && !hideQty;
 
-    if (hasNumericQty) {
-      ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+// We'll only show ": ..." if we actually have something to show
+if (hasNumericQty) {
+  ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
 
-      const compactUnits = ["g", "kg", "ml", "l"];
-      const unitLower = (u || "").toLowerCase();
-      const qtySpan = document.createElement("span");
+  const compactUnits = ["g", "kg", "ml", "l"];
+  const unitLower = (u || "").toLowerCase();
 
-      // 👇 turn 0.25 into "1/4", 0.5 → "1/2", etc.
-      const niceQty = typeof formatQuantityForDisplay === "function"
-        ? formatQuantityForDisplay(q)
-        : q;
+  const qtySpan = document.createElement("span");
+  qtySpan.className = "ingredient-qty";
 
-      let label = ": ";
-      if (compactUnits.includes(unitLower)) {
-        label += `${niceQty}${unitLower}`;
-      } else if (unitLower) {
-        label += `${niceQty} ${unitLower}`;
-      } else {
-        label += `${niceQty}`;
-      }
+  const niceQty = typeof formatQuantityForDisplay === "function"
+    ? formatQuantityForDisplay(q)
+    : q;
 
-      qtySpan.textContent = label;
-      li.appendChild(qtySpan);
-    } else if (isStapleList) {
-      // No numeric quantity, and it's in the staples section → "to taste" in italics
-      const sep = document.createTextNode(": ");
-      const em = document.createElement("em");
-      em.textContent = "to taste";
-      li.appendChild(sep);
-      li.appendChild(em);
-    }
+  // colon comes straight after the name, then a small space and the quantity
+  let label = "";
+  if (compactUnits.includes(unitLower)) {
+    label += `${niceQty}${unitLower}`;
+  } else if (unitLower) {
+    label += `${niceQty} ${unitLower}`;
+  } else {
+    label += `${niceQty}`;
+  }
+
+  qtySpan.textContent = label;
+  li.appendChild(qtySpan);
+
+} else if (isStapleList) {
+  // No numeric qty, but it's in the staples list → ": to taste"
+  const qtySpan = document.createElement("span");
+  qtySpan.className = "ingredient-qty";
+
+  const em = document.createElement("em");
+  em.textContent = "to taste";
+
+  // colon right after name, then "to taste"
+  qtySpan.appendChild(document.createTextNode(": "));
+  qtySpan.appendChild(em);
+
+  li.appendChild(qtySpan);
+}
+// if not staple and no qty → we just keep the name with no colon/number
     // If hideQty is true and it's NOT a staple list,
     // we just show the name with no ": 1"
 
