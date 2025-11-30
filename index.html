@@ -2163,63 +2163,20 @@ function openRecipeSearchDialog() {
       status.textContent = `Found ${data.results.length} recipe(s).`;
       status.classList.remove("error");
 
-      // Render results
-      resultsWrap.innerHTML = "";
-      data.results.forEach((r) => {
-        const card = document.createElement("button");
-        card.type = "button";
-        card.className = "recipe-search-result";
+   // Render results as big cards
+resultsWrap.innerHTML = "";
 
-        // Thumbnail / placeholder
-        const thumb = document.createElement("div");
-        thumb.className = "recipe-search-thumb";
+data.results.forEach((r) => {
+  const item = {
+    title: r.title || "",
+    image: r.imageUrl || "",          // comes from worker
+    servings: r.servingsText || "",// e.g. "Serves 6"
+    url: r.url                     // BBC recipe URL
+  };
 
-        if (r.imageUrl) {
-          const img = document.createElement("img");
-          img.src = r.imageUrl;
-          img.alt = r.title || "Recipe image";
-          thumb.appendChild(img);
-        } else {
-          const span = document.createElement("span");
-          span.textContent = (r.title || "R").charAt(0).toUpperCase();
-          thumb.appendChild(span);
-        }
-
-        const info = document.createElement("div");
-        info.className = "recipe-search-info";
-
-        const titleEl = document.createElement("div");
-        titleEl.className = "recipe-search-title";
-        titleEl.textContent = r.title || "Recipe";
-        info.appendChild(titleEl);
-
-        if (r.servingsText) {
-          const meta = document.createElement("div");
-          meta.className = "recipe-search-meta";
-          meta.textContent = r.servingsText;
-          info.appendChild(meta);
-        }
-
-        card.appendChild(thumb);
-        card.appendChild(info);
-
-        card.addEventListener("click", async () => {
-          closeRecipeSearchDialog();
-
-          try {
-            if (typeof importRecipeFromUrl === "function") {
-              await importRecipeFromUrl(r.url);
-            } else {
-              alert("Import function missing in JS.");
-            }
-          } catch (e) {
-            console.error("Import from search failed:", e);
-            alert("Could not import that recipe.");
-          }
-        });
-
-        resultsWrap.appendChild(card);
-      });
+  const card = makeSearchResultCard(item);
+  resultsWrap.appendChild(card);
+});
     } catch (err) {
       console.error("Search failed:", err);
       status.textContent = "Search failed. Please try again.";
@@ -2248,6 +2205,62 @@ function closeRecipeSearchDialog() {
   const panel = overlay.querySelector(".add-item-panel");
   if (panel) panel.classList.remove("visible");
   setTimeout(() => overlay.remove(), 480);
+}
+
+function makeSearchResultCard(item) {
+  const row = document.createElement("div");
+  row.className = "recipe-search-card";
+
+  // --- IMAGE ---
+  const imgWrap = document.createElement("div");
+  imgWrap.className = "recipe-search-card-image";
+
+  if (item.image) {
+    const img = document.createElement("img");
+    img.src = item.image;
+    img.alt = item.title || "Recipe image";
+    imgWrap.appendChild(img);
+  } else {
+    // Fallback letter
+    imgWrap.textContent = item.title
+      ? item.title.charAt(0).toUpperCase()
+      : "?";
+  }
+
+  // --- INFO ---
+  const info = document.createElement("div");
+  info.className = "recipe-search-card-info";
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "recipe-search-card-title";
+  titleEl.textContent = item.title || "(No title)";
+  info.appendChild(titleEl);
+
+  const servingsEl = document.createElement("div");
+  servingsEl.className = "recipe-search-card-servings";
+  servingsEl.textContent = item.servings || "";
+  info.appendChild(servingsEl);
+
+  row.appendChild(imgWrap);
+  row.appendChild(info);
+
+  // Click = close search, then import via URL (same flow as before)
+  row.addEventListener("click", async () => {
+    closeRecipeSearchDialog();
+
+    try {
+      if (typeof importRecipeFromUrl === "function") {
+        await importRecipeFromUrl(item.url);
+      } else {
+        alert("Import function is missing in JS.");
+      }
+    } catch (e) {
+      console.error("Import from search failed:", e);
+      alert("Could not import that recipe.");
+    }
+  });
+
+  return row;
 }
 
 function openRecipeImportPreviewDialog(parsed) {
