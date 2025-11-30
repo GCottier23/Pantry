@@ -392,35 +392,6 @@ function dedupeStaplesByName(staples) {
   return Array.from(byName.values());
 }
 
-    function shouldHideQuantityForDisplay(ing) {
-  if (!ing || !ing.name) return false;
-  const nameLower = ing.name.toLowerCase();
-
-  // Always hide numeric quantity for these ingredients
-  const ALWAYS_HIDE_QTY = [
-    "burger bun",
-    "burger buns",
-    "buns"
-  ];
-
-  if (ALWAYS_HIDE_QTY.some((phrase) => nameLower.includes(phrase))) {
-    return true;
-  }
-
-  // Also hide a bare "1" with no unit for staple-ish things
-  // (salt, pepper, generic seasoning, etc)
-  if (
-    (!ing.unit || ing.unit === "") &&
-    ing.quantity === 1 &&
-    typeof isStapleIngredient === "function" &&
-    isStapleIngredient(ing.name)
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
     function parseServingsNumber(servingsText) {
       if (!servingsText) return null;
       // Look for the first number: "Serves 8-10" -> 8
