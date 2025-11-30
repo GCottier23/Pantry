@@ -270,63 +270,74 @@ function autoCompactQuantityUnit(quantity, unit) {
   return { quantity: q, unit: u };
 }
 
-// Ingredients that we never want in shopping lists / inventory logic
-// (case-insensitive exact matches)
-const ALWAYS_IN_CUPBOARD = [
+// 🔹 Built-in default staples for everyone
+const DEFAULT_STAPLES = [
   "salt",
-  "fine sea salt",
-  "sea salt",
-  "sea salt flakes",
-  "maldon sea salt flakes",
-  "black pepper",
-  "freshly ground black pepper",
   "pepper",
+  "black pepper",
+  "sea salt",
+  "table salt",
   "salt and freshly ground black pepper",
   "salt and black pepper",
-  "salt & freshly ground black pepper",
-  "salt & pepper"
-];
 
-// "Default" staple keywords you ship with the app.
-// You can tweak these in code.
-const STAPLE_KEYWORDS = [
-  "salt",
-  "pepper",
-  "black pepper",
-  "white pepper",
-  "nutmeg",
-  "mixed spice",
+  "seasoning",
+  "burger seasoning",
+  "chicken seasoning",
+  "steak seasoning",
   "mixed herbs",
-  "oil",
+  "italian herbs",
+  "herbs",
+  "spice mix",
+  "spices",
+
+  "garlic powder",
+  "onion powder",
+
   "olive oil",
   "vegetable oil",
   "sunflower oil",
   "rapeseed oil",
   "cooking oil",
+  "oil",
+
   "butter",
   "unsalted butter",
-  "salted butter",
-  "flour",
-  "plain flour",
-  "self-raising flour"
+  "salted butter"
 ];
 
-// User-added staples (by ingredient name, lower-cased). Persisted in localStorage.
-let userStaples = [];
-
-// True if this ingredient should be treated as a staple
 function isStapleIngredient(name) {
   if (!name) return false;
   const lower = name.toLowerCase().trim();
+  if (!lower) return false;
 
-  // 1) Exact phrase from ALWAYS_IN_CUPBOARD (your hard-coded combos)
-  if (ALWAYS_IN_CUPBOARD.includes(lower)) return true;
+  // 1) User-added staples (long-press → “Mark as staple”)
+  const userList =
+    typeof userStaples !== "undefined" && Array.isArray(userStaples)
+      ? userStaples
+      : [];
 
-  // 2) User-added staples (via long-press → "Mark as staple")
-  if (userStaples.includes(lower)) return true;
+  if (userList.includes(lower)) return true;
 
-  // 3) Contains one of the default staple keywords
-  return STAPLE_KEYWORDS.some((kw) => lower.includes(kw));
+  // 2) Exact match against our built-in defaults
+  if (DEFAULT_STAPLES.includes(lower)) return true;
+
+  // 3) Fuzzy match – anything that *mentions* these words
+  const fuzzyBits = [
+    " salt",   // space then salt
+    "salt ",   // salt then space
+    "pepper",
+    "seasoning",
+    "herbs",
+    "spice",
+    "spices",
+    "oil"
+  ];
+
+  if (fuzzyBits.some(bit => lower.includes(bit))) {
+    return true;
+  }
+
+  return false;
 }
 
 // Toggle user staple on/off for this device
@@ -334,6 +345,11 @@ function toggleUserStaple(name) {
   if (!name) return;
   const lower = name.toLowerCase().trim();
   if (!lower) return;
+
+  // make sure array exists
+  if (typeof userStaples === "undefined" || !Array.isArray(userStaples)) {
+    window.userStaples = [];
+  }
 
   const idx = userStaples.indexOf(lower);
   if (idx === -1) {
@@ -348,11 +364,13 @@ function toggleUserStaple(name) {
 function splitIngredientsByStaples(ingredients) {
   const staples = [];
   const regular = [];
+
   (ingredients || []).forEach((ing, index) => {
     if (!ing || !ing.name) return;
     const bucket = isStapleIngredient(ing.name) ? staples : regular;
     bucket.push({ ing, index }); // remember which ingredient it was
   });
+
   return { staples, regular };
 }
 
@@ -2405,47 +2423,58 @@ function openRecipeImportPreviewDialog(parsed) {
     const newIngredients = [];
 
     lines.forEach((line) => {
-      const trimmed = (line || "").trim();
-      if (!trimmed) return;
+  const trimmed = (line || "").trim();
+  if (!trimmed) return;
 
-      let parsedIng = null;
+  // 👉 Does the original text contain any digits at all?
+  //    (If not, we’ll treat it as a “no explicit quantity” line.)
+  const hadExplicitNumber = /\d/.test(trimmed);
 
-      // Prefer BBC-specific parser if available
-      if (
-        ingredientNames.length &&
-        typeof parseBbcIngredient === "function"
-      ) {
-        parsedIng = parseBbcIngredient(trimmed, ingredientNames);
-      }
+  let parsedIng = null;
 
-      // Fallback: generic parser
-      if (!parsedIng && typeof parseIngredientLine === "function") {
-        parsedIng = parseIngredientLine(trimmed);
-      }
+  // If we have BBC ingredient names & parseBbcIngredient – use that
+  if (
+    ingredientNames.length &&
+    typeof parseBbcIngredient === "function"
+  ) {
+    parsedIng = parseBbcIngredient(trimmed, ingredientNames);
+  }
 
-      // Last resort: just keep the line as a name
-      if (!parsedIng) {
-        parsedIng = {
-          name: trimmed,
-          quantity: null,
-          unit: "",
-        };
-      }
+  // Fallback: generic parser
+  if (!parsedIng && typeof parseIngredientLine === "function") {
+    parsedIng = parseIngredientLine(trimmed);
+  }
 
-      if (!parsedIng.name) return;
+  // Last resort: just store the line as a name
+  if (!parsedIng) {
+    parsedIng = {
+      name: trimmed,
+      quantity: null,
+      unit: "",
+    };
+  }
 
-      if (
-        parsedIng.quantity !== null &&
-        parsedIng.quantity !== undefined
-      ) {
-        if (Number.isNaN(parsedIng.quantity) || parsedIng.quantity <= 0) {
-          // ignore obviously bad quantities
-          return;
-        }
-      }
+  if (!parsedIng.name) return;
 
-      newIngredients.push(parsedIng);
-    });
+  // 🔹 If the parser “guessed” quantity = 1 but there was
+  //    NO number in the original text, treat it as “no quantity”.
+  if (!hadExplicitNumber && parsedIng.quantity === 1) {
+    parsedIng.quantity = null;
+    parsedIng.unit = "";
+  }
+
+  // If quantity is present, it must be a positive number
+  if (
+    parsedIng.quantity !== null &&
+    parsedIng.quantity !== undefined
+  ) {
+    if (Number.isNaN(parsedIng.quantity) || parsedIng.quantity <= 0) {
+      return;
+    }
+  }
+
+  newIngredients.push(parsedIng);
+});
 
     if (!newIngredients.length) {
       const ok = confirm(
