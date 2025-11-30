@@ -32,20 +32,26 @@
     <button id="nav-shopping" aria-controls="page-shopping" aria-selected="false" type="button">Shopping list</button>
   </nav>
 
-  <!-- ======================================= -->
-  <!-- PAGE 1 – INVENTORY                      -->
-  <!-- ======================================= -->
+ <!-- ======================================= -->
+<!-- PAGE 1 – INVENTORY                      -->
+<!-- ======================================= -->
 <main id="page-inventory" class="page" role="tabpanel" aria-labelledby="nav-inventory">
+
+  <!-- Panel 1: Inventory title + buttons -->
   <section class="panel">
     <h2>Inventory</h2>
 
-<div class="primary-pair-row">
-  <button id="add-inventory-item-btn" class="primary-pill">Add Item</button>
-  <button id="real-scan-btn" class="primary-pill">Scan barcode</button>
-</div>
+    <div class="primary-pair-row">
+      <button id="add-inventory-item-btn" class="primary-pill">Add Item</button>
+      <button id="real-scan-btn" class="primary-pill">Scan barcode</button>
+    </div>
+  </section>
 
+  <!-- Panel 2: Inventory list -->
+  <section class="panel">
     <div id="inventory-list" class="inventory-list"></div>
   </section>
+
 </main>
 
   <!-- ======================================= -->

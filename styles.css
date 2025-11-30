@@ -383,33 +383,6 @@ button.secondary:active {
   transform: scale(0.96);
 }
 
-/* iOS-style green primary button */
-
-.ios-green-button {
-  padding: 0.28rem 0.9rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: rgba(22, 104, 47, 0.54);
-  color: #ffffff;
-  min-width: 72px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
-  cursor: pointer;
-  transition: 0.18s ease;
-}
-
-.ios-green-button:hover {
- background: rgba(22, 104, 47, 0.32);
-}
-
-.ios-green-button:active {
-  transform: scale(0.96);
-}
-
 /* =========================================
    5. INVENTORY PAGE
 ========================================= */
@@ -1263,4 +1236,27 @@ button.secondary:active {
 
 .mealplan-header-actions button {
   flex: 1;             /* both buttons equal width */
+}
+
+/* FINAL override: green submit pill */
+button.ios-green-button {
+  padding: 0.28rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+
+  /* match the white outline from other pills */
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+
+  /* darker transparent green */
+  background: rgba(22, 104, 47, 0.54) !important;
+
+  color: #ffffff;
+  min-width: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition: 0.18s ease;
 }
