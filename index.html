@@ -2896,7 +2896,7 @@ const staples = dedupeStaplesByName(split.staples);
     panel.appendChild(staplesTitle);
 
     const staplesList = document.createElement("ul");
-    staplesList.className = "recipe-detail-ingredients";
+    staplesList.className = "recipe-detail-ingredients staples";
     staples.forEach((obj) => addIngredientLi(staplesList, obj, true));
     panel.appendChild(staplesList);
   }

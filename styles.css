@@ -945,6 +945,31 @@ button.secondary:active {
   text-decoration: underline;
 }
 
+.recipe-detail-ingredients li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.recipe-detail-ingredients li span:first-child {
+  flex: 1;              /* name takes remaining space */
+}
+
+.recipe-detail-ingredients li span:last-child {
+  white-space: nowrap;  /* keep "800g" or "1¼ tbsp" together */
+  opacity: 0.85;        /* a tiny bit softer than the name */
+}
+
+.recipe-detail-ingredients + h3 em {
+  /* your existing "Make sure you have" */
+  font-size: 0.95em;
+}
+
+.recipe-detail-ingredients.staples li {
+  font-size: 0.95em;
+  opacity: 0.9;
+}
+
 /* =========================================
    10. RECIPE META DIALOG (name + photo)
 ========================================= */
