@@ -247,97 +247,72 @@
       return unit || "";
     }
 
-    function formatQuantityWithUnit(quantity, unit) {
-      if (!unit) return String(quantity);
-      const compact = ["g", "kg", "ml", "l"];
-      const isCompact = compact.includes(unit);
-      const nStr = Number.isInteger(quantity)
-        ? String(quantity)
-        : quantity.toString();
-      return isCompact ? nStr + unit : nStr + " " + unit.toLowerCase();
-    }
+   // Replace your existing helper with this
+function formatQuantityWithUnit(quantity, unit) {
+  if (quantity == null || Number.isNaN(quantity)) return "";
 
-    // Auto-compact g/ml to kg/l when quantity is 1000 or more
-function autoCompactQuantityUnit(quantity, unit) {
-  let q = quantity;
-  let u = (unit || "").toLowerCase();
+  const q = Number(quantity);
+  if (!Number.isFinite(q) || q <= 0) return "";
 
-  if ((u === "g" || u === "ml") && q >= 1000) {
-    q = q / 1000;
-    u = u === "g" ? "kg" : "l";
+  const unitLower = (unit || "").toLowerCase();
+
+  // Use your nice fraction-aware display for the number itself
+  const niceQty = (typeof formatQuantityForDisplay === "function")
+    ? formatQuantityForDisplay(q)
+    : (
+        Number.isInteger(q)
+          ? String(q)
+          : (Math.round(q * 10) / 10).toString()
+      );
+
+  // 🔹 Special case: litres → "litre / litres"
+  if (unitLower === "l") {
+    const word = (q === 1 ? "litre" : "litres");
+    return `${niceQty} ${word}`;
   }
 
-  return { quantity: q, unit: u };
+  // 🔹 Compact units (no space)
+  const compactUnits = ["g", "kg", "ml"];
+  if (compactUnits.includes(unitLower)) {
+    return `${niceQty}${unitLower}`; // 500g, 200ml, 1kg
+  }
+
+  // 🔹 Generic units
+  if (unitLower) {
+    return `${niceQty} ${unitLower}`; // 2 packs, 3 tins, etc.
+  }
+
+  // 🔹 No unit
+  return niceQty;
 }
 
-// 🔹 Built-in default staples for everyone
-const DEFAULT_STAPLES = [
-  "salt",
-  "pepper",
-  "black pepper",
-  "sea salt",
-  "table salt",
-  "salt and freshly ground black pepper",
-  "salt and black pepper",
+function autoCompactQuantityUnit(q, unit) {
+  if (q == null || Number.isNaN(q)) return { quantity: q, unit };
 
-  "seasoning",
-  "burger seasoning",
-  "chicken seasoning",
-  "steak seasoning",
-  "mixed herbs",
-  "italian herbs",
-  "herbs",
-  "spice mix",
-  "spices",
+  const u = (unit || "").toLowerCase();
 
-  "garlic powder",
-  "onion powder",
-
-  "olive oil",
-  "vegetable oil",
-  "sunflower oil",
-  "rapeseed oil",
-  "cooking oil",
-  "oil",
-
-  "butter",
-  "unsalted butter",
-  "salted butter"
-];
-
-function isStapleIngredient(name) {
-  if (!name) return false;
-  const lower = name.toLowerCase().trim();
-  if (!lower) return false;
-
-  // 1) User-added staples (long-press → “Mark as staple”)
-  const userList =
-    typeof userStaples !== "undefined" && Array.isArray(userStaples)
-      ? userStaples
-      : [];
-
-  if (userList.includes(lower)) return true;
-
-  // 2) Exact match against our built-in defaults
-  if (DEFAULT_STAPLES.includes(lower)) return true;
-
-  // 3) Fuzzy match – anything that *mentions* these words
-  const fuzzyBits = [
-    " salt",   // space then salt
-    "salt ",   // salt then space
-    "pepper",
-    "seasoning",
-    "herbs",
-    "spice",
-    "spices",
-    "oil"
-  ];
-
-  if (fuzzyBits.some(bit => lower.includes(bit))) {
-    return true;
+  // --- Convert ml → litres when >= 1000ml ---
+  if (u === "ml") {
+    if (q >= 1000) {
+      const litres = q / 1000;
+      return { quantity: litres, unit: "l" };  // ← IMPORTANT: keep "l"
+    } else {
+      return { quantity: q, unit: "ml" };
+    }
   }
 
-  return false;
+  // --- Convert g → kg when >= 1000g ---
+  if (u === "g") {
+    if (q >= 1000) {
+      const kg = q / 1000;
+      return { quantity: kg, unit: "kg" };
+    } else {
+      return { quantity: q, unit: "g" };
+    }
+  }
+
+  // Otherwise no change
+  return { quantity: q, unit };
 }
 
 // Toggle user staple on/off for this device
@@ -2782,233 +2757,276 @@ function shouldHideQuantityForDisplay(ing) {
   return false;
 }
 
+// Give some ingredients a smart default unit if they have a quantity but no unit
+function applySmartDefaultUnit(name, quantity, unit) {
+  // If we already have a unit, don't touch it
+  if (unit) return unit;
+
+  const lowerName = (name || "").toLowerCase();
+  const q = quantity != null ? Number(quantity) : null;
+  if (!q || Number.isNaN(q) || q <= 0) return unit;
+
+  if (lowerName.includes("wine")) {
+    return q === 1 ? "bottle" : "bottles";
+  }
+
+  if (lowerName.includes("rosemary")) {
+    return q === 1 ? "sprig" : "sprigs";
+  }
+
+  if (lowerName.includes("thyme")) {
+    return q === 1 ? "sprig" : "sprigs";
+  }
+
+  return unit;
+}
+
 function openRecipeDetail(recipeId) {
   const recipe = recipes.find((r) => r.id === recipeId);
   if (!recipe) return;
 
-  const recipeIdActual = recipe.id;
+  try {
+    const recipeIdActual = recipe.id;
 
-  // Work on a copy so we don't mutate the underlying recipe
-  const ingForDisplay = (recipe.ingredients || []).slice();
+    // Work on a copy so we don't mutate the underlying recipe
+    const ingForDisplay = (recipe.ingredients || []).slice();
 
-  // If any ingredient mentions black pepper but none mentions salt,
-  // add a synthetic "Salt" line (staple, shown as "to taste").
-  const hasBlackPepper = ingForDisplay.some(
-    (ing) => ing.name && ing.name.toLowerCase().includes("black pepper")
-  );
-  const hasAnySalt = ingForDisplay.some(
-    (ing) => ing.name && ing.name.toLowerCase().includes("salt")
-  );
+    // If any ingredient mentions black pepper but none mentions salt,
+    // add a synthetic "Salt" line (staple, shown as "to taste").
+    const hasBlackPepper = ingForDisplay.some(
+      (ing) => ing.name && ing.name.toLowerCase().includes("black pepper")
+    );
+    const hasAnySalt = ingForDisplay.some(
+      (ing) => ing.name && ing.name.toLowerCase().includes("salt")
+    );
 
-  if (hasBlackPepper && !hasAnySalt) {
-    ingForDisplay.push({
-      name: "Salt",
-      quantity: null,
-      unit: ""
+    if (hasBlackPepper && !hasAnySalt) {
+      ingForDisplay.push({
+        name: "Salt",
+        quantity: null,
+        unit: ""
+      });
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "recipe-detail-overlay";
+
+    const panel = document.createElement("div");
+    panel.className = "recipe-detail-panel";
+
+    // Close button
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "recipe-detail-close inventory-delete-button";
+    closeBtn.textContent = "Close";
+    closeBtn.addEventListener("click", () => overlay.remove());
+    panel.appendChild(closeBtn);
+
+    // Title
+    const title = document.createElement("h2");
+    title.className = "recipe-detail-title";
+    title.textContent = recipe.name;
+    panel.appendChild(title);
+
+    // Image
+    if (recipe.imageUrl) {
+      const imgWrap = document.createElement("div");
+      imgWrap.className = "recipe-detail-image-wrap";
+      const img = document.createElement("img");
+      img.src = recipe.imageUrl;
+      img.alt = recipe.name;
+      imgWrap.appendChild(img);
+      panel.appendChild(imgWrap);
+    }
+
+    // Meta
+    const meta = document.createElement("p");
+    meta.className = "recipe-detail-meta";
+    meta.textContent = recipe.servings ? `Serves ${recipe.servings}` : "";
+    panel.appendChild(meta);
+
+    // ---- Ingredients section ----
+    const ingTitle = document.createElement("h3");
+    ingTitle.textContent = "Ingredients";
+    panel.appendChild(ingTitle);
+
+    // Split by staples vs regular
+    const split =
+      typeof splitIngredientsByStaples === "function"
+        ? splitIngredientsByStaples(ingForDisplay)
+        : { staples: [], regular: ingForDisplay.map((ing, index) => ({ ing, index })) };
+
+    let regular = split.regular || [];
+    let staples = split.staples || [];
+
+    // Optional: dedupe + merge staples (e.g. Butter in g + Butter in tbsp)
+    if (typeof dedupeStaplesByName === "function") {
+      staples = dedupeStaplesByName(staples);
+    }
+
+    // Sort staples:
+    // 1) items with numeric quantity first (largest → smallest),
+    // 2) then no-quantity "to taste" items alphabetically
+    staples.sort((a, b) => {
+      const qaRaw = a.ing.quantity;
+      const qbRaw = b.ing.quantity;
+
+      const aHasQty = qaRaw !== null && qaRaw !== undefined && qaRaw > 0;
+      const bHasQty = qbRaw !== null && qbRaw !== undefined && qbRaw > 0;
+
+      if (aHasQty && bHasQty) return qbRaw - qaRaw;
+      if (aHasQty && !bHasQty) return -1;
+      if (!aHasQty && bHasQty) return 1;
+
+      const nameA = (a.ing.name || "").toLowerCase();
+      const nameB = (b.ing.name || "").toLowerCase();
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0;
     });
-  }
 
-  const overlay = document.createElement("div");
-  overlay.className = "recipe-detail-overlay";
-
-  const panel = document.createElement("div");
-  panel.className = "recipe-detail-panel";
-
-  // Close button
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "recipe-detail-close inventory-delete-button";
-  closeBtn.textContent = "Close";
-  closeBtn.addEventListener("click", () => overlay.remove());
-  panel.appendChild(closeBtn);
-
-  // Title
-  const title = document.createElement("h2");
-  title.className = "recipe-detail-title";
-  title.textContent = recipe.name;
-  panel.appendChild(title);
-
-  // Image
-  if (recipe.imageUrl) {
-    const imgWrap = document.createElement("div");
-    imgWrap.className = "recipe-detail-image-wrap";
-    const img = document.createElement("img");
-    img.src = recipe.imageUrl;
-    img.alt = recipe.name;
-    imgWrap.appendChild(img);
-    panel.appendChild(imgWrap);
-  }
-
-  // Meta
-  const meta = document.createElement("p");
-  meta.className = "recipe-detail-meta";
-  meta.textContent = recipe.servings ? `Serves ${recipe.servings}` : "";
-  panel.appendChild(meta);
-
-  // ---- Ingredients section ----
-  const ingTitle = document.createElement("h3");
-  ingTitle.textContent = "Ingredients";
-  panel.appendChild(ingTitle);
-
-// Use the indexed split so we know which ingredient to edit/delete,
-// then collapse duplicate staples (e.g. Butter in g + Butter in tbsp).
-const split = splitIngredientsByStaples(ingForDisplay);
-const regular = split.regular;
-const staples = dedupeStaplesByName(split.staples);
-
-// --- SORT STAPLES ---
-// 1) Items with numeric quantity first (largest → smallest)
-// 2) Then "to taste" / no-quantity items alphabetically by name
-staples.sort((a, b) => {
-  const qaRaw = a.ing.quantity;
-  const qbRaw = b.ing.quantity;
-
-  const aHasQty = qaRaw !== null && qaRaw !== undefined && qaRaw > 0;
-  const bHasQty = qbRaw !== null && qbRaw !== undefined && qbRaw > 0;
-
-  // Both have quantities → sort by quantity descending
-  if (aHasQty && bHasQty) {
-    return qbRaw - qaRaw; // bigger first (e.g. 50g before 4 tbsp)
-  }
-
-  // One has quantity, one doesn't → quantity first
-  if (aHasQty && !bHasQty) return -1;
-  if (!aHasQty && bHasQty) return 1;
-
-  // Neither has quantity (i.e. "to taste" group) → sort by name
-  const nameA = (a.ing.name || "").toLowerCase();
-  const nameB = (b.ing.name || "").toLowerCase();
-  if (nameA < nameB) return -1;
-  if (nameA > nameB) return 1;
-  return 0;
-});
-
-function addIngredientLi(ul, obj, isStapleList) {
-  const { ing, index } = obj;
-  const li = document.createElement("li");
-
-  const nameSpan = document.createElement("span");
-  nameSpan.className = "ingredient-name";
-  nameSpan.textContent = ing.name || "";
-  li.appendChild(nameSpan);
-
-  let q = ing.quantity;
-  let u = ing.unit || "";
-
-  // Should we hide the quantity entirely?
-  const hideQty = typeof shouldHideQuantityForDisplay === "function"
-    ? shouldHideQuantityForDisplay(ing)
-    : false;
-
-  const hasNumericQty =
-    q != null &&
-    !Number.isNaN(q) &&
-    q > 0 &&
-    !hideQty;
-
-  if (hasNumericQty) {
-    // 👇 only compact for weight/volume units,
-    // so we don't round e.g. 1.25 onions down to 1.
-    const compactUnits = ["g", "kg", "ml", "l"];
-    let unitLower = (u || "").toLowerCase();
-
-    if (
-      compactUnits.includes(unitLower) &&
-      typeof autoCompactQuantityUnit === "function"
-    ) {
-      ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
-      unitLower = (u || "").toLowerCase();
-    }
-
-    const qtySpan = document.createElement("span");
-    qtySpan.className = "ingredient-qty";
-
-    const niceQty = typeof formatQuantityForDisplay === "function"
-      ? formatQuantityForDisplay(q)
-      : q;
-
-    let label = "";
-    if (compactUnits.includes(unitLower)) {
-      label = `${niceQty}${unitLower}`;      // 800g, 1.5l
-    } else if (unitLower) {
-      label = `${niceQty} ${unitLower}`;     // 2 cloves
-    } else {
-      label = `${niceQty}`;                  // 1 ¼
-    }
-
-    qtySpan.textContent = label;
-    li.appendChild(qtySpan);
-
-  } else if (isStapleList) {
-    const qtySpan = document.createElement("span");
-    qtySpan.className = "ingredient-qty";
-
-    const em = document.createElement("em");
-    em.textContent = "to taste";
-    qtySpan.appendChild(em);
-
-    li.appendChild(qtySpan);
-  }
-
-  attachIngredientLongPress(li, recipeIdActual, index, ing.name);
-  ul.appendChild(li);
-}
-  // Non-staple ingredients
-  const ingList = document.createElement("ul");
-  ingList.className = "recipe-detail-ingredients";
-  regular.forEach((obj) => addIngredientLi(ingList, obj, false));
-  panel.appendChild(ingList);
-
-  // Staples: "Make sure you have" (italic heading)
-  if (staples.length) {
-    const staplesTitle = document.createElement("h3");
-    staplesTitle.innerHTML = "<em>Make sure you have</em>";
-    panel.appendChild(staplesTitle);
-
-    const staplesList = document.createElement("ul");
-    staplesList.className = "recipe-detail-ingredients staples";
-    staples.forEach((obj) => addIngredientLi(staplesList, obj, true));
-    panel.appendChild(staplesList);
-  }
-
-  // ---- Method ----
-  const instrTitle = document.createElement("h3");
-  instrTitle.textContent = "Method";
-  panel.appendChild(instrTitle);
-
-  const instrList = document.createElement("ol");
-  instrList.className = "recipe-detail-instructions";
-  if (Array.isArray(recipe.instructions) && recipe.instructions.length) {
-    recipe.instructions.forEach((step) => {
+    function addIngredientLi(ul, obj, isStapleList) {
+      const { ing, index } = obj;
       const li = document.createElement("li");
-      li.textContent = step;
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "ingredient-name";
+      nameSpan.textContent = ing.name || "";
+      li.appendChild(nameSpan);
+
+      let q = ing.quantity;
+      let u = ing.unit || "";
+
+      // Should we hide the quantity entirely for display?
+      const hideQty =
+        typeof shouldHideQuantityForDisplay === "function"
+          ? shouldHideQuantityForDisplay(ing)
+          : false;
+
+      const hasNumericQty =
+        q != null &&
+        !Number.isNaN(q) &&
+        q > 0 &&
+        !hideQty;
+
+      if (hasNumericQty) {
+        const compactUnits = ["g", "kg", "ml", "l"];
+        let unitLower = (u || "").toLowerCase();
+
+        // Only compact weight/volume units; keep counts alone
+        if (
+          compactUnits.includes(unitLower) &&
+          typeof autoCompactQuantityUnit === "function"
+        ) {
+          ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+          unitLower = (u || "").toLowerCase();
+        }
+
+        const qtySpan = document.createElement("span");
+        qtySpan.className = "ingredient-qty";
+
+        const niceQty =
+          typeof formatQuantityForDisplay === "function"
+            ? formatQuantityForDisplay(q)
+            : q;
+
+        let label = "";
+
+        // Special wording for litres
+        if (unitLower === "l") {
+          const word = q === 1 ? "litre" : "litres";
+          label = `${niceQty} ${word}`;
+        } else if (["g", "kg", "ml"].includes(unitLower)) {
+          label = `${niceQty}${unitLower}`;
+        } else if (unitLower) {
+          label = `${niceQty} ${unitLower}`;
+        } else {
+          label = `${niceQty}`;
+        }
+
+        qtySpan.textContent = label;
+        li.appendChild(qtySpan);
+      } else if (isStapleList) {
+        // No numeric qty but in staples → "to taste"
+        const qtySpan = document.createElement("span");
+        qtySpan.className = "ingredient-qty";
+
+        const em = document.createElement("em");
+        em.textContent = "to taste";
+        qtySpan.appendChild(em);
+
+        li.appendChild(qtySpan);
+      }
+      // If not staple and no qty → just the name
+
+      // Long-press menu
+      if (typeof attachIngredientLongPress === "function") {
+        attachIngredientLongPress(li, recipeIdActual, index, ing.name);
+      }
+
+      ul.appendChild(li);
+    }
+
+    // Non-staple ingredients
+    const ingList = document.createElement("ul");
+    ingList.className = "recipe-detail-ingredients";
+    regular.forEach((obj) => addIngredientLi(ingList, obj, false));
+    panel.appendChild(ingList);
+
+    // Staples: "Make sure you have"
+    if (staples.length) {
+      const staplesTitle = document.createElement("h3");
+      staplesTitle.innerHTML = "<em>Make sure you have</em>";
+      panel.appendChild(staplesTitle);
+
+      const staplesList = document.createElement("ul");
+      staplesList.className = "recipe-detail-ingredients staples";
+      staples.forEach((obj) => addIngredientLi(staplesList, obj, true));
+      panel.appendChild(staplesList);
+    }
+
+    // ---- Method ----
+    const instrTitle = document.createElement("h3");
+    instrTitle.textContent = "Method";
+    panel.appendChild(instrTitle);
+
+    const instrList = document.createElement("ol");
+    instrList.className = "recipe-detail-instructions";
+    if (Array.isArray(recipe.instructions) && recipe.instructions.length) {
+      recipe.instructions.forEach((step) => {
+        const li = document.createElement("li");
+        li.textContent = step;
+        instrList.appendChild(li);
+      });
+    } else {
+      const li = document.createElement("li");
+      li.textContent = "No method stored yet.";
       instrList.appendChild(li);
+    }
+    panel.appendChild(instrList);
+
+    // Source link (if we have it)
+    if (recipe.sourceUrl) {
+      const link = document.createElement("a");
+      link.className = "recipe-detail-source";
+      link.href = recipe.sourceUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "View original recipe on BBC";
+      panel.appendChild(link);
+    }
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    // Close if you tap the dim background
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.remove();
     });
-  } else {
-    const li = document.createElement("li");
-    li.textContent = "No method stored yet.";
-    instrList.appendChild(li);
+  } catch (err) {
+    console.error("openRecipeDetail error:", err);
+    alert("There was a problem opening this recipe. Check the console for details.");
   }
-  panel.appendChild(instrList);
-
-  // Source link (if we have it)
-  if (recipe.sourceUrl) {
-    const link = document.createElement("a");
-    link.className = "recipe-detail-source";
-    link.href = recipe.sourceUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = "View original recipe on BBC";
-    panel.appendChild(link);
-  }
-
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-
-  // Close if you tap the dim background
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
 }
 
     // ----- COOK MODE: tick ingredients to deduct from inventory -----
@@ -3158,20 +3176,29 @@ function openCookDialog(dayId) {
         displayUnit = u === "g" ? "kg" : "l";
       }
 
-      const compactUnits = ["g", "kg", "ml", "l"];
-      const niceNum = Number.isInteger(displayQty)
-        ? String(displayQty)
-        : (Math.round(displayQty * 10) / 10).toString();
-      let qtyStr = "";
-      if (displayQty > 0) {
-        if (!displayUnit) {
-          qtyStr = niceNum;
-        } else if (compactUnits.includes(displayUnit)) {
-          qtyStr = niceNum + displayUnit;
-        } else {
-          qtyStr = niceNum + " " + displayUnit;
-        }
-      }
+      // Turn "l" into friendly "litre / litres"
+const isLitre = displayUnit === "l";
+const friendlyUnit = isLitre
+  ? (displayQty === 1 ? "litre" : "litres")
+  : displayUnit;
+
+// Compact units (NO "l" now – litres get the word form)
+const compactUnits = ["g", "kg", "ml"];
+
+const niceNum = Number.isInteger(displayQty)
+  ? String(displayQty)
+  : (Math.round(displayQty * 10) / 10).toString();
+
+let qtyStr = "";
+if (displayQty > 0) {
+  if (!friendlyUnit) {
+    qtyStr = niceNum;
+  } else if (compactUnits.includes(friendlyUnit)) {
+    qtyStr = niceNum + friendlyUnit;   // 800g, 250ml
+  } else {
+    qtyStr = niceNum + " " + friendlyUnit; // 1 litre, 1.5 litres, 2 packs, etc.
+  }
+}
 
       const labelSpan = document.createElement("span");
       labelSpan.textContent = qtyStr
@@ -3303,6 +3330,19 @@ function openCookDialog(dayId) {
   } else {
     clearIngredientEditState();
   }
+}
+
+function formatUnitText(unit, quantity) {
+  const u = (unit || "").toLowerCase();
+
+  if (u === "l") {
+    // 1 litre, 2 litres, 0.5 litres, etc.
+    if (quantity === 1) return "litre";
+    return "litres";
+  }
+
+  // everything else unchanged for now (g, ml, kg, tsp, tbsp, etc.)
+  return unit;
 }
 
 // Turn decimal quantities into nice fractions for display only.
