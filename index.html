@@ -3222,56 +3222,245 @@ const MEAL_SLOTS = [
 const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-// Ensure mealPlan is always 7 days with the right shape
 function normaliseMealPlan() {
-  const today = new Date();
-  if (!Array.isArray(mealPlan)) mealPlan = [];
+  if (!Array.isArray(mealPlan)) {
+    mealPlan = [];
+  }
 
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    const iso = d.toISOString().slice(0, 10);
-
-    if (!mealPlan[i] || typeof mealPlan[i] !== "object") {
-      mealPlan[i] = {
-        dateISO: iso,
-        breakfast: { recipeId: "", servings: 0 },
-        lunch:     { recipeId: "", servings: 0 },
-        dinner:    { recipeId: "", servings: 0 },
-      };
+  // 1) Work out which Monday this week is anchored to
+  if (!mealPlanBaseMonday) {
+    // Try to infer from existing data (first day with a date)
+    const firstWithDate = mealPlan.find((d) => d && d.dateISO);
+    if (firstWithDate && firstWithDate.dateISO) {
+      mealPlanBaseMonday = getMonday(new Date(firstWithDate.dateISO));
     } else {
-      mealPlan[i].dateISO = mealPlan[i].dateISO || iso;
-      MEAL_SLOTS.forEach(({ key }) => {
-        if (!mealPlan[i][key]) {
-          mealPlan[i][key] = { recipeId: "", servings: 0 };
-        }
-      });
+      // Fallback: current week
+      mealPlanBaseMonday = getMonday(new Date());
     }
   }
+
+  const base = new Date(mealPlanBaseMonday);
+  const nextPlan = [];
+
+  for (let i = 0; i < 7; i++) {
+    const thisDate = new Date(base);
+    thisDate.setDate(base.getDate() + i);
+
+    const existing = mealPlan[i] || {};
+
+    nextPlan.push({
+      // keep any existing slots (breakfast / lunch / dinner)
+      ...existing,
+      dateISO: thisDate.toISOString().slice(0, 10),
+    });
+  }
+
+  mealPlan = nextPlan;
 }
 
-// Simple helpers for labels
-function formatDayLabel(dayObj) {
-  const d = new Date(dayObj.dateISO || Date.now());
-  const dayName = DAY_NAMES[d.getDay()];
-  const dayNum  = d.getDate();
-  const month   = MONTH_NAMES[d.getMonth()];
-  return { dayName, dateLabel: `${dayNum} ${month}` };
-}
-
+// "This week · 24–30 Nov"
 function formatWeekRangeLabel() {
-  normaliseMealPlan();
-  const first = new Date(mealPlan[0].dateISO);
-  const last  = new Date(mealPlan[6].dateISO);
-  const f = `${first.getDate()} ${MONTH_NAMES[first.getMonth()]}`;
-  const l = `${last.getDate()} ${MONTH_NAMES[last.getMonth()]}`;
-  return `${f} – ${l}`;
+  if (!mealPlanBaseMonday) {
+    mealPlanBaseMonday = getMonday(new Date());
+  }
+  const start = new Date(mealPlanBaseMonday);
+  const end = new Date(mealPlanBaseMonday);
+  end.setDate(end.getDate() + 6);
+  return `${formatDayMonth(start)}–${formatDayMonth(end)}`;
+}
+
+// Used by renderMealPlan() per-day
+function formatDayLabel(dayObj) {
+  let d;
+  if (dayObj && dayObj.dateISO) {
+    d = new Date(dayObj.dateISO);
+  } else {
+    d = new Date();
+  }
+
+  const dayName = d.toLocaleDateString(undefined, { weekday: "long" });
+  const dateLabel = d.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+
+  return { dayName, dateLabel };
 }
 
 // Convenience for looking recipes up
 function getRecipeById(id) {
   if (!id) return null;
   return recipes.find(r => r.id === id) || null;
+}
+
+// === MEAL PLAN DATE STATE ===
+let mealPlanBaseMonday = null; // "anchor" Monday for the current week
+
+function getMonday(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun, 1=Mon, ... 6=Sat
+  const diff = (day + 6) % 7; // how many days since Monday
+  d.setDate(d.getDate() - diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// Format helpers
+function formatDayMonth(d) {
+  return d.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function openMealplanWeekPicker() {
+  // Kill any existing picker
+  const old = document.getElementById("mealplan-week-overlay");
+  if (old) old.remove();
+
+  // Start from current base Monday or today
+  let workingMonth = mealPlanBaseMonday
+    ? new Date(mealPlanBaseMonday)
+    : new Date();
+  workingMonth.setDate(1); // first of the month
+
+  const overlay = document.createElement("div");
+  overlay.id = "mealplan-week-overlay";
+  overlay.className = "barcode-scanner-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "barcode-scanner-panel add-item-panel week-picker-panel";
+
+  // --- Header: title + close ---
+  const title = document.createElement("h2");
+  title.textContent = "Pick week";
+  panel.appendChild(title);
+
+  // Month nav row
+  const monthRow = document.createElement("div");
+  monthRow.className = "week-picker-month-row";
+
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.className = "secondary week-picker-nav";
+  prevBtn.textContent = "‹";
+
+  const monthLabel = document.createElement("div");
+  monthLabel.className = "week-picker-month-label";
+
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.className = "secondary week-picker-nav";
+  nextBtn.textContent = "›";
+
+  monthRow.appendChild(prevBtn);
+  monthRow.appendChild(monthLabel);
+  monthRow.appendChild(nextBtn);
+  panel.appendChild(monthRow);
+
+  // Weekday headings + grid
+  const grid = document.createElement("div");
+  grid.className = "week-picker-grid";
+  panel.appendChild(grid);
+
+  // Buttons row at bottom
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "inventory-delete-button";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => {
+    overlay.remove();
+  });
+
+  btnRow.appendChild(cancelBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(() => panel.classList.add("visible"));
+
+  // --- Render current month ---
+  function renderMonth() {
+    monthLabel.textContent = workingMonth.toLocaleDateString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+
+    grid.innerHTML = "";
+
+    const weekdayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    weekdayNames.forEach((name) => {
+      const head = document.createElement("div");
+      head.className = "week-picker-header-cell";
+      head.textContent = name;
+      grid.appendChild(head);
+    });
+
+    const year = workingMonth.getFullYear();
+    const month = workingMonth.getMonth();
+    const firstOfMonth = new Date(year, month, 1);
+    const firstDow = firstOfMonth.getDay(); // 0=Sun,1=Mon,..6=Sat
+    const startColumn = (firstDow + 6) % 7; // Mon=0
+
+    // Empty slots before day 1
+    for (let i = 0; i < startColumn; i++) {
+      const empty = document.createElement("div");
+      empty.className = "week-picker-empty-cell";
+      grid.appendChild(empty);
+    }
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.textContent = String(day);
+      cell.className = "week-picker-day";
+
+      const dow = date.getDay(); // 1 = Monday
+
+      if (dow !== 1) {
+        // Not Monday → disabled grey cell
+        cell.disabled = true;
+        cell.classList.add("not-monday");
+      } else {
+        // Monday → selectable
+        cell.classList.add("monday-selectable");
+        cell.addEventListener("click", () => {
+          mealPlanBaseMonday = getMonday(date);
+          normaliseMealPlan();
+          renderMealPlan();
+          saveState && saveState();
+          overlay.remove();
+        });
+      }
+
+      grid.appendChild(cell);
+    }
+  }
+
+  // Month navigation
+  prevBtn.addEventListener("click", () => {
+    workingMonth.setMonth(workingMonth.getMonth() - 1);
+    renderMonth();
+  });
+
+  nextBtn.addEventListener("click", () => {
+    workingMonth.setMonth(workingMonth.getMonth() + 1);
+    renderMonth();
+  });
+
+  // Close if tap outside panel
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  renderMonth();
 }
 
 
@@ -4361,15 +4550,35 @@ function openBarcodeNamePicker(barcode, names) {
   }
 
   // ----- MEAL PLAN & SHOPPING -----
-  const generateShoppingBtn = document.getElementById("generate-shopping-list");
-  if (generateShoppingBtn) {
-    generateShoppingBtn.addEventListener("click", () => {
+
+  // 1) "Pick week" opens the Monday calendar dialog
+  const pickWeekBtn = document.getElementById("mealplan-pick-week");
+  if (pickWeekBtn && typeof openMealplanWeekPicker === "function") {
+    pickWeekBtn.addEventListener("click", () => {
+      openMealplanWeekPicker();
+    });
+  }
+
+  // 2) "Generate list" (green pill in Meal plan header)
+  const generateShoppingFromMealplanBtn =
+    document.getElementById("mealplan-generate-list");
+  if (generateShoppingFromMealplanBtn) {
+    generateShoppingFromMealplanBtn.addEventListener("click", () => {
       generateShoppingList();
       showPage("page-shopping");
     });
   }
 
-  // 🔹 NEW: wire "Clear week" button on meal planner
+  // 3) (Optional) if you STILL have a button with id="generate-shopping-list"
+  //    somewhere on the Shopping page itself, keep this too:
+  const generateShoppingBtn = document.getElementById("generate-shopping-list");
+  if (generateShoppingBtn) {
+    generateShoppingBtn.addEventListener("click", () => {
+      generateShoppingList();
+    });
+  }
+
+  // 4) "Clear week" on meal planner
   const mealplanClearBtn = document.getElementById("mealplan-clear-btn");
   if (mealplanClearBtn && typeof clearMealPlanWeek === "function") {
     mealplanClearBtn.addEventListener("click", clearMealPlanWeek);

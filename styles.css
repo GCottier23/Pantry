@@ -1260,3 +1260,76 @@ button.ios-green-button {
   cursor: pointer;
   transition: 0.18s ease;
 }
+
+/* ===== Week picker dialog ===== */
+
+.week-picker-panel {
+  max-width: 420px;
+}
+
+.week-picker-month-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.5rem 0 0.75rem;
+  gap: 0.5rem;
+}
+
+.week-picker-month-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.week-picker-nav {
+  padding-inline: 0.7rem;
+}
+
+/* Calendar grid */
+.week-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+
+/* Weekday headings */
+.week-picker-header-cell {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding-bottom: 0.2rem;
+}
+
+/* Empty filler cells */
+.week-picker-empty-cell {
+  height: 2rem;
+}
+
+/* Day buttons */
+.week-picker-day {
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* Only Mondays are tappable; others greyed out */
+.week-picker-day.not-monday {
+  opacity: 0.35;
+}
+
+/* Hover / active for Mondays */
+.week-picker-day.monday-selectable {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.week-picker-day.monday-selectable:active {
+  transform: scale(0.95);
+}
