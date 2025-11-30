@@ -4093,12 +4093,28 @@ function openMealplanWeekPicker() {
       btn.type = "button";
       btn.className = "action-pill";
 
-      if (recipe) {
-        // Show recipe name (and servings if present)
-        const servingsTxt = slotState.servings && recipe.servings
-          ? ` · ${slotState.servings} of ${recipe.servings}`
-          : "";
-        btn.textContent = recipe.name + servingsTxt;
+            if (recipe) {
+        // Planned servings = slot choice, or fall back to recipe base
+        const plannedServings =
+          (slotState.servings && slotState.servings > 0)
+            ? slotState.servings
+            : (recipe.servings || null);
+
+        // Build label: "Recipe Name – 4 Servings"
+        if (plannedServings) {
+          const servingWord =
+            plannedServings === 1 ? "Serving" : "Servings";
+
+          btn.innerHTML = `
+            <strong>${recipe.name}</strong>
+            <span class="mealplan-servings">
+              &nbsp;– ${plannedServings} ${servingWord}
+            </span>
+          `;
+        } else {
+          // No servings stored, just show the name
+          btn.innerHTML = `<strong>${recipe.name}</strong>`;
+        }
       } else {
         btn.textContent = "Add recipe";
       }
@@ -4126,6 +4142,9 @@ function openMealSlotPicker(dayIndex, slotKey) {
   const { dayName, dateLabel } = formatDayLabel(dayObj);
   const slotState = dayObj[slotKey] || { recipeId: "", servings: 0 };
   const currentRecipe = getRecipeById(slotState.recipeId);
+    // We'll use these later in the Save button
+  let recipeSelect = null;
+  let servingsInput = null;
 
   // Kill any existing picker
   const old = document.getElementById("mealplan-slot-overlay");
@@ -4150,60 +4169,122 @@ function openMealSlotPicker(dayIndex, slotKey) {
   subtitle.textContent = dateLabel;
   panel.appendChild(subtitle);
 
+  const hasRecipes = Array.isArray(recipes) && recipes.length;
+
   // If there are no recipes yet, show a friendly message
-  if (!Array.isArray(recipes) || !recipes.length) {
+  if (!hasRecipes) {
     const msg = document.createElement("p");
-    msg.textContent = "No recipes saved yet. Add a recipe first, then come back to plan it.";
+    msg.textContent =
+      "No recipes saved yet. Add a recipe first, then come back to plan it.";
     panel.appendChild(msg);
   } else {
-    const list = document.createElement("div");
-    list.style.display = "flex";
-    list.style.flexDirection = "column";
-    list.style.gap = "0.35rem";
-    list.style.marginTop = "0.5rem";
+    // ----- Recipe dropdown -----
+    const recipeRow = document.createElement("div");
+    recipeRow.className = "barcode-input-row";
 
-    recipes.forEach(r => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "inventory-edit-btn"; // blue pill
-      btn.style.justifyContent = "space-between";
+    const recipeLabel = document.createElement("label");
+    recipeLabel.textContent = "Recipe";
+    recipeLabel.style.display = "block";
 
-      const nameSpan = document.createElement("span");
-      nameSpan.textContent = r.name;
-      btn.appendChild(nameSpan);
+    recipeSelect = document.createElement("select");
 
-      const metaSpan = document.createElement("span");
-      metaSpan.style.fontSize = "0.75rem";
-      metaSpan.style.opacity = "0.85";
-      metaSpan.textContent = r.servings ? `Serves ${r.servings}` : "";
-      btn.appendChild(metaSpan);
+    const optNone = document.createElement("option");
+    optNone.value = "";
+    optNone.textContent = "Select a recipe…";
+    recipeSelect.appendChild(optNone);
 
-      btn.addEventListener("click", () => {
-        // When a recipe is picked, store it in this slot
-        const servings = r.servings && r.servings > 0 ? r.servings : 2;
-
-        dayObj[slotKey] = {
-          recipeId: r.id,
-          servings: servings
-        };
-
-        saveState();
-        renderMealPlan();
-
-        overlay.remove();
-      });
-
-      list.appendChild(btn);
+    recipes.forEach((r) => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.name;
+      if (currentRecipe && r.id === currentRecipe.id) {
+        opt.selected = true;
+      }
+      recipeSelect.appendChild(opt);
     });
 
-    panel.appendChild(list);
+    recipeLabel.appendChild(recipeSelect);
+    recipeRow.appendChild(recipeLabel);
+    panel.appendChild(recipeRow);
+
+    // ----- Servings input -----
+    const servingsRow = document.createElement("div");
+    servingsRow.className = "barcode-input-row";
+
+    const servingsLabel = document.createElement("label");
+    servingsLabel.textContent = "Servings";
+    servingsLabel.style.display = "block";
+
+    servingsInput = document.createElement("input");
+    servingsInput.type = "number";
+    servingsInput.min = "1";
+    servingsInput.step = "1";
+
+    const defaultServings =
+      (slotState.servings && slotState.servings > 0)
+        ? slotState.servings
+        : (currentRecipe && currentRecipe.servings && currentRecipe.servings > 0
+            ? currentRecipe.servings
+            : 2);
+
+    servingsInput.value = String(defaultServings);
+
+    servingsLabel.appendChild(servingsInput);
+    servingsRow.appendChild(servingsLabel);
+    panel.appendChild(servingsRow);
+
+    // When recipe changes, update servings to that recipe's default
+    recipeSelect.addEventListener("change", () => {
+      const chosenId = recipeSelect.value;
+      const chosen = getRecipeById(chosenId);
+      if (chosen && chosen.servings && chosen.servings > 0) {
+        servingsInput.value = String(chosen.servings);
+      }
+    });
   }
 
-  // Buttons row
+   // Buttons row
   const btnRow = document.createElement("div");
   btnRow.className = "barcode-scanner-actions";
 
-  // Clear this slot
+  // ----- Save (only if we actually have recipes) -----
+  if (recipeSelect && servingsInput) {
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "ios-green-button";
+    saveBtn.textContent = "Save";
+
+    saveBtn.addEventListener("click", () => {
+      const recipeId = recipeSelect.value;
+      if (!recipeId) {
+        alert("Please choose a recipe, or Clear the slot.");
+        return;
+      }
+
+      const recipe = getRecipeById(recipeId);
+      let servingsNum = parseFloat(servingsInput.value || "0");
+
+      if (!servingsNum || servingsNum <= 0 || Number.isNaN(servingsNum)) {
+        servingsNum =
+          recipe && recipe.servings && recipe.servings > 0
+            ? recipe.servings
+            : 2;
+      }
+
+      dayObj[slotKey] = {
+        recipeId,
+        servings: servingsNum
+      };
+
+      saveState();
+      renderMealPlan();
+      overlay.remove();
+    });
+
+    btnRow.appendChild(saveBtn);
+  }
+
+  // ----- Clear this slot -----
   const clearBtn = document.createElement("button");
   clearBtn.type = "button";
   clearBtn.className = "inventory-delete-button";
@@ -4215,6 +4296,7 @@ function openMealSlotPicker(dayIndex, slotKey) {
     overlay.remove();
   });
 
+  // ----- Cancel -----
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
   cancelBtn.className = "secondary";
@@ -4295,48 +4377,71 @@ function roundUpForShopping(quantity, unit) {
   // Fallback: round up to 1 decimal place
   return Math.ceil(quantity * 10) / 10;
 }
-    function generateShoppingList() {
+function generateShoppingList() {
+  // Make sure the week structure is sane
+  if (typeof normaliseMealPlan === "function") {
+    normaliseMealPlan();
+  }
+
   const required = {};
 
-  // Work out how much is needed for all planned meals
-  mealPlan.forEach((entry) => {
-    if (!entry.recipeId) return;
-    const plannedServings = parseFloat(entry.servings || "0");
-    if (plannedServings <= 0) return;
+  // 🔹 Go through each day AND each meal slot
+  mealPlan.forEach((dayEntry) => {
+    if (!dayEntry) return;
 
-    const recipe = recipes.find((r) => r.id === entry.recipeId);
-    if (!recipe) return;
+    MEAL_SLOTS.forEach(({ key }) => {
+      const slot = dayEntry[key];
+      if (!slot || !slot.recipeId) return;
 
-    const scale = plannedServings / recipe.servings;
+      const plannedServings = parseFloat(slot.servings || "0");
+      if (!plannedServings || plannedServings <= 0) return;
 
-          recipe.ingredients.forEach((ing) => {
-      // Skip cupboard staples (salt, pepper, oil, nutmeg, etc.)
-      if (isStapleIngredient(ing.name)) {
-        return;
-      }
+      const recipe = recipes.find((r) => r.id === slot.recipeId);
+      if (!recipe || !recipe.servings || recipe.servings <= 0) return;
 
-      // Skip ingredients that don't have a usable quantity
-      if (!ing.quantity || ing.quantity <= 0) {
-        return;
-      }
+      const scale = plannedServings / recipe.servings;
 
-      const key = ing.name.toLowerCase();
-      const ingUnit = ing.unit || "";
-      const baseUnit = required[key]
-        ? required[key].baseUnit
-        : chooseBaseUnit(ingUnit); // g/kg -> g, ml/l -> ml, else itself
+      (recipe.ingredients || []).forEach((ing) => {
+        if (! ing || !ing.name) return;
 
-      if (!required[key]) {
-        required[key] = {
-          name: ing.name,
-          quantityBase: 0,
-          baseUnit,
-        };
-      }
+        // Skip cupboard staples (salt, pepper, oil, nutmeg, etc.)
+        if (typeof isStapleIngredient === "function" &&
+            isStapleIngredient(ing.name)) {
+          return;
+        }
 
-      const qtyScaled = ing.quantity * scale;
-      const qtyInBase = convertToUnit(qtyScaled, ingUnit, required[key].baseUnit);
-      required[key].quantityBase += qtyInBase;
+        // Skip ingredients that don't have a usable quantity
+        if (!ing.quantity || ing.quantity <= 0) {
+          return;
+        }
+
+        const keyName = ing.name.toLowerCase();
+        const ingUnit = ing.unit || "";
+
+        // Decide the "base unit" we want to aggregate in
+        const baseUnit = required[keyName]
+          ? required[keyName].baseUnit
+          : (typeof chooseBaseUnit === "function"
+              ? chooseBaseUnit(ingUnit)
+              : ingUnit);
+
+        if (!required[keyName]) {
+          required[keyName] = {
+            name: ing.name,
+            quantityBase: 0,
+            baseUnit,
+          };
+        }
+
+        const qtyScaled = ing.quantity * scale;
+
+        const qtyInBase =
+          typeof convertToUnit === "function"
+            ? convertToUnit(qtyScaled, ingUnit, required[keyName].baseUnit)
+            : qtyScaled;
+
+        required[keyName].quantityBase += qtyInBase;
+      });
     });
   });
 
@@ -4352,16 +4457,23 @@ function roundUpForShopping(quantity, unit) {
     return (Math.round(n * 100) / 100).toString();
   }
 
-  Object.keys(required).forEach((key) => {
-    const need = required[key];
+  Object.keys(required).forEach((keyName) => {
+    const need = required[keyName];
     const baseUnit = need.baseUnit;
     let requiredBase = need.quantityBase;
 
     // Work out what we already have in inventory (in the same base unit)
     let invQtyBase = 0;
-    const invItem = inventory.find((i) => i.name.toLowerCase() === key);
-    if (invItem && baseUnit) {
-      invQtyBase = convertToUnit(invItem.quantity, invItem.unit || "", baseUnit);
+    const invItem = inventory.find(
+      (i) => i.name.toLowerCase() === keyName
+    );
+
+    if (invItem && baseUnit && typeof convertToUnit === "function") {
+      invQtyBase = convertToUnit(
+        invItem.quantity,
+        invItem.unit || "",
+        baseUnit
+      );
     } else if (invItem && !baseUnit) {
       invQtyBase = invItem.quantity;
     }
@@ -4373,9 +4485,7 @@ function roundUpForShopping(quantity, unit) {
     let displayQty = toBuyBase;
     let displayUnit = baseUnit;
 
-    // Rule we want:
-    //  - if < 1000g/ml -> stay in g/ml
-    //  - if >= 1000g/ml -> convert to kg/L
+    // g/ml ↔ kg/L logic
     if (baseUnit === "g") {
       if (displayQty >= 1000) {
         displayQty = displayQty / 1000;
@@ -4391,8 +4501,11 @@ function roundUpForShopping(quantity, unit) {
         displayUnit = "ml";
       }
     }
-        // Round up to sensible shopping amounts
-    displayQty = roundUpForShopping(displayQty, displayUnit);
+
+    // Round up to sensible shopping amounts
+    if (typeof roundUpForShopping === "function") {
+      displayQty = roundUpForShopping(displayQty, displayUnit);
+    }
 
     // Build a nice string like "500g" or "1.5kg" or "2 packs"
     let qtyStr;
@@ -4405,6 +4518,28 @@ function roundUpForShopping(quantity, unit) {
         qtyStr = nStr + displayUnit;
       } else {
         qtyStr = nStr + " " + displayUnit.toLowerCase();
+      }
+    }
+
+    // Fix tiny kg/L back to g/ml for display
+    let fixedQtyStr = qtyStr;
+    const match = qtyStr.match(/^(\d+(?:\.\d+)?)\s*(kg|KG|l|L)$/);
+
+    if (match) {
+      let value = parseFloat(match[1]);
+      const unit = match[2].toLowerCase();
+
+      const tidy = (n) =>
+        Number.isInteger(n)
+          ? String(n)
+          : (Math.round(n * 100) / 100).toString();
+
+      if (unit === "kg" && value < 1) {
+        const grams = value * 1000;
+        fixedQtyStr = tidy(grams) + "g";
+      } else if (unit === "l" && value < 1) {
+        const ml = value * 1000;
+        fixedQtyStr = tidy(ml) + "ml";
       }
     }
 
@@ -4424,30 +4559,7 @@ function roundUpForShopping(quantity, unit) {
     tdName.textContent = need.name;
 
     const tdBuy = document.createElement("td");
-    // Convert tiny kg / L amounts back to g / ml for display
-let fixedQtyStr = qtyStr;
-const match = qtyStr.match(/^(\d+(?:\.\d+)?)\s*(kg|KG|l|L)$/); // e.g. "0.5kg", "0.75L"
-
-if (match) {
-  let value = parseFloat(match[1]);
-  const unit = match[2].toLowerCase();
-
-  // helper to make the number look neat
-  const tidy = (n) =>
-    Number.isInteger(n) ? String(n) : (Math.round(n * 100) / 100).toString();
-
-  if (unit === "kg" && value < 1) {
-    // e.g. 0.5kg -> 500g
-    const grams = value * 1000;
-    fixedQtyStr = tidy(grams) + "g";
-  } else if (unit === "l" && value < 1) {
-    // e.g. 0.75L -> 750ml
-    const ml = value * 1000;
-    fixedQtyStr = tidy(ml) + "ml";
-  }
-}
-
-tdBuy.textContent = fixedQtyStr;
+    tdBuy.textContent = fixedQtyStr;
 
     tr.appendChild(tdCheck);
     tr.appendChild(tdName);
@@ -4468,7 +4580,9 @@ tdBuy.textContent = fixedQtyStr;
       const unit = tr.dataset.buyUnit || "";
       if (!name || !qty || qty <= 0) return;
 
-      upsertInventoryItem(name, qty, unit);
+      if (typeof upsertInventoryItem === "function") {
+        upsertInventoryItem(name, qty, unit);
+      }
       tr.dataset.applied = "true";
 
       renderInventory();

@@ -1302,6 +1302,16 @@ button.secondary:active {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
 
+.mealplan-meal-row .action-pill {
+  display: inline-flex;
+  align-items: center;
+}
+
+.mealplan-servings {
+  font-weight: 400;
+  opacity: 0.85;
+}
+
 /* ===============================
    Meal plan slots (new stacked layout)
    =============================== */
