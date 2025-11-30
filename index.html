@@ -383,6 +383,40 @@ function splitIngredientsByStaples(ingredients) {
       return t;
     }
 
+    // Collapse multiple staple entries with the same name into a single row
+function dedupeStaplesByName(staples) {
+  const byName = new Map();
+
+  (staples || []).forEach((obj) => {
+    if (!obj || !obj.ing || !obj.ing.name) return;
+
+    const key = obj.ing.name.toLowerCase().trim();
+    if (!key) return;
+
+    const existing = byName.get(key);
+    if (!existing) {
+      // First time we see this ingredient name → keep this one
+      byName.set(key, obj);
+      return;
+    }
+
+    // If we already have one, decide which to keep.
+    // Simple rule: prefer the one that actually has a numeric quantity.
+    const hasQty = (x) =>
+      x.ing.quantity !== null &&
+      x.ing.quantity !== undefined &&
+      !Number.isNaN(x.ing.quantity) &&
+      x.ing.quantity > 0;
+
+    if (!hasQty(existing) && hasQty(obj)) {
+      byName.set(key, obj);
+    }
+    // otherwise keep the existing one
+  });
+
+  return Array.from(byName.values());
+}
+
     function shouldHideQuantityForDisplay(ing) {
   if (!ing || !ing.name) return false;
   const nameLower = ing.name.toLowerCase();
@@ -530,7 +564,9 @@ function parseBbcIngredient(rawLine, ingredientNames) {
           "stick", "sticks",
           "tin", "tins",
           "packet", "packets",
-          "pack", "packs"
+          "pack", "packs",
+          "bottle", "bottles",
+          "sprig", "sprigs"
         ];
 
         if (after) {
@@ -1211,7 +1247,7 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
   unitLabel.style.display = "block";
 
   const unitSelect = document.createElement("select");
-  const units = ["", "g", "kg", "ml", "l", "pack", "packs", "pcs"];
+  const units = ["", "g", "kg", "ml", "l", "pack", "packs", "bottle", "bottles"];
 
   units.forEach((u) => {
     const opt = document.createElement("option");
@@ -1367,6 +1403,70 @@ function animateCloseAddItemDialog(durationMs = 480) {
 // =======================================
 // Import recipe from URL → show preview
 // =======================================
+
+function normaliseFractions(str) {
+  if (!str) return str;
+  return str
+    .replace(/¼/g, "1/4")
+    .replace(/½/g, "1/2")
+    .replace(/¾/g, "3/4")
+    .replace(/⅐/g, "1/7")
+    .replace(/⅑/g, "1/9")
+    .replace(/⅒/g, "1/10")
+    .replace(/⅓/g, "1/3")
+    .replace(/⅔/g, "2/3")
+    .replace(/⅕/g, "1/5")
+    .replace(/⅖/g, "2/5")
+    .replace(/⅗/g, "3/5")
+    .replace(/⅘/g, "4/5")
+    .replace(/⅙/g, "1/6")
+    .replace(/⅚/g, "5/6")
+    .replace(/⅛/g, "1/8")
+    .replace(/⅜/g, "3/8")
+    .replace(/⅝/g, "5/8")
+    .replace(/⅞/g, "7/8");
+}
+
+function fractionToUnicode(num) {
+  if (num == null || Number.isNaN(num)) return null;
+
+  const whole = Math.floor(num);
+  const frac = num - whole;
+
+  // Map exact or close fractional values to unicode
+  const map = [
+    { value: 1/8,  char: "⅛" },
+    { value: 1/6,  char: "⅙" },
+    { value: 1/5,  char: "⅕" },
+    { value: 1/4,  char: "¼" },
+    { value: 1/3,  char: "⅓" },
+    { value: 3/8,  char: "⅜" },
+    { value: 1/2,  char: "½" },
+    { value: 2/3,  char: "⅔" },
+    { value: 3/4,  char: "¾" },
+    { value: 4/5,  char: "⅘" },
+    { value: 5/6,  char: "⅚" },
+    { value: 5/8,  char: "⅝" },
+    { value: 7/8,  char: "⅞" }
+  ];
+
+  // Find closest matching fraction within tiny tolerance
+  const match = map.find(f => Math.abs(frac - f.value) < 0.01);
+
+  if (!match) {
+    // No special fraction → return clean number
+    return num.toString();
+  }
+
+  // If there's a whole number part
+  if (whole > 0) {
+    return whole + match.char;
+  }
+
+  // Pure fraction
+  return match.char;
+}
+
 async function importRecipeFromUrl(url) {
   const rawUrl = (url || "").trim();
   if (!rawUrl) return;
@@ -2719,8 +2819,11 @@ function openRecipeDetail(recipeId) {
   ingTitle.textContent = "Ingredients";
   panel.appendChild(ingTitle);
 
-  // Use the indexed split so we know which ingredient to edit/delete
-  const { staples, regular } = splitIngredientsByStaples(ingForDisplay);
+// Use the indexed split so we know which ingredient to edit/delete,
+// then collapse duplicate staples (e.g. Butter in g + Butter in tbsp).
+const split = splitIngredientsByStaples(ingForDisplay);
+const regular = split.regular;
+const staples = dedupeStaplesByName(split.staples);
 
   function addIngredientLi(ul, obj, isStapleList) {
     const { ing, index } = obj;
@@ -2731,10 +2834,9 @@ function openRecipeDetail(recipeId) {
     nameSpan.textContent = ing.name || "";
     li.appendChild(nameSpan);
 
-      let q = ing.quantity;
+    let q = ing.quantity;
     let u = ing.unit || "";
 
-    // NEW: decide if we should hide the quantity completely
     const hideQty = typeof shouldHideQuantityForDisplay === "function"
       ? shouldHideQuantityForDisplay(ing)
       : false;
@@ -2748,13 +2850,18 @@ function openRecipeDetail(recipeId) {
       const unitLower = (u || "").toLowerCase();
       const qtySpan = document.createElement("span");
 
+      // 👇 turn 0.25 into "1/4", 0.5 → "1/2", etc.
+      const niceQty = typeof formatQuantityForDisplay === "function"
+        ? formatQuantityForDisplay(q)
+        : q;
+
       let label = ": ";
       if (compactUnits.includes(unitLower)) {
-        label += `${q}${unitLower}`;
+        label += `${niceQty}${unitLower}`;
       } else if (unitLower) {
-        label += `${q} ${unitLower}`;
+        label += `${niceQty} ${unitLower}`;
       } else {
-        label += `${q}`;
+        label += `${niceQty}`;
       }
 
       qtySpan.textContent = label;
@@ -3128,6 +3235,53 @@ function openCookDialog(dayId) {
   }
 }
 
+function formatQuantityForDisplay(q) {
+  if (q == null || Number.isNaN(q)) return "";
+
+  // Split into whole + fractional part
+  const whole = Math.floor(q);
+  const frac  = q - whole;
+
+  // Map of common cooking fractions → Unicode chars
+  const FRACTIONS = [
+    { value: 1/8, char: "⅛" },
+    { value: 1/6, char: "⅙" },
+    { value: 1/5, char: "⅕" },
+    { value: 1/4, char: "¼" },
+    { value: 1/3, char: "⅓" },
+    { value: 3/8, char: "⅜" },
+    { value: 1/2, char: "½" },
+    { value: 2/3, char: "⅔" },
+    { value: 3/4, char: "¾" },
+    { value: 4/5, char: "⅘" },
+    { value: 5/6, char: "⅚" },
+    { value: 5/8, char: "⅝" },
+    { value: 7/8, char: "⅞" },
+  ];
+
+  // Try to match the fractional part to one of the nice fractions
+  const match = FRACTIONS.find(f => Math.abs(frac - f.value) < 0.01);
+
+  // If no nice fraction (e.g. 1.2), just show a rounded decimal
+  if (!match) {
+    // integers as "1", decimals as "1.2"
+    return Number.isInteger(q)
+      ? String(q)
+      : (Math.round(q * 10) / 10).toString();
+  }
+
+  // We *do* have a pretty fraction
+  const fracChar = match.char;
+
+  if (whole > 0) {
+    // e.g. 1 + 1/2 → "1½"
+    return `${whole}${fracChar}`;
+  }
+
+  // pure fraction, e.g. 0.25 → "¼"
+  return fracChar;
+}
+
 function openRecipeImportPreviewDialog(parsed) {
   // parsed is the object returned by importRecipeFromUrl
 
@@ -3236,16 +3390,54 @@ function openRecipeImportPreviewDialog(parsed) {
               : []
           );
 
-    const newIngredients = [];
+        const newIngredients = [];
 
     lines.forEach((line) => {
-      const trimmed = (line || "").trim();
+      // 1) normalise any Unicode fractions like ¼ → 1/4
+      let trimmed = normaliseFractions((line || "").trim());
       if (!trimmed) return;
 
-      // 👉 Did the ORIGINAL text contain any digits?
-      //    If not, we treat "quantity = 1" as a guess and will strip it.
-      const hadExplicitNumber = /\d/.test(trimmed);
+      // 2) SPECIAL CASE: leading fractions like "1/4 onion" or "1 1/4 onion"
+      let forcedQty = null;
+      let forcedName = null;
 
+      // mixed fraction "1 1/4 onion"
+      let m = trimmed.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)\s+(.+)$/);
+      if (m) {
+        const whole = parseFloat(m[1]);
+        const num   = parseFloat(m[2]);
+        const den   = parseFloat(m[3]);
+        if (den && !Number.isNaN(whole) && !Number.isNaN(num) && !Number.isNaN(den)) {
+          forcedQty = whole + num / den;      // e.g. 1.25
+          forcedName = m[4].trim();           // "onion"
+        }
+      } else {
+        // simple fraction "1/4 onion"
+        m = trimmed.match(/^(\d+)\s*\/\s*(\d+)\s+(.+)$/);
+        if (m) {
+          const num = parseFloat(m[1]);
+          const den = parseFloat(m[2]);
+          if (den && !Number.isNaN(num) && !Number.isNaN(den)) {
+            forcedQty = num / den;            // e.g. 0.25
+            forcedName = m[3].trim();         // "onion"
+          }
+        }
+      }
+
+      if (forcedQty !== null) {
+        // We fully control this: no guessing, no parser weirdness
+        newIngredients.push({
+          name: (typeof titleCase === "function")
+            ? titleCase(forcedName)
+            : forcedName,
+          quantity: forcedQty,
+          unit: "",
+        });
+        return; // done with this line
+      }
+
+      // 3) NORMAL PATH for everything else -----------------------
+      const hadExplicitNumber = /\d/.test(trimmed);
       let parsedIng = null;
 
       // Prefer BBC-specific parser if available
@@ -3272,14 +3464,14 @@ function openRecipeImportPreviewDialog(parsed) {
 
       if (!parsedIng.name) return;
 
-      // 🔹 If parser guessed quantity = 1 but the original line had NO digits,
-      //    treat it as "no explicit quantity" (so it can become a staple).
+      // If the parser "guessed" 1 but there was no number in the text,
+      // treat it as "no explicit quantity" (so it can be a staple).
       if (!hadExplicitNumber && parsedIng.quantity === 1) {
         parsedIng.quantity = null;
         parsedIng.unit = "";
       }
 
-      // If quantity is present, it must be a positive number
+      // Only keep positive numeric quantities
       if (
         parsedIng.quantity !== null &&
         parsedIng.quantity !== undefined
