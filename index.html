@@ -383,6 +383,35 @@ function splitIngredientsByStaples(ingredients) {
       return t;
     }
 
+    function shouldHideQuantityForDisplay(ing) {
+  if (!ing || !ing.name) return false;
+  const nameLower = ing.name.toLowerCase();
+
+  // Always hide numeric quantity for these ingredients
+  const ALWAYS_HIDE_QTY = [
+    "burger bun",
+    "burger buns",
+    "buns"
+  ];
+
+  if (ALWAYS_HIDE_QTY.some((phrase) => nameLower.includes(phrase))) {
+    return true;
+  }
+
+  // Also hide a bare "1" with no unit for staple-ish things
+  // (salt, pepper, generic seasoning, etc)
+  if (
+    (!ing.unit || ing.unit === "") &&
+    ing.quantity === 1 &&
+    typeof isStapleIngredient === "function" &&
+    isStapleIngredient(ing.name)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
     function parseServingsNumber(servingsText) {
       if (!servingsText) return null;
       // Look for the first number: "Serves 8-10" -> 8
@@ -2322,268 +2351,6 @@ function makeSearchResultCard(item) {
   return row;
 }
 
-function openRecipeImportPreviewDialog(parsed) {
-  // Remove any old overlay
-  const old = document.getElementById("recipe-import-preview-overlay");
-  if (old) old.remove();
-
-  const overlay = document.createElement("div");
-  overlay.id = "recipe-import-preview-overlay";
-  overlay.className = "barcode-scanner-overlay"; // reuse dark scrim
-
-  const panel = document.createElement("div");
-  panel.className = "barcode-scanner-panel add-item-panel";
-
-  // --- Title ---
-  const titleEl = document.createElement("h2");
-  titleEl.textContent = parsed.title || "Imported recipe";
-  panel.appendChild(titleEl);
-
-  // --- Image preview (if present) ---
-  if (parsed.imageUrl) {
-    const imgWrap = document.createElement("div");
-    imgWrap.className = "recipe-image-preview-wrapper";
-
-    const img = document.createElement("img");
-    img.src = parsed.imageUrl;
-    img.alt = parsed.title || "Recipe image";
-    img.className = "recipe-image-preview";
-
-    imgWrap.appendChild(img);
-    panel.appendChild(imgWrap);
-  }
-
-  // --- Servings text (if any) ---
-  if (parsed.servingsText || parsed.servingsNumber) {
-    const meta = document.createElement("p");
-    meta.className = "recipe-card-meta";
-    if (parsed.servingsNumber) {
-      meta.textContent = `Serves ${parsed.servingsNumber} (${parsed.servingsText || ""})`;
-    } else {
-      meta.textContent = parsed.servingsText;
-    }
-    panel.appendChild(meta);
-  }
-
-  // --- Ingredients preview ---
-  const ingTitle = document.createElement("h3");
-  ingTitle.textContent = "Ingredients detected";
-  panel.appendChild(ingTitle);
-
-  const ingList = document.createElement("ul");
-  ingList.className = "recipe-detail-ingredients";
-
-  (parsed.ingredients || []).forEach((line) => {
-    const li = document.createElement("li");
-    li.textContent = line;
-    ingList.appendChild(li);
-  });
-
-  panel.appendChild(ingList);
-
-  // --- Buttons row ---
-  const btnRow = document.createElement("div");
-  btnRow.className = "barcode-scanner-actions";
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.className = "inventory-delete-button";
-  cancelBtn.textContent = "Cancel";
-  cancelBtn.addEventListener("click", () => {
-    const ov = document.getElementById("recipe-import-preview-overlay");
-    if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
-  });
-
-  const importBtn = document.createElement("button");
-  importBtn.type = "button";
-  importBtn.className = "ios-green-button";
-  importBtn.textContent = "Import recipe";
-
-  importBtn.addEventListener("click", () => {
-    // 1) Build a clean recipe name
-    const rawName = parsed.title || "Imported recipe";
-    const name =
-      typeof titleCase === "function" ? titleCase(rawName) : rawName;
-
-    // 2) Work out servings
-    const servings =
-      parsed.servingsNumber && parsed.servingsNumber > 0
-        ? parsed.servingsNumber
-        : 2; // default
-
-    // 3) Parse ingredients using your BBC-aware logic where possible
-    const lines = Array.isArray(parsed.ingredients)
-      ? parsed.ingredients
-      : [];
-
-    const ingredientNames = Array.isArray(parsed.ingredientNames)
-      ? parsed.ingredientNames
-      : [];
-
-    const newIngredients = [];
-
-    lines.forEach((line) => {
-  const trimmed = (line || "").trim();
-  if (!trimmed) return;
-
-  // 👉 Does the original text contain any digits at all?
-  //    (If not, we’ll treat it as a “no explicit quantity” line.)
-  const hadExplicitNumber = /\d/.test(trimmed);
-
-  let parsedIng = null;
-
-  // If we have BBC ingredient names & parseBbcIngredient – use that
-  if (
-    ingredientNames.length &&
-    typeof parseBbcIngredient === "function"
-  ) {
-    parsedIng = parseBbcIngredient(trimmed, ingredientNames);
-  }
-
-  // Fallback: generic parser
-  if (!parsedIng && typeof parseIngredientLine === "function") {
-    parsedIng = parseIngredientLine(trimmed);
-  }
-
-  // Last resort: just store the line as a name
-  if (!parsedIng) {
-    parsedIng = {
-      name: trimmed,
-      quantity: null,
-      unit: "",
-    };
-  }
-
-  if (!parsedIng.name) return;
-
-  // 🔹 If the parser “guessed” quantity = 1 but there was
-  //    NO number in the original text, treat it as “no quantity”.
-  if (!hadExplicitNumber && parsedIng.quantity === 1) {
-    parsedIng.quantity = null;
-    parsedIng.unit = "";
-  }
-
-  // If quantity is present, it must be a positive number
-  if (
-    parsedIng.quantity !== null &&
-    parsedIng.quantity !== undefined
-  ) {
-    if (Number.isNaN(parsedIng.quantity) || parsedIng.quantity <= 0) {
-      return;
-    }
-  }
-
-  newIngredients.push(parsedIng);
-});
-
-    if (!newIngredients.length) {
-      const ok = confirm(
-        "No valid ingredients were parsed. Save this recipe anyway?"
-      );
-      if (!ok) return;
-    }
-
-    // 4) Build final recipe object
-    const newRecipe = {
-      id: String(Date.now()),
-      name,
-      servings,
-      ingredients: newIngredients,
-      instructions: Array.isArray(parsed.instructions)
-        ? parsed.instructions.slice()
-        : [],
-      imageUrl: parsed.imageUrl || "",
-      sourceUrl: parsed.sourceUrl || "",
-    };
-
-    // 5) Save
-    recipes.push(newRecipe);
-    saveState();
-    renderRecipesList();
-
-    // Close preview
-    const ov = document.getElementById("recipe-import-preview-overlay");
-    if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
-
-    // Optionally jump to Recipes tab
-    if (typeof showPage === "function") {
-      showPage("page-recipes");
-    }
-  });
-
-  btnRow.appendChild(cancelBtn);
-  btnRow.appendChild(importBtn);
-  panel.appendChild(btnRow);
-
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-
-  // Animate in
-  requestAnimationFrame(() => {
-    panel.classList.add("visible");
-  });
-}
-
-function renderCurrentRecipeIngredients() {
-  const ul = document.getElementById("current-recipe-ingredients");
-  if (!ul) return;
-  ul.innerHTML = "";
-
-  if (!currentRecipe || !Array.isArray(currentRecipe.ingredients)) return;
-
-  currentRecipe.ingredients.forEach((ing, index) => {
-    const li = document.createElement("li");
-
-    const textSpan = document.createElement("span");
-    let label = ing.name || "";
-
-    let q = ing.quantity;
-    let u = ing.unit || "";
-
-    // auto-compact to kg/l where appropriate
-    if (q && q > 0) {
-      ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
-
-      const compactUnits = ["g", "kg", "ml", "l"];
-      const unitLower = (u || "").toLowerCase();
-
-      if (compactUnits.includes(unitLower)) {
-        label += `: ${q}${unitLower}`;
-      } else if (unitLower) {
-        label += `: ${q} ${unitLower}`;
-      } else {
-        label += `: ${q}`;
-      }
-    }
-
-    textSpan.textContent = label;
-    li.appendChild(textSpan);
-
-    const actions = document.createElement("div");
-    actions.className = "table-actions";
-
-    const editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.className = "secondary";
-    editBtn.textContent = "Edit";
-    editBtn.addEventListener("click", () => startIngredientEdit(index));
-
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "secondary";
-    delBtn.textContent = "Delete";
-    delBtn.addEventListener("click", () => {
-      currentRecipe.ingredients.splice(index, 1);
-      renderCurrentRecipeIngredients();
-    });
-
-    actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
-    li.appendChild(actions);
-    ul.appendChild(li);
-  });
-}
-
     function startIngredientEdit(index) {
       if (!currentRecipe || !currentRecipe.ingredients[index]) return;
       const ing = currentRecipe.ingredients[index];
@@ -2851,6 +2618,39 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   document.body.appendChild(overlay);
 }
 
+function shouldHideQuantityForDisplay(ing) {
+  if (!ing || !ing.name) return false;
+  const nameLower = ing.name.toLowerCase().trim();
+
+  // 🔹 Ingredients where we never want to show a numeric "1"
+  const ALWAYS_HIDE_QTY = [
+    "burger bun",
+    "burger buns",
+    "buns",
+    "burger seasoning",
+    "seasoning",
+    "black pepper",
+    "pepper"
+  ];
+
+  if (ALWAYS_HIDE_QTY.some((phrase) => nameLower.includes(phrase))) {
+    return true;
+  }
+
+  // 🔹 If the parser guessed quantity = 1, with no unit,
+  //    and it's classed as a staple, hide the "1" too.
+  if (
+    (!ing.unit || ing.unit === "") &&
+    ing.quantity === 1 &&
+    typeof isStapleIngredient === "function" &&
+    isStapleIngredient(ing.name)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function openRecipeDetail(recipeId) {
   const recipe = recipes.find((r) => r.id === recipeId);
   if (!recipe) return;
@@ -2931,9 +2731,15 @@ function openRecipeDetail(recipeId) {
     nameSpan.textContent = ing.name || "";
     li.appendChild(nameSpan);
 
-    let q = ing.quantity;
+      let q = ing.quantity;
     let u = ing.unit || "";
-    const hasNumericQty = q && q > 0;
+
+    // NEW: decide if we should hide the quantity completely
+    const hideQty = typeof shouldHideQuantityForDisplay === "function"
+      ? shouldHideQuantityForDisplay(ing)
+      : false;
+
+    const hasNumericQty = q && q > 0 && !hideQty;
 
     if (hasNumericQty) {
       ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
@@ -2961,6 +2767,8 @@ function openRecipeDetail(recipeId) {
       li.appendChild(sep);
       li.appendChild(em);
     }
+    // If hideQty is true and it's NOT a staple list,
+    // we just show the name with no ": 1"
 
     // Attach long-press menu (Staple / Edit / Delete)
     attachIngredientLongPress(li, recipeIdActual, index, ing.name);
@@ -3320,8 +3128,6 @@ function openCookDialog(dayId) {
   }
 }
 
-
-
 function openRecipeImportPreviewDialog(parsed) {
   // parsed is the object returned by importRecipeFromUrl
 
@@ -3360,14 +3166,15 @@ function openRecipeImportPreviewDialog(parsed) {
     const meta = document.createElement("p");
     meta.className = "recipe-card-meta";
     if (parsed.servingsNumber) {
-      meta.textContent = `Serves ${parsed.servingsNumber} (${parsed.servingsText || ""})`;
+      meta.textContent =
+        `Serves ${parsed.servingsNumber} (${parsed.servingsText || ""})`;
     } else {
       meta.textContent = parsed.servingsText;
     }
     panel.appendChild(meta);
   }
 
-  // --- Ingredients preview ---
+  // --- Ingredients preview (raw text, just for review) ---
   const ingTitle = document.createElement("h3");
   ingTitle.textContent = "Ingredients detected";
   panel.appendChild(ingTitle);
@@ -3402,22 +3209,23 @@ function openRecipeImportPreviewDialog(parsed) {
   importBtn.textContent = "Import recipe";
 
   importBtn.addEventListener("click", () => {
-    // Pull bits out of parsed
-    const rawName  = parsed.title || "Imported recipe";
+    // --- 1) Clean recipe name ---
+    const rawName = parsed.title || "Imported recipe";
     const name = (typeof titleCase === "function")
       ? titleCase(rawName)
       : rawName;
 
+    // --- 2) Servings ---
     const servings =
       parsed.servingsNumber && parsed.servingsNumber > 0
         ? parsed.servingsNumber
         : 2; // safe default
 
+    // --- 3) Lines + BBC ingredient names ---
     const lines = Array.isArray(parsed.ingredients)
       ? parsed.ingredients
       : [];
 
-    // BBC-aware ingredient parsing (same logic as your old import button)
     const ingredientNames =
       (parsed.ingredientNames && parsed.ingredientNames.length)
         ? parsed.ingredientNames
@@ -3434,21 +3242,26 @@ function openRecipeImportPreviewDialog(parsed) {
       const trimmed = (line || "").trim();
       if (!trimmed) return;
 
+      // 👉 Did the ORIGINAL text contain any digits?
+      //    If not, we treat "quantity = 1" as a guess and will strip it.
+      const hadExplicitNumber = /\d/.test(trimmed);
+
       let parsedIng = null;
 
-      // If we have BBC ingredient names & parseBbcIngredient – use that
+      // Prefer BBC-specific parser if available
       if (
         ingredientNames.length &&
         typeof parseBbcIngredient === "function"
       ) {
         parsedIng = parseBbcIngredient(trimmed, ingredientNames);
       }
+
       // Fallback: generic parser
       if (!parsedIng && typeof parseIngredientLine === "function") {
         parsedIng = parseIngredientLine(trimmed);
       }
 
-      // Last resort: just store the line as a name
+      // Last resort: just keep the line as a name
       if (!parsedIng) {
         parsedIng = {
           name: trimmed,
@@ -3458,6 +3271,13 @@ function openRecipeImportPreviewDialog(parsed) {
       }
 
       if (!parsedIng.name) return;
+
+      // 🔹 If parser guessed quantity = 1 but the original line had NO digits,
+      //    treat it as "no explicit quantity" (so it can become a staple).
+      if (!hadExplicitNumber && parsedIng.quantity === 1) {
+        parsedIng.quantity = null;
+        parsedIng.unit = "";
+      }
 
       // If quantity is present, it must be a positive number
       if (
@@ -3478,7 +3298,7 @@ function openRecipeImportPreviewDialog(parsed) {
       }
     }
 
-    // Build the final recipe object
+    // --- 4) Build final recipe object ---
     const newRecipe = {
       id: String(Date.now()),
       name,
@@ -3493,10 +3313,8 @@ function openRecipeImportPreviewDialog(parsed) {
       sourceUrl: parsed.sourceUrl || "",
     };
 
-    // Push into global recipes list
+    // --- 5) Save + refresh ---
     recipes.push(newRecipe);
-
-    // Persist and re-render
     saveState();
     renderRecipesList();
 
@@ -3504,7 +3322,6 @@ function openRecipeImportPreviewDialog(parsed) {
     const ov = document.getElementById("recipe-import-preview-overlay");
     if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
 
-    // Optional: jump to Recipes tab if you like
     if (typeof showPage === "function") {
       showPage("page-recipes");
     }
@@ -3522,7 +3339,6 @@ function openRecipeImportPreviewDialog(parsed) {
     panel.classList.add("visible");
   });
 }
-
     // ---------- MEAL PLAN ----------
 
     // ---------- MEAL PLAN CONFIG ----------
