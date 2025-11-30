@@ -2045,6 +2045,102 @@ function openRecipeIngredientsDialog() {
   });
 }
 
+// Normalise various unit words/synonyms into a canonical unit key
+function normaliseUnitToken(token) {
+  if (!token) return null;
+  const t = token.toLowerCase();
+
+  // You can extend this over time – just add more synonyms
+  if (["g", "gram", "grams"].includes(t)) return "g";
+  if (["kg", "kilogram", "kilograms"].includes(t)) return "kg";
+  if (["ml", "millilitre", "milliliter", "millilitres", "milliliters"].includes(t)) return "ml";
+  if (["l", "litre", "liter", "litres", "liters"].includes(t)) return "l";
+
+  if (["tsp", "tsps", "teaspoon", "teaspoons"].includes(t)) return "tsp";
+  if (["tbsp", "tbsps", "tablespoon", "tablespoons"].includes(t)) return "tbsp";
+
+  // Optional “count” style units – these can match your smart defaults later too
+  if (["sprig", "sprigs"].includes(t)) return "sprig";
+  if (["bottle", "bottles"].includes(t)) return "bottle";
+  if (["clove", "cloves"].includes(t)) return "clove";
+  if (["slice", "slices"].includes(t)) return "slice";
+  if (["pack", "packs", "packet", "packets"].includes(t)) return "pack";
+
+  return null;
+}
+
+// If parser missed the unit (e.g. "½ tsp ground cumin"),
+// try to recover quantity + unit + name from the text line.
+function fixMissingUnitFromLine(normLine, parsedIng) {
+  if (!normLine || !parsedIng) return parsedIng;
+
+  // If parser already found a unit, don't touch it
+  if (parsedIng.unit) return parsedIng;
+
+  const tokens = normLine.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return parsedIng;
+
+  let unitIndex = -1;
+  let unitNorm = "";
+
+  // Find first token that looks like a unit
+  for (let i = 0; i < tokens.length; i++) {
+    const norm = normaliseUnitToken(tokens[i]);
+    if (norm) {
+      unitIndex = i;
+      unitNorm = norm;
+      break;
+    }
+  }
+
+  // No recognisable unit word? Nothing to fix
+  if (unitIndex === -1) return parsedIng;
+
+  // Try to re-derive quantity from everything BEFORE the unit word
+  let qty = parsedIng.quantity;
+  const beforeUnit = tokens.slice(0, unitIndex).join(" ").trim();
+
+  if ((!qty || Number.isNaN(qty) || qty <= 0) && beforeUnit) {
+    let q = null;
+
+    if (typeof parseLeadingFractionQuantity === "function") {
+      q = parseLeadingFractionQuantity(beforeUnit);
+    }
+
+    // If fraction parser didn't find anything but there are digits,
+    // fall back to parseFloat (handles things like "2", "1.5", etc.)
+    if ((!q || !Number.isFinite(q)) && /\d/.test(beforeUnit)) {
+      const pf = parseFloat(beforeUnit);
+      if (Number.isFinite(pf) && pf > 0) {
+        q = pf;
+      }
+    }
+
+    if (Number.isFinite(q) && q > 0) {
+      qty = q;
+    }
+  }
+
+  // Everything AFTER the unit token becomes the name
+   const afterUnit = tokens.slice(unitIndex + 1).join(" ").trim();
+
+  // Prefer whatever name the parser already gave us
+  let finalName = parsedIng.name;
+  if (!finalName || !finalName.trim()) {
+    // Only fall back to the tail of the line if we had no name at all
+    const rawName = afterUnit || normLine;
+    finalName = rawName;
+  }
+
+  return {
+    ...parsedIng,
+    quantity:
+      qty != null && Number.isFinite(qty) && qty > 0 ? qty : parsedIng.quantity,
+    unit: unitNorm || parsedIng.unit || "",
+    name: finalName
+  };
+}
+
 function openRecipeImportDialog() {
   // Kill old dialog
   const old = document.getElementById("recipe-import-overlay");
@@ -2695,6 +2791,64 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   document.body.appendChild(overlay);
 }
 
+function isStapleIngredient(name) {
+  if (!name) return false;
+
+  const lower = name.toLowerCase().trim();
+
+  // 1) User-marked staples (from long-press “Mark as staple”)
+  if (Array.isArray(window.userStaples)) {
+    if (window.userStaples.includes(lower)) {
+      return true;
+    }
+  }
+
+  // 2) Always-in-cupboard list, if you have one
+  if (Array.isArray(window.ALWAYS_IN_CUPBOARD)) {
+    if (window.ALWAYS_IN_CUPBOARD.includes(lower)) {
+      return true;
+    }
+  }
+
+  // 3) Sensible default keywords – treated as staples.
+  // ✅ NOTE: plain "pepper" REMOVED so we only match "black pepper"
+  const DEFAULT_STAPLE_KEYWORDS = [
+    "salt",
+    "sea salt",
+    "black pepper",
+    "olive oil",
+    "vegetable oil",
+    "sunflower oil",
+    "cooking oil",
+    "nutmeg",
+    "stock cube",
+    "stock cubes",
+    "soy sauce"
+  ];
+
+  // Normalise ingredient name into words
+  const words = lower
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/);
+
+  const normalised = " " + words.join(" ") + " ";
+
+  // Match keywords as whole words / phrases
+  return DEFAULT_STAPLE_KEYWORDS.some((rawKw) => {
+    const kw = rawKw.toLowerCase().trim();
+    const parts = kw.split(/\s+/);
+
+    if (parts.length === 1) {
+      // Single-word staple → must match whole word
+      return words.includes(kw);
+    } else {
+      // Multi-word staple → full phrase, e.g. "black pepper"
+      return normalised.includes(" " + kw + " ");
+    }
+  });
+}
+
 function shouldHideQuantityForDisplay(ing) {
   if (!ing || !ing.name) return false;
   const nameLower = ing.name.toLowerCase().trim();
@@ -2706,8 +2860,7 @@ function shouldHideQuantityForDisplay(ing) {
     "buns",
     "burger seasoning",
     "seasoning",
-    "black pepper",
-    "pepper"
+    "black pepper"
   ];
 
   if (ALWAYS_HIDE_QTY.some((phrase) => nameLower.includes(phrase))) {
@@ -3542,6 +3695,18 @@ function openRecipeImportPreviewDialog(parsed) {
           return;
         }
         parsedIng.quantity = numQty; // normalise to Number
+      }
+      
+            // Try to recover missing units from the text line
+      parsedIng = fixMissingUnitFromLine(normLine, parsedIng);
+
+      // Apply smart defaults for anything still missing (wine → bottle, rosemary → sprig, etc.)
+      if (typeof applySmartDefaultUnit === "function") {
+        parsedIng.unit = applySmartDefaultUnit(
+          parsedIng.name,
+          parsedIng.quantity,
+          parsedIng.unit
+        );
       }
 
       // MERGE step: same name + unit → summed quantity
