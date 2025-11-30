@@ -1950,39 +1950,80 @@ function openRecipeImportDialog() {
 
   const input = document.createElement("input");
   input.type = "url";
-  input.placeholder = "Paste recipe link…";
+  input.placeholder = "Paste BBC Food URL…";
   input.autocomplete = "off";
 
   label.appendChild(input);
   row.appendChild(label);
   panel.appendChild(row);
 
-  // Buttons row
+  // Little "or" divider
+  const orText = document.createElement("p");
+  orText.textContent = "or";
+  orText.style.textAlign = "center";
+  orText.style.margin = "0.5rem 0 0.25rem";
+  orText.style.fontSize = "0.8rem";
+  orText.style.color = "var(--text-muted)";
+  panel.appendChild(orText);
+
+  // "Search BBC recipes" button (opens separate dialog)
+  const searchRow = document.createElement("div");
+  searchRow.className = "barcode-scanner-actions";
+
+  const searchBtn = document.createElement("button");
+  searchBtn.type = "button";
+  searchBtn.textContent = "Search BBC recipes";
+  searchBtn.className = "primary-pill";
+
+  searchBtn.addEventListener("click", () => {
+    closeRecipeImportDialog();
+    openRecipeSearchDialog();        // ⬅️ we’ll define this next
+  });
+
+  searchRow.appendChild(searchBtn);
+  panel.appendChild(searchRow);
+
+  // Buttons (Cancel + Import from URL)
   const btnRow = document.createElement("div");
   btnRow.className = "barcode-scanner-actions";
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "inventory-delete-button";
+  cancelBtn.className = "inventory-delete-button"; // red pill
   cancelBtn.textContent = "Cancel";
-  cancelBtn.addEventListener("click", closeRecipeImportDialog);
+  cancelBtn.addEventListener("click", () => {
+    closeRecipeImportDialog();
+  });
 
   const importBtn = document.createElement("button");
   importBtn.type = "button";
+  importBtn.textContent = "Import from URL";
   importBtn.className = "ios-green-button";
-  importBtn.textContent = "Import Recipe";
 
-  // 🔑 When user clicks "Fetch", call our helper
   importBtn.addEventListener("click", async () => {
     const url = input.value.trim();
     if (!url) {
-      alert("Please paste a recipe URL.");
+      alert("Please paste a recipe URL first.");
       input.focus();
       return;
     }
 
-    await importRecipeFromUrl(url); // this will open the preview dialog
-    closeRecipeImportDialog();
+    try {
+      console.log("Importing from URL:", url);
+      // ⬇️ this should already exist and open your nice preview dialog
+      if (typeof importRecipeFromUrl === "function") {
+        await importRecipeFromUrl(url);
+      } else {
+        console.error("importRecipeFromUrl is not defined");
+        alert("Import function is missing in JS.");
+        return;
+      }
+
+      closeRecipeImportDialog();
+    } catch (err) {
+      console.error("Import failed:", err);
+      alert("Could not import recipe from that URL.");
+    }
   });
 
   btnRow.appendChild(cancelBtn);
@@ -1992,20 +2033,12 @@ function openRecipeImportDialog() {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
-  // Animate in
   requestAnimationFrame(() => panel.classList.add("visible"));
 
-  // Focus the URL box
+  // Focus URL input
   setTimeout(() => {
     if (input.focus) input.focus({ preventScroll: true });
   }, 40);
-
-  // Tap outside → close
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) {
-      closeRecipeImportDialog();
-    }
-  });
 }
 
 function closeRecipeImportDialog() {
@@ -2015,6 +2048,205 @@ function closeRecipeImportDialog() {
   const panel = overlay.querySelector(".add-item-panel");
   if (panel) panel.classList.remove("visible");
 
+  setTimeout(() => overlay.remove(), 480);
+}
+
+function openRecipeSearchDialog() {
+  // Kill any old search overlay
+  const old = document.getElementById("recipe-search-overlay");
+  if (old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "recipe-search-overlay";
+  overlay.className = "barcode-scanner-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "barcode-scanner-panel add-item-panel";
+
+  const title = document.createElement("h2");
+  title.textContent = "Search BBC recipes";
+  panel.appendChild(title);
+
+  // --- Search input row ---
+  const row = document.createElement("div");
+  row.className = "barcode-input-row";
+
+  const label = document.createElement("label");
+  label.textContent = "Search term";
+  label.style.display = "block";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "e.g. Lasagne";
+  input.autocomplete = "off";
+
+  label.appendChild(input);
+  row.appendChild(label);
+  panel.appendChild(row);
+
+  // Status text: "Type a word and tap Search"
+  const status = document.createElement("p");
+  status.style.fontSize = "0.8rem";
+  status.style.margin = "0.4rem 0 0";
+  status.style.color = "var(--text-muted)";
+  status.textContent = "Type a recipe name and tap Search.";
+  panel.appendChild(status);
+
+  // Results container
+  const resultsWrap = document.createElement("div");
+  resultsWrap.className = "recipe-search-results";
+  panel.appendChild(resultsWrap);
+
+  // --- Buttons row ---
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "inventory-delete-button";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => {
+    closeRecipeSearchDialog();
+  });
+
+  const searchBtn = document.createElement("button");
+  searchBtn.type = "button";
+  searchBtn.textContent = "Search";
+  searchBtn.className = "ios-green-button";
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(searchBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(() => panel.classList.add("visible"));
+
+  // Helper to actually run the search
+    async function runSearch() {
+    const q = input.value.trim();
+    if (!q) {
+      status.textContent = "Please enter a search term.";
+      status.classList.add("error");
+      return;
+    }
+
+    status.textContent = "Searching BBC Food…";
+    status.classList.remove("error");
+    resultsWrap.innerHTML = "";
+
+    try {
+      // ✅ Use the same global constant as your other code
+      if (typeof WORKER_BASE !== "string" || !WORKER_BASE) {
+        console.error("WORKER_BASE is not defined or not a string");
+        status.textContent = "Worker base URL is not configured.";
+        status.classList.add("error");
+        return;
+      }
+
+      const endpoint =
+        WORKER_BASE + "?search=" + encodeURIComponent(q);
+
+      const res = await fetch(endpoint);
+      if (!res.ok) {
+        throw new Error("Search worker returned " + res.status);
+      }
+
+      const data = await res.json();
+      if (!data.ok || !Array.isArray(data.results) || !data.results.length) {
+        status.textContent = "No recipes found for that search.";
+        status.classList.add("error");
+        return;
+      }
+
+      status.textContent = `Found ${data.results.length} recipe(s).`;
+      status.classList.remove("error");
+
+      // Render results
+      resultsWrap.innerHTML = "";
+      data.results.forEach((r) => {
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = "recipe-search-result";
+
+        // Thumbnail / placeholder
+        const thumb = document.createElement("div");
+        thumb.className = "recipe-search-thumb";
+
+        if (r.imageUrl) {
+          const img = document.createElement("img");
+          img.src = r.imageUrl;
+          img.alt = r.title || "Recipe image";
+          thumb.appendChild(img);
+        } else {
+          const span = document.createElement("span");
+          span.textContent = (r.title || "R").charAt(0).toUpperCase();
+          thumb.appendChild(span);
+        }
+
+        const info = document.createElement("div");
+        info.className = "recipe-search-info";
+
+        const titleEl = document.createElement("div");
+        titleEl.className = "recipe-search-title";
+        titleEl.textContent = r.title || "Recipe";
+        info.appendChild(titleEl);
+
+        if (r.servingsText) {
+          const meta = document.createElement("div");
+          meta.className = "recipe-search-meta";
+          meta.textContent = r.servingsText;
+          info.appendChild(meta);
+        }
+
+        card.appendChild(thumb);
+        card.appendChild(info);
+
+        card.addEventListener("click", async () => {
+          closeRecipeSearchDialog();
+
+          try {
+            if (typeof importRecipeFromUrl === "function") {
+              await importRecipeFromUrl(r.url);
+            } else {
+              alert("Import function missing in JS.");
+            }
+          } catch (e) {
+            console.error("Import from search failed:", e);
+            alert("Could not import that recipe.");
+          }
+        });
+
+        resultsWrap.appendChild(card);
+      });
+    } catch (err) {
+      console.error("Search failed:", err);
+      status.textContent = "Search failed. Please try again.";
+      status.classList.add("error");
+    }
+  }
+
+  // Wire up Search button + Enter key
+  searchBtn.addEventListener("click", runSearch);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      runSearch();
+    }
+  });
+
+  // Focus search box
+  setTimeout(() => {
+    if (input.focus) input.focus({ preventScroll: true });
+  }, 40);
+}
+
+function closeRecipeSearchDialog() {
+  const overlay = document.getElementById("recipe-search-overlay");
+  if (!overlay) return;
+  const panel = overlay.querySelector(".add-item-panel");
+  if (panel) panel.classList.remove("visible");
   setTimeout(() => overlay.remove(), 480);
 }
 

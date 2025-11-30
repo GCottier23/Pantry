@@ -725,6 +725,77 @@ button.secondary:active {
   justify-content: center;          /* keep text centred inside pill */
 }
 
+/* BBC search dialog – results list */
+.recipe-search-results {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.recipe-search-result {
+  width: 100%;
+  text-align: left;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: #151515;
+  padding: 0.45rem 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+  transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.12s ease;
+}
+
+.recipe-search-result:hover {
+  background: #1b1b1b;
+}
+
+.recipe-search-result:active {
+  transform: scale(0.97);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+}
+
+.recipe-search-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  overflow: hidden;
+  background: radial-gradient(circle at top left, #ff7a00, #333);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+.recipe-search-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.recipe-search-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.recipe-search-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.recipe-search-meta {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  margin-top: 0.1rem;
+}
+
 /* =========================================
    9. RECIPE DETAIL OVERLAY
 ========================================= */
