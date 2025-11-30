@@ -1427,6 +1427,37 @@ function normaliseFractions(str) {
     .replace(/⅞/g, "7/8");
 }
 
+function parseLeadingFractionQuantity(text) {
+  if (!text) return null;
+
+  const s = typeof normaliseFractions === "function"
+    ? normaliseFractions(String(text)).trim()
+    : String(text).trim();
+
+  // Mixed fraction, e.g. "1 1/4 onion"
+  let m = s.match(/^(\d+)\s+(\d+)\/(\d+)/);
+  if (m) {
+    const whole = Number(m[1]);
+    const num   = Number(m[2]);
+    const den   = Number(m[3]) || 1;
+    if (!Number.isNaN(whole) && !Number.isNaN(num) && den > 0) {
+      return whole + num / den;      // 1.25
+    }
+  }
+
+  // Simple fraction, e.g. "1/4 onion"
+  m = s.match(/^(\d+)\/(\d+)/);
+  if (m) {
+    const num = Number(m[1]);
+    const den = Number(m[2]) || 1;
+    if (!Number.isNaN(num) && den > 0) {
+      return num / den;              // 0.25
+    }
+  }
+
+  return null;
+}
+
 function fractionToUnicode(num) {
   if (num == null || Number.isNaN(num)) return null;
 
@@ -2852,73 +2883,76 @@ staples.sort((a, b) => {
   return 0;
 });
 
-  function addIngredientLi(ul, obj, isStapleList) {
-    const { ing, index } = obj;
-    const li = document.createElement("li");
+function addIngredientLi(ul, obj, isStapleList) {
+  const { ing, index } = obj;
+  const li = document.createElement("li");
 
- const nameSpan = document.createElement("span");
-nameSpan.className = "ingredient-name";
-nameSpan.textContent = ing.name || "";
-li.appendChild(nameSpan);
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "ingredient-name";
+  nameSpan.textContent = ing.name || "";
+  li.appendChild(nameSpan);
 
-let q = ing.quantity;
-let u = ing.unit || "";
+  let q = ing.quantity;
+  let u = ing.unit || "";
 
-// Should we hide the quantity entirely?
-const hideQty = typeof shouldHideQuantityForDisplay === "function"
-  ? shouldHideQuantityForDisplay(ing)
-  : false;
+  // Should we hide the quantity entirely?
+  const hideQty = typeof shouldHideQuantityForDisplay === "function"
+    ? shouldHideQuantityForDisplay(ing)
+    : false;
 
-const hasNumericQty = q && q > 0 && !hideQty;
+  const hasNumericQty =
+    q != null &&
+    !Number.isNaN(q) &&
+    q > 0 &&
+    !hideQty;
 
-// We'll only show ": ..." if we actually have something to show
-if (hasNumericQty) {
-  ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+  if (hasNumericQty) {
+    // 👇 only compact for weight/volume units,
+    // so we don't round e.g. 1.25 onions down to 1.
+    const compactUnits = ["g", "kg", "ml", "l"];
+    let unitLower = (u || "").toLowerCase();
 
-  const compactUnits = ["g", "kg", "ml", "l"];
-  const unitLower = (u || "").toLowerCase();
+    if (
+      compactUnits.includes(unitLower) &&
+      typeof autoCompactQuantityUnit === "function"
+    ) {
+      ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+      unitLower = (u || "").toLowerCase();
+    }
 
-  const qtySpan = document.createElement("span");
-  qtySpan.className = "ingredient-qty";
+    const qtySpan = document.createElement("span");
+    qtySpan.className = "ingredient-qty";
 
-  const niceQty = typeof formatQuantityForDisplay === "function"
-    ? formatQuantityForDisplay(q)
-    : q;
+    const niceQty = typeof formatQuantityForDisplay === "function"
+      ? formatQuantityForDisplay(q)
+      : q;
 
-  // colon comes straight after the name, then a small space and the quantity
-  let label = "";
-  if (compactUnits.includes(unitLower)) {
-    label += `${niceQty}${unitLower}`;
-  } else if (unitLower) {
-    label += `${niceQty} ${unitLower}`;
-  } else {
-    label += `${niceQty}`;
+    let label = "";
+    if (compactUnits.includes(unitLower)) {
+      label = `${niceQty}${unitLower}`;      // 800g, 1.5l
+    } else if (unitLower) {
+      label = `${niceQty} ${unitLower}`;     // 2 cloves
+    } else {
+      label = `${niceQty}`;                  // 1 ¼
+    }
+
+    qtySpan.textContent = label;
+    li.appendChild(qtySpan);
+
+  } else if (isStapleList) {
+    const qtySpan = document.createElement("span");
+    qtySpan.className = "ingredient-qty";
+
+    const em = document.createElement("em");
+    em.textContent = "to taste";
+    qtySpan.appendChild(em);
+
+    li.appendChild(qtySpan);
   }
 
-  qtySpan.textContent = label;
-  li.appendChild(qtySpan);
-
-} else if (isStapleList) {
-  const qtySpan = document.createElement("span");
-  qtySpan.className = "ingredient-qty";
-
-  // NO COLON – just "to taste"
-  const em = document.createElement("em");
-  em.textContent = "to taste";
-
-  qtySpan.appendChild(em);
-  li.appendChild(qtySpan);
+  attachIngredientLongPress(li, recipeIdActual, index, ing.name);
+  ul.appendChild(li);
 }
-// if not staple and no qty → we just keep the name with no colon/number
-    // If hideQty is true and it's NOT a staple list,
-    // we just show the name with no ": 1"
-
-    // Attach long-press menu (Staple / Edit / Delete)
-    attachIngredientLongPress(li, recipeIdActual, index, ing.name);
-
-    ul.appendChild(li);
-  }
-
   // Non-staple ingredients
   const ingList = document.createElement("ul");
   ingList.className = "recipe-detail-ingredients";
@@ -3271,51 +3305,33 @@ function openCookDialog(dayId) {
   }
 }
 
+// Turn decimal quantities into nice fractions for display only.
+// Under the hood we still store them as decimals (e.g. 1.25).
 function formatQuantityForDisplay(q) {
   if (q == null || Number.isNaN(q)) return "";
 
-  // Split into whole + fractional part
-  const whole = Math.floor(q);
-  const frac  = q - whole;
+  const value = Number(q);
+  if (!Number.isFinite(value)) return "";
 
-  // Map of common cooking fractions → Unicode chars
-  const FRACTIONS = [
-    { value: 1/8, char: "⅛" },
-    { value: 1/6, char: "⅙" },
-    { value: 1/5, char: "⅕" },
-    { value: 1/4, char: "¼" },
-    { value: 1/3, char: "⅓" },
-    { value: 3/8, char: "⅜" },
-    { value: 1/2, char: "½" },
-    { value: 2/3, char: "⅔" },
-    { value: 3/4, char: "¾" },
-    { value: 4/5, char: "⅘" },
-    { value: 5/6, char: "⅚" },
-    { value: 5/8, char: "⅝" },
-    { value: 7/8, char: "⅞" },
-  ];
+  const abs = Math.abs(value);
+  const whole = Math.floor(abs);
+  const frac  = abs - whole;
+  const sign  = value < 0 ? "-" : "";
 
-  // Try to match the fractional part to one of the nice fractions
-  const match = FRACTIONS.find(f => Math.abs(frac - f.value) < 0.01);
+  const EPS = 0.01;
 
-  // If no nice fraction (e.g. 1.2), just show a rounded decimal
-  if (!match) {
-    // integers as "1", decimals as "1.2"
-    return Number.isInteger(q)
-      ? String(q)
-      : (Math.round(q * 10) / 10).toString();
+  let fracChar = null;
+  if (Math.abs(frac - 0.25) < EPS) fracChar = "¼";
+  else if (Math.abs(frac - 0.5)  < EPS) fracChar = "½";
+  else if (Math.abs(frac - 0.75) < EPS) fracChar = "¾";
+
+  if (fracChar) {
+    if (whole === 0) return sign + fracChar;      // "¼"
+    return `${sign}${whole} ${fracChar}`;         // "1 ¼", "2 ½", etc.
   }
 
-  // We *do* have a pretty fraction
-  const fracChar = match.char;
-
-  if (whole > 0) {
-    // e.g. 1 + 1/2 → "1½"
-    return `${whole}${fracChar}`;
-  }
-
-  // pure fraction, e.g. 0.25 → "¼"
-  return fracChar;
+  if (Number.isInteger(value)) return String(value);
+  return (Math.round(value * 10) / 10).toString();
 }
 
 function openRecipeImportPreviewDialog(parsed) {
@@ -3401,9 +3417,8 @@ function openRecipeImportPreviewDialog(parsed) {
   importBtn.addEventListener("click", () => {
     // --- 1) Clean recipe name ---
     const rawName = parsed.title || "Imported recipe";
-    const name = (typeof titleCase === "function")
-      ? titleCase(rawName)
-      : rawName;
+    const name =
+      typeof titleCase === "function" ? titleCase(rawName) : rawName;
 
     // --- 2) Servings ---
     const servings =
@@ -3426,69 +3441,35 @@ function openRecipeImportPreviewDialog(parsed) {
               : []
           );
 
-        const newIngredients = [];
+    // --- 3b) Parse lines and MERGE duplicates (same name + unit) ---
+    const byKey = new Map();
 
-    lines.forEach((line) => {
-      // 1) normalise any Unicode fractions like ¼ → 1/4
-      let trimmed = normaliseFractions((line || "").trim());
+       lines.forEach((line) => {
+      const trimmed = (line || "").trim();
       if (!trimmed) return;
 
-      // 2) SPECIAL CASE: leading fractions like "1/4 onion" or "1 1/4 onion"
-      let forcedQty = null;
-      let forcedName = null;
+      // Normalise unicode fractions, e.g. "¼ onion" → "1/4 onion"
+      const normLine = typeof normaliseFractions === "function"
+        ? normaliseFractions(trimmed)
+        : trimmed;
 
-      // mixed fraction "1 1/4 onion"
-      let m = trimmed.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)\s+(.+)$/);
-      if (m) {
-        const whole = parseFloat(m[1]);
-        const num   = parseFloat(m[2]);
-        const den   = parseFloat(m[3]);
-        if (den && !Number.isNaN(whole) && !Number.isNaN(num) && !Number.isNaN(den)) {
-          forcedQty = whole + num / den;      // e.g. 1.25
-          forcedName = m[4].trim();           // "onion"
-        }
-      } else {
-        // simple fraction "1/4 onion"
-        m = trimmed.match(/^(\d+)\s*\/\s*(\d+)\s+(.+)$/);
-        if (m) {
-          const num = parseFloat(m[1]);
-          const den = parseFloat(m[2]);
-          if (den && !Number.isNaN(num) && !Number.isNaN(den)) {
-            forcedQty = num / den;            // e.g. 0.25
-            forcedName = m[3].trim();         // "onion"
-          }
-        }
-      }
+      // Did the (normalised) text contain any digits?
+      const hadExplicitNumber = /\d/.test(normLine);
 
-      if (forcedQty !== null) {
-        // We fully control this: no guessing, no parser weirdness
-        newIngredients.push({
-          name: (typeof titleCase === "function")
-            ? titleCase(forcedName)
-            : forcedName,
-          quantity: forcedQty,
-          unit: "",
-        });
-        return; // done with this line
-      }
-
-      // 3) NORMAL PATH for everything else -----------------------
-      const hadExplicitNumber = /\d/.test(trimmed);
       let parsedIng = null;
 
       // Prefer BBC-specific parser if available
-      if (
+         if (
         ingredientNames.length &&
         typeof parseBbcIngredient === "function"
       ) {
-        parsedIng = parseBbcIngredient(trimmed, ingredientNames);
+        parsedIng = parseBbcIngredient(normLine, ingredientNames);
       }
 
       // Fallback: generic parser
       if (!parsedIng && typeof parseIngredientLine === "function") {
-        parsedIng = parseIngredientLine(trimmed);
+        parsedIng = parseIngredientLine(normLine);
       }
-
       // Last resort: just keep the line as a name
       if (!parsedIng) {
         parsedIng = {
@@ -3500,25 +3481,79 @@ function openRecipeImportPreviewDialog(parsed) {
 
       if (!parsedIng.name) return;
 
-      // If the parser "guessed" 1 but there was no number in the text,
-      // treat it as "no explicit quantity" (so it can be a staple).
+            // If the line clearly has a fraction (1/4, 1 1/4, etc),
+      // override whatever quantity the parser guessed and
+      // compute it ourselves, so "1/4 onion" becomes 0.25.
+      if (
+        hadExplicitNumber &&
+        /(\d+\s+)?\d+\/\d+/.test(normLine) &&         // looks like a fraction
+        typeof parseLeadingFractionQuantity === "function"
+      ) {
+        const fracQty = parseLeadingFractionQuantity(normLine);
+        if (fracQty && fracQty > 0) {
+          parsedIng.quantity = fracQty;              // e.g. 0.25 or 1.25
+
+          // If the parser treated something like "1/4" as a unit, drop it
+          if (parsedIng.unit && /\/\d+/.test(parsedIng.unit)) {
+            parsedIng.unit = "";
+          }
+        }
+      }
+
+            // If parser didn't give a quantity but we DO have numbers,
+      // try to parse leading fraction(s) like "1/4" or "1 1/4".
+      if (
+        (parsedIng.quantity === null || parsedIng.quantity === undefined) &&
+        hadExplicitNumber &&
+        typeof parseLeadingFractionQuantity === "function"
+      ) {
+        const fracQty = parseLeadingFractionQuantity(normLine);
+        if (fracQty && fracQty > 0) {
+          parsedIng.quantity = fracQty;   // e.g. 0.25, 1.25
+        }
+      }
+
+      // If parser guessed quantity = 1 but original line had NO digits,
+      // treat it as "no explicit quantity" (so it can become a staple).
       if (!hadExplicitNumber && parsedIng.quantity === 1) {
         parsedIng.quantity = null;
         parsedIng.unit = "";
       }
 
-      // Only keep positive numeric quantities
+      // If quantity is present, it must be a positive number
+           // If quantity is present, coerce to a positive number
       if (
         parsedIng.quantity !== null &&
         parsedIng.quantity !== undefined
       ) {
-        if (Number.isNaN(parsedIng.quantity) || parsedIng.quantity <= 0) {
+        const numQty = Number(parsedIng.quantity);
+        if (!Number.isFinite(numQty) || numQty <= 0) {
           return;
         }
+        parsedIng.quantity = numQty; // normalise to Number
       }
 
-      newIngredients.push(parsedIng);
+      // MERGE step: same name + unit → summed quantity
+      const nameKey = (parsedIng.name || "").toLowerCase().trim();
+      const unitKey = (parsedIng.unit || "").toLowerCase().trim();
+      const key = nameKey + "||" + unitKey;
+
+           const existing = byKey.get(key);
+      if (existing) {
+        const q1 = existing.quantity != null ? Number(existing.quantity) : 0;
+        const q2 = parsedIng.quantity != null ? Number(parsedIng.quantity) : 0;
+
+        const safeQ1 = Number.isFinite(q1) ? q1 : 0;
+        const safeQ2 = Number.isFinite(q2) ? q2 : 0;
+        const mergedQty = safeQ1 + safeQ2;
+
+        existing.quantity = mergedQty > 0 ? mergedQty : null;
+      } else {
+        byKey.set(key, { ...parsedIng });
+      }
     });
+
+    const newIngredients = Array.from(byKey.values());
 
     if (!newIngredients.length) {
       if (!confirm("No valid ingredients were parsed. Save recipe anyway?")) {
@@ -3567,9 +3602,9 @@ function openRecipeImportPreviewDialog(parsed) {
     panel.classList.add("visible");
   });
 }
-    // ---------- MEAL PLAN ----------
-
-    // ---------- MEAL PLAN CONFIG ----------
+// <!-- ======================================= -->
+// <!--            MEAL PLAN JS                    
+// <!-- ======================================= -->
 
 // 3 slots per day – you can add "snack" etc later if you want
 const MEAL_SLOTS = [
