@@ -2167,16 +2167,57 @@ function openRecipeSearchDialog() {
 resultsWrap.innerHTML = "";
 
 data.results.forEach((r) => {
+  const rawTitle = r.title || "";
+  const rawMeta  = r.servingsText || "";
+
+  const decodedTitle = rawTitle
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const decodedMeta = rawMeta
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // ---- CLEAN TITLE ----
+  let cleanTitle = decodedTitle;
+
+  // Remove "Serves X" if BBC stuffed it inside the title
+  const titleMatch = decodedTitle.match(/^(.*?)(?:\s+Serves\s+\d+(?:-\d+)?)/i);
+  if (titleMatch) {
+    cleanTitle = titleMatch[1].trim();
+  }
+
+  // Remove "... By Someone Name"
+  cleanTitle = cleanTitle.replace(/\s+by\s+[\w\s'.-]+$/i, "").trim();
+
+  // Remove trailing "Main Course"
+  cleanTitle = cleanTitle.replace(/\s+Main Course$/i, "").trim();
+
+  // ---- SERVINGS ----
+  let shortServings = "";
+  const serveMatch = (decodedMeta || decodedTitle)
+    .match(/Serves\s+(\d+(?:-\d+)?)/i);
+
+  if (serveMatch) {
+    shortServings = `Serves ${serveMatch[1]}`;
+  }
+
+  // ---- ITEM OBJ ----
   const item = {
-    title: r.title || "",
-    image: r.imageUrl || "",          // comes from worker
-    servings: r.servingsText || "",// e.g. "Serves 6"
-    url: r.url                     // BBC recipe URL
+    title: cleanTitle,
+    servingsText: shortServings,
+    image: r.imageUrl || "",
+    url: r.url
   };
 
   const card = makeSearchResultCard(item);
   resultsWrap.appendChild(card);
 });
+
     } catch (err) {
       console.error("Search failed:", err);
       status.textContent = "Search failed. Please try again.";
@@ -2238,7 +2279,7 @@ function makeSearchResultCard(item) {
 
   const servingsEl = document.createElement("div");
   servingsEl.className = "recipe-search-card-servings";
-  servingsEl.textContent = item.servings || "";
+  servingsEl.textContent = item.servingsText || "";
   info.appendChild(servingsEl);
 
   row.appendChild(imgWrap);
