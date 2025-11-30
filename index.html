@@ -2825,6 +2825,33 @@ const split = splitIngredientsByStaples(ingForDisplay);
 const regular = split.regular;
 const staples = dedupeStaplesByName(split.staples);
 
+// --- SORT STAPLES ---
+// 1) Items with numeric quantity first (largest → smallest)
+// 2) Then "to taste" / no-quantity items alphabetically by name
+staples.sort((a, b) => {
+  const qaRaw = a.ing.quantity;
+  const qbRaw = b.ing.quantity;
+
+  const aHasQty = qaRaw !== null && qaRaw !== undefined && qaRaw > 0;
+  const bHasQty = qbRaw !== null && qbRaw !== undefined && qbRaw > 0;
+
+  // Both have quantities → sort by quantity descending
+  if (aHasQty && bHasQty) {
+    return qbRaw - qaRaw; // bigger first (e.g. 50g before 4 tbsp)
+  }
+
+  // One has quantity, one doesn't → quantity first
+  if (aHasQty && !bHasQty) return -1;
+  if (!aHasQty && bHasQty) return 1;
+
+  // Neither has quantity (i.e. "to taste" group) → sort by name
+  const nameA = (a.ing.name || "").toLowerCase();
+  const nameB = (b.ing.name || "").toLowerCase();
+  if (nameA < nameB) return -1;
+  if (nameA > nameB) return 1;
+  return 0;
+});
+
   function addIngredientLi(ul, obj, isStapleList) {
     const { ing, index } = obj;
     const li = document.createElement("li");
@@ -2872,17 +2899,14 @@ if (hasNumericQty) {
   li.appendChild(qtySpan);
 
 } else if (isStapleList) {
-  // No numeric qty, but it's in the staples list → ": to taste"
   const qtySpan = document.createElement("span");
   qtySpan.className = "ingredient-qty";
 
+  // NO COLON – just "to taste"
   const em = document.createElement("em");
   em.textContent = "to taste";
 
-  // colon right after name, then "to taste"
-  qtySpan.appendChild(document.createTextNode(": "));
   qtySpan.appendChild(em);
-
   li.appendChild(qtySpan);
 }
 // if not staple and no qty → we just keep the name with no colon/number
