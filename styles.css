@@ -1177,6 +1177,28 @@ button.secondary:active {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.75);
 }
 
+/* ---------- Page header pill buttons (full width, equal) ---------- */
+
+.page-actions-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+
+  /* force the row to be full width of panel */
+  width: 100%;
+}
+
+.page-actions-row > button {
+  flex: 1 1 0;               /* all buttons equal width */
+  width: 100%;               /* ensures full width alignment */
+  justify-content: center;   /* centres text inside the pills */
+}
+
+/* optional: ensure the panel title has consistent spacing above the row */
+.page > .panel > h2 {
+  margin-bottom: 0.35rem;
+}
+
 /* ==========================
    Meal plan rows – align pills
    ========================== */
