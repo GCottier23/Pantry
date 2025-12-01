@@ -1285,9 +1285,9 @@ button.secondary:active {
   border: 1px solid rgba(255, 255, 255, 0.95);
   background: #050608;
   color: #ffffff;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  padding: 0.5rem 0.9rem;
+  padding: 0.75rem 1.2rem;
   text-align: center;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
   cursor: pointer;
@@ -1543,4 +1543,22 @@ button.ios-green-button {
 
 .week-picker-day.monday-selectable:active {
   transform: scale(0.95);
+}
+
+/* Make meal-plan rows stack on small screens so the pill gets full width */
+@media (max-width: 600px) {
+  .mealplan-meal-row {
+    grid-template-columns: 1fr;     /* single column: label on top, pill below */
+    row-gap: 0.35rem;
+    align-items: flex-start;
+  }
+
+  .mealplan-meal-label {
+    margin-bottom: 0;               /* label sits just above pill */
+  }
+
+  .mealplan-meal-row .action-pill {
+    width: 100%;                    /* pill fills the row */
+    justify-content: center;        /* keep the text centred inside */
+  }
 }
