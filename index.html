@@ -221,23 +221,36 @@
         .join(" ");
     }
 
-    function convertToUnit(quantity, fromUnit, toUnit) {
-      if (!fromUnit || !toUnit) return quantity;
-      if (fromUnit === toUnit) return quantity;
-      if (fromUnit === "g" && toUnit === "kg") return quantity / 1000;
-      if (fromUnit === "kg" && toUnit === "g") return quantity * 1000;
-      if (fromUnit === "ml" && toUnit === "l") return quantity / 1000;
-      if (fromUnit === "l" && toUnit === "ml") return quantity * 1000;
-      // 🍷 Bottle conversion (750ml)
-if (fromUnit === "bottle" && toUnit === "ml") {
-  return value * 750; // 1 bottle = 750ml
-}
+    function convertToUnit(qty, fromUnit, toUnit) {
+  const n = Number(qty);
+  if (!Number.isFinite(n)) return 0;
 
-if (fromUnit === "ml" && toUnit === "bottle") {
-  return value / 750;
+  const from = (fromUnit || "").toLowerCase();
+  const to   = (toUnit   || "").toLowerCase();
+
+  // If no target unit, just return the raw quantity
+  if (!to) return n;
+
+  // Same unit – no conversion needed
+  if (from === to) return n;
+
+  // ----- WEIGHT -----
+  if (from === "g" && to === "kg") return n / 1000;
+  if (from === "kg" && to === "g") return n * 1000;
+
+  // ----- VOLUME -----
+  if (from === "ml" && to === "l") return n / 1000;
+  if (from === "l" && to === "ml") return n * 1000;
+
+  // ----- WINE BOTTLES ↔ ml (750ml per bottle) -----
+  if (from === "bottle"  && to === "ml") return n * 750;
+  if (from === "bottles" && to === "ml") return n * 750;
+  if (from === "ml" && to === "bottle")  return n / 750;
+  if (from === "ml" && to === "bottles") return n / 750;
+
+  // Unknown conversion – just treat as equivalent units
+  return n;
 }
-      return quantity;
-    }
 
     function normalizeInventoryItem(item) {
       if (item.unit === "g" && item.quantity >= 1000) {
@@ -249,23 +262,28 @@ if (fromUnit === "ml" && toUnit === "bottle") {
       }
     }
 
-   function chooseBaseUnit(unit, nameOptional = "") {
-  const name = (nameOptional || "").toLowerCase();
+function chooseBaseUnit(unit, name) {
   const u = (unit || "").toLowerCase();
+  const lowerName = (name || "").toLowerCase();
 
-  // 🍷 FORCE wine → ml as base unit
-  if (name.includes("wine")) {
+  // Weight: always aggregate in grams
+  if (u === "g" || u === "kg") {
+    return "g";
+  }
+
+  // Volume: always aggregate in millilitres
+  if (u === "ml" || u === "l") {
     return "ml";
   }
 
-  // Normal logic
-  if (u === "kg" || u === "g") return "g";
-  if (u === "l"  || u === "ml") return "ml";
+  // Wine bottles → treat as ml internally (750ml per bottle)
+  if ((u === "bottle" || u === "bottles") && lowerName.includes("wine")) {
+    return "ml";
+  }
 
-  // Otherwise treat as unitless (counts)
-  return "";
+  // Everything else – stay as whatever unit we have (tsp, tbsp, pack, etc.)
+  return u || "";
 }
-
    // Replace your existing helper with this
 function formatQuantityWithUnit(quantity, unit) {
   if (quantity == null || Number.isNaN(quantity)) return "";
