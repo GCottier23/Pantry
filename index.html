@@ -1387,6 +1387,20 @@ function animateCloseAddItemDialog(durationMs = 480) {
 // Import recipe from URL → show preview
 // =======================================
 
+function formatIngredientNameForDetail(ing) {
+  if (!ing || !ing.name) return "";
+
+  const name = ing.name;
+  const lower = name.toLowerCase();
+
+  // Any variety of potato → just show "Potatoes"
+  if (lower.includes("King Edward")) {
+    return "Potatoes";
+  }
+
+  return name;
+}
+
 function normaliseFractions(str) {
   if (!str) return str;
   return str
@@ -3052,7 +3066,10 @@ function openRecipeDetail(recipeId) {
 
       const nameSpan = document.createElement("span");
       nameSpan.className = "ingredient-name";
-      nameSpan.textContent = ing.name || "";
+      nameSpan.textContent =
+        typeof formatIngredientNameForDetail === "function"
+          ? formatIngredientNameForDetail(ing)
+          : (ing.name || "");
       li.appendChild(nameSpan);
 
       let q = ing.quantity;
@@ -3071,42 +3088,53 @@ function openRecipeDetail(recipeId) {
         !hideQty;
 
       if (hasNumericQty) {
-        const compactUnits = ["g", "kg", "ml", "l"];
-        let unitLower = (u || "").toLowerCase();
+           const compactUnits = ["g", "kg", "ml", "l"];
+      let unitLower = (u || "").toLowerCase();
 
-        // Only compact weight/volume units; keep counts alone
-        if (
-          compactUnits.includes(unitLower) &&
-          typeof autoCompactQuantityUnit === "function"
-        ) {
-          ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
-          unitLower = (u || "").toLowerCase();
-        }
+      if (
+        compactUnits.includes(unitLower) &&
+        typeof autoCompactQuantityUnit === "function"
+      ) {
+        ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+        unitLower = (u || "").toLowerCase();
+      }
 
-        const qtySpan = document.createElement("span");
-        qtySpan.className = "ingredient-qty";
+      const qtySpan = document.createElement("span");
+      qtySpan.className = "ingredient-qty";
 
-        const niceQty =
-          typeof formatQuantityForDisplay === "function"
-            ? formatQuantityForDisplay(q)
-            : q;
+      const niceQty =
+        typeof formatQuantityForDisplay === "function"
+          ? formatQuantityForDisplay(q)
+          : q;
 
-        let label = "";
+      let label = "";
 
-        // Special wording for litres
-        if (unitLower === "l") {
-          const word = q === 1 ? "litre" : "litres";
-          label = `${niceQty} ${word}`;
-        } else if (["g", "kg", "ml"].includes(unitLower)) {
-          label = `${niceQty}${unitLower}`;
-        } else if (unitLower) {
-          label = `${niceQty} ${unitLower}`;
-        } else {
-          label = `${niceQty}`;
-        }
+      if (unitLower === "l") {
+        // 1 litre / 2 litres
+        const word =
+          typeof pluraliseUnit === "function"
+            ? pluraliseUnit("l", q)
+            : (q === 1 ? "litre" : "litres");
+        label = `${niceQty} ${word}`;
+      } else if (["g", "kg", "ml"].includes(unitLower)) {
+        // Compact: 500g, 250ml
+        label = `${niceQty}${unitLower}`;
+      } else if (["tsp", "tbsp"].includes(unitLower)) {
+        // Teaspoons/tablespoons: never pluralised, always with a space
+        label = `${niceQty} ${unitLower}`;
+      } else if (unitLower) {
+        // Everything else: bottle(s), sprig(s), pack(s), etc.
+        const word =
+          typeof pluraliseUnit === "function"
+            ? pluraliseUnit(unitLower, q)
+            : (q === 1 ? unitLower : unitLower + "s");
+        label = `${niceQty} ${word}`;
+      } else {
+        label = `${niceQty}`;
+      }
 
-        qtySpan.textContent = label;
-        li.appendChild(qtySpan);
+      qtySpan.textContent = label;
+      li.appendChild(qtySpan);
       } else if (isStapleList) {
         // No numeric qty but in staples → "to taste"
         const qtySpan = document.createElement("span");
@@ -4409,34 +4437,26 @@ function roundUpForShopping(qty, unit) {
   return Math.ceil(n);
 }
 
-function pluraliseUnit(unit, qty) {
-  const u = (unit || "").toLowerCase();
-  const n = Number(qty);
+function pluraliseUnit(rawUnit, quantity) {
+  const unit = (rawUnit || "").toLowerCase();
+  const q = Number(quantity);
 
-  if (!Number.isFinite(n)) {
-    return unit || "";
-  }
-
-  // Special case: litres → "litre / litres"
-  if (u === "l") {
-    return n === 1 ? "litre" : "litres";
-  }
-
-  // Optional: add any irregulars you care about
-  if (u === "leaf") {
-    return n === 1 ? "leaf" : "leaves";
-  }
-
-  // For count-type units (bottle, sprig, pack, jar, etc.)
-  if (n === 1) {
+  // Units that NEVER get an "s"
+  const FIXED_UNITS = ["g", "kg", "ml", "tsp", "tbsp"];
+  if (FIXED_UNITS.includes(unit)) {
     return unit;
   }
 
-  // If it already ends with "s", leave it alone
-  if (u.endsWith("s")) {
-    return unit;
+  // Special case: litres
+  if (unit === "l") {
+    return q === 1 ? "litre" : "litres";
   }
 
+  if (!unit) return "";
+
+  // Default plural logic for word-y units like bottle, sprig, pack…
+  if (q === 1) return unit;
+  if (unit.endsWith("y")) return unit.slice(0, -1) + "ies";
   return unit + "s";
 }
 
@@ -4582,30 +4602,30 @@ function generateShoppingList() {
     // Build a nice string, with litres spelt out and
     // bottle/sprig/etc pluralised via pluraliseUnit()
     let qtyStr;
-    if (!displayUnit) {
+      if (!displayUnit) {
       qtyStr = formatNumberNice(displayQty);
     } else {
-      const smallUnits = ["g", "kg", "ml", "l"];
       const nStr = formatNumberNice(displayQty);
+      const unitLower = displayUnit.toLowerCase();
 
-      if (smallUnits.includes(displayUnit)) {
-        if (displayUnit.toLowerCase() === "l") {
-          // 1 litre / 2 litres
-          const word =
-            typeof pluraliseUnit === "function"
-              ? pluraliseUnit("l", displayQty)
-              : displayQty === 1
-              ? "litre"
-              : "litres";
-          qtyStr = `${nStr} ${word}`;
-        } else {
-          qtyStr = nStr + displayUnit;
-        }
-      } else {
-        // sprig, bottle, pack, jar, etc.
+      if (unitLower === "l") {
+        // 1 litre / 2 litres
         const word =
           typeof pluraliseUnit === "function"
-            ? pluraliseUnit(displayUnit, displayQty)
+            ? pluraliseUnit("l", displayQty)
+            : (displayQty === 1 ? "litre" : "litres");
+        qtyStr = `${nStr} ${word}`;
+      } else if (["g", "kg", "ml"].includes(unitLower)) {
+        // Compact: 500g, 250ml
+        qtyStr = nStr + unitLower;
+      } else if (["tsp", "tbsp"].includes(unitLower)) {
+        // Teaspoons/tablespoons: no plural, with space
+        qtyStr = `${nStr} ${unitLower}`;
+      } else {
+        // sprig, bottle, pack, jar, etc → pluralise
+        const word =
+          typeof pluraliseUnit === "function"
+            ? pluraliseUnit(unitLower, displayQty)
             : displayUnit;
         qtyStr = `${nStr} ${word}`;
       }
