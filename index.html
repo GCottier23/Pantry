@@ -2079,12 +2079,23 @@ function openRecipeIngredientsDialog() {
   unitLabel.style.display = "block";
 
   const unitSelect = document.createElement("select");
-  ["", "g", "kg", "ml", "l", "tsp", "tbsp", "pack", "pcs"].forEach((u) => {
-    const opt = document.createElement("option");
-    opt.value = u;
-    opt.textContent = u || "(none)";
-    unitSelect.appendChild(opt);
-  });
+
+  // First option = no unit
+  const noneOpt = document.createElement("option");
+  noneOpt.value = "";
+  noneOpt.textContent = "(none)";
+  unitSelect.appendChild(noneOpt);
+
+  // Then every unit from your global UNIT_DEFS
+  if (typeof UNIT_DEFS === "object") {
+    Object.keys(UNIT_DEFS).forEach((key) => {
+      const def = UNIT_DEFS[key]; // {singular, plural}
+      const opt = document.createElement("option");
+      opt.value = key;                 // e.g. "g", "ml", "sprig"
+      opt.textContent = def.singular;  // e.g. "g", "ml", "sprig"
+      unitSelect.appendChild(opt);
+    });
+  }
 
   unitLabel.appendChild(unitSelect);
   unitRow.appendChild(unitLabel);
@@ -3233,7 +3244,7 @@ const unitLabel = typeof pluraliseUnit === "function"
   : (canonicalUnit || "");
 
 // ⬇️ NEW: units that should be shown without a space
-const COMPACT_UNITS = ["g", "kg", "ml", "tsp", "tbsp"];
+const COMPACT_UNITS = ["g", "kg", "ml"];
 
 let label;
 if (!unitLabel) {
@@ -3670,6 +3681,127 @@ function formatQuantityForDisplay(q) {
   return (Math.round(value * 10) / 10).toString();
 }
 
+// Clean weird "600ml/20fl oz stock (ideally beef...)" style lines
+function cleanStockLine(raw) {
+  if (!raw) return raw;
+  let s = String(raw);
+
+  // 1) If it starts with "600ml/20fl oz" etc, keep ONLY the ml bit
+  const m = s.match(/^(\d+(?:\.\d+)?)\s*ml\s*\/\s*\d+(?:\.\d+)?\s*fl\s*oz(.*)$/i);
+  if (m) {
+    // m[1] = the ml quantity, m[2] = rest of the line (" stock (ideally...)")
+    s = `${m[1]}ml${m[2] || ""}`;
+  }
+
+  // 2) Strip any bracketed hints: "(ideally beef, ...)"
+  s = s.replace(/\([^)]*\)/g, "");
+
+  // 3) Normal tidy-up spaces
+  return s.replace(/\s+/g, " ").trim();
+}
+
+// Is this ingredient name just a generic "stock" (not beef/chicken/veg)?
+function isGenericStockName(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase().trim();
+
+  if (!lower.includes("stock")) return false;
+
+  // Already specific? (you can add more here later if you like)
+  if (lower.startsWith("beef stock"))       return false;
+  if (lower.startsWith("chicken stock"))    return false;
+  if (lower.startsWith("vegetable stock"))  return false;
+  if (lower.startsWith("veg stock"))        return false;
+
+  return true; // e.g. "stock", "hot stock", "beef or chicken stock"
+}
+
+function openStockTypeDialogForRecipe(recipeId) {
+  const recipe = recipes.find((r) => r.id === recipeId);
+  if (!recipe || !Array.isArray(recipe.ingredients)) return;
+
+  const genericStocks = recipe.ingredients.filter((ing) =>
+    isGenericStockName(ing.name)
+  );
+
+  if (!genericStocks.length) return; // nothing to do
+
+  const overlay = document.createElement("div");
+  overlay.className = "recipe-detail-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "recipe-detail-panel";
+  panel.style.maxWidth = "360px";
+
+  const title = document.createElement("h3");
+  title.textContent = "Confirm stock type";
+  panel.appendChild(title);
+
+  const msg = document.createElement("p");
+  msg.textContent =
+    "What type of stock is used within this recipe?";
+  panel.appendChild(msg);
+
+  const label = document.createElement("label");
+  label.textContent = "Stock type";
+  label.style.display = "block";
+  label.style.marginTop = "0.5rem";
+
+  const select = document.createElement("select");
+  ["Beef", "Chicken", "Vegetable"].forEach((type) => {
+    const opt = document.createElement("option");
+    opt.value = type;
+    opt.textContent = type;
+    select.appendChild(opt);
+  });
+
+  label.appendChild(select);
+  panel.appendChild(label);
+
+  // Buttons
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+  btnRow.style.marginTop = "1rem";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "secondary";
+  cancelBtn.textContent = "Skip";
+  cancelBtn.addEventListener("click", () => {
+    overlay.remove(); // leave as generic "Stock"
+  });
+
+  const okBtn = document.createElement("button");
+  okBtn.type = "button";
+  okBtn.className = "ios-green-button";
+  okBtn.textContent = "Save";
+  okBtn.addEventListener("click", () => {
+    const chosen = select.value || "Beef";
+
+    genericStocks.forEach((ing) => {
+      ing.name = `${chosen} Stock`;
+    });
+
+    saveState();
+    renderRecipesList();
+    // If you want the detail overlay (if open) to update too,
+    // you could also call renderMealPlan() or reopen the recipe.
+    overlay.remove();
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(okBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  // Tap outside to close
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
 function openRecipeImportPreviewDialog(parsed) {
   // parsed is the object returned by importRecipeFromUrl
 
@@ -3784,10 +3916,12 @@ function openRecipeImportPreviewDialog(parsed) {
       const trimmed = (line || "").trim();
       if (!trimmed) return;
 
-      // Normalise unicode fractions, e.g. "¼ onion" → "1/4 onion"
-      const normLine = typeof normaliseFractions === "function"
-        ? normaliseFractions(trimmed)
-        : trimmed;
+      let normLine = typeof normaliseFractions === "function"
+  ? normaliseFractions(trimmed)
+  : trimmed;
+
+// 🔹 special clean-up for stock lines like "600ml/20fl oz stock (ideally beef...)"
+normLine = cleanStockLine(normLine);
 
       // Did the (normalised) text contain any digits?
       const hadExplicitNumber = /\d/.test(normLine);
@@ -3924,10 +4058,38 @@ function openRecipeImportPreviewDialog(parsed) {
       sourceUrl: parsed.sourceUrl || "",
     };
 
-    // --- 5) Save + refresh ---
-    recipes.push(newRecipe);
-    saveState();
-    renderRecipesList();
+    // --- 5) Save / update recipe list (avoid duplicates) ---
+
+// See if a recipe with the same sourceUrl already exists
+let existingIndex = -1;
+
+if (newRecipe.sourceUrl) {
+  existingIndex = recipes.findIndex(
+    (r) => r.sourceUrl && r.sourceUrl === newRecipe.sourceUrl
+  );
+}
+
+// If no match by sourceUrl, fall back to name match
+if (existingIndex === -1) {
+  existingIndex = recipes.findIndex((r) => r.name === newRecipe.name);
+}
+
+if (existingIndex !== -1) {
+  // Overwrite existing recipe, keep its id stable
+  newRecipe.id = recipes[existingIndex].id;
+  recipes[existingIndex] = newRecipe;
+} else {
+  // Brand-new recipe
+  recipes.push(newRecipe);
+}
+
+saveState();
+renderRecipesList();
+
+// 🔹 Only now open the stock-type dialog once
+if (typeof openStockTypeDialogForRecipe === "function") {
+  openStockTypeDialogForRecipe(newRecipe.id);
+}
 
     // Close preview overlay
     const ov = document.getElementById("recipe-import-preview-overlay");
