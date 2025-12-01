@@ -217,7 +217,7 @@
     
     // ========= TEXT / FORMATTING ==============
 
-    function titleCase(str) {
+function titleCase(str) {
       return str
         .toLowerCase()
         .split(" ")
@@ -226,7 +226,7 @@
         .join(" ");
     }
 
-    function tidyRecipeTitle(str) {
+function tidyRecipeTitle(str) {
       if (!str) return "";
       let t = str.trim();
       // Strip trailing " - BBC Food" / " - BBC Good Food"
@@ -235,7 +235,7 @@
       return t;
     }
 
-    function parseServingsNumber(servingsText) {
+function parseServingsNumber(servingsText) {
       if (!servingsText) return null;
       // Look for the first number: "Serves 8-10" -> 8
       const m = servingsText.match(/(\d+)/);
@@ -246,7 +246,7 @@
 
     // ========= UNITS . QUANTITIES ==============
 
-    function convertToUnit(qty, fromUnit, toUnit) {
+function convertToUnit(qty, fromUnit, toUnit) {
       const n = Number(qty);
       if (!Number.isFinite(n)) return 0;
 
@@ -277,17 +277,7 @@
       return n;
     } 
 
-    function normalizeInventoryItem(item) {
-      if (item.unit === "g" && item.quantity >= 1000) {
-        item.quantity = item.quantity / 1000;
-        item.unit = "kg";
-      } else if (item.unit === "ml" && item.quantity >= 1000) {
-        item.quantity = item.quantity / 1000;
-        item.unit = "l";
-      }
-    }
-
-    function chooseBaseUnit(unit, name) {
+function chooseBaseUnit(unit, name) {
   const u = (unit || "").toLowerCase();
   const lowerName = (name || "").toLowerCase();
 
@@ -310,45 +300,64 @@
   return u || "";
 }
   
-    function formatQuantityWithUnit(quantity, unit) {
-  if (quantity == null || Number.isNaN(quantity)) return "";
+function formatQuantityWithUnit(q, unit) {
+  if (q == null || Number.isNaN(q)) return "";
 
-  const q = Number(quantity);
-  if (!Number.isFinite(q) || q <= 0) return "";
+  let qty = Number(q);
+  let unitLower = (unit || "").toLowerCase();
 
-  const unitLower = (unit || "").toLowerCase();
+  const compactUnits = ["g", "kg", "ml", "l"];
 
-  // Use your nice fraction-aware display for the number itself
-  const niceQty = (typeof formatQuantityForDisplay === "function")
-    ? formatQuantityForDisplay(q)
-    : (
-        Number.isInteger(q)
-          ? String(q)
-          : (Math.round(q * 10) / 10).toString()
-      );
+  // Compact only g/kg/ml/l – leave bottles, sticks, cloves alone
+  if (
+    compactUnits.includes(unitLower) &&
+    typeof autoCompactQuantityUnit === "function"
+  ) {
+    const compacted = autoCompactQuantityUnit(qty, unitLower);
+    if (compacted && typeof compacted === "object") {
+      qty = compacted.quantity;
+      unitLower = (compacted.unit || "").toLowerCase();
+    }
+  }
 
-  // 🔹 Special case: litres → "litre / litres"
+  const niceQty =
+    typeof formatQuantityForDisplay === "function"
+      ? formatQuantityForDisplay(qty)
+      : qty;
+
+  let label = "";
+
   if (unitLower === "l") {
-    const word = (q === 1 ? "litre" : "litres");
-    return `${niceQty} ${word}`;
+    // litres get spelled out, and pluralised
+    const word =
+      typeof pluraliseUnit === "function"
+        ? pluraliseUnit("l", qty)
+        : qty === 1
+        ? "litre"
+        : "litres";
+    label = `${niceQty} ${word}`;
+  } else if (["g", "kg", "ml"].includes(unitLower)) {
+    // compact small units
+    label = `${niceQty}${unitLower}`;
+  } else if (unitLower) {
+    // everything else (bottle, stick, clove, sprig…)
+    const word =
+      typeof pluraliseUnit === "function"
+        ? pluraliseUnit(unitLower, qty)
+        : qty === 1
+        ? unitLower
+        : unitLower + "s";
+    label = `${niceQty} ${word}`;
+  } else {
+    // no unit – just the number
+    label = `${niceQty}`;
   }
 
-  // 🔹 Compact units (no space)
-  const compactUnits = ["g", "kg", "ml"];
-  if (compactUnits.includes(unitLower)) {
-    return `${niceQty}${unitLower}`; // 500g, 200ml, 1kg
-  }
-
-  // 🔹 Generic units
-  if (unitLower) {
-    return `${niceQty} ${unitLower}`; // 2 packs, 3 tins, etc.
-  }
-
-  // 🔹 No unit
-  return niceQty;
+  return label;
 }
 
-    function autoCompactQuantityUnit(q, unit) {
+function autoCompactQuantityUnit(q, unit) {
+
   if (q == null || Number.isNaN(q)) return { quantity: q, unit };
 
   const u = (unit || "").toLowerCase();
@@ -375,6 +384,122 @@
 
   // Otherwise no change
   return { quantity: q, unit };
+}
+
+// ========= STAPLES + UNIT LOGIC ==============
+
+const UNIT_DEFS = {
+  g:      { singular: "g",      plural: "g" },
+  kg:     { singular: "kg",     plural: "kg" },
+  ml:     { singular: "ml",     plural: "ml" },
+  l:      { singular: "litre",  plural: "litres" },
+
+  tsp:    { singular: "tsp",    plural: "tsp" },
+  tbsp:   { singular: "tbsp",   plural: "tbsp" },
+
+  stick:  { singular: "stick",  plural: "sticks" },
+  clove:  { singular: "clove",  plural: "cloves" },
+  sprig:  { singular: "sprig",  plural: "sprigs" },
+  bottle: { singular: "bottle", plural: "bottles" },
+  pack:   { singular: "pack",   plural: "packs" },
+  jar:    { singular: "jar",    plural: "jars" },
+
+};
+
+function normaliseUnit(unit) {
+  if (!unit) return "";
+  let u = String(unit).toLowerCase().trim();
+
+  // Exact match?
+  if (UNIT_DEFS[u]) return u;
+
+  // Litres variations
+  if (u === "litre" || u === "litres") return "l";
+
+  // Try chopping common plural endings
+  if (u.endsWith("es")) {
+    const maybe = u.slice(0, -2); // e.g. "cloves" -> "clov"
+    if (UNIT_DEFS[maybe]) return maybe;
+  }
+  if (u.endsWith("s")) {
+    const maybe = u.slice(0, -1); // e.g. "sticks" -> "stick"
+    if (UNIT_DEFS[maybe]) return maybe;
+  }
+
+  return u; // fallback – unknown unit, leave as-is
+}
+
+function pluraliseUnit(unit, quantity) {
+  const key = normaliseUnit(unit);
+  const def = UNIT_DEFS[key];
+  const q = Number(quantity || 0);
+
+  // If we don't recognise this unit, fall back to a simple "add s"
+  if (!def) {
+    const raw = unit || "";
+    if (!raw) return "";          // no unit at all
+    if (q === 1) return raw;      // singular
+    return raw.endsWith("s") ? raw : raw + "s";
+  }
+
+  // Known unit → use the singular/plural text from UNIT_DEFS
+  return q === 1 ? def.singular : def.plural;
+}
+
+const DEFAULT_STAPLE_KEYWORDS = [
+    "salt",
+    "sea salt",
+    "black pepper",
+    "olive oil",
+    "vegetable oil",
+    "sunflower oil",
+    "cooking oil",
+    "nutmeg",
+    "stock cube",
+    "stock cubes",
+    "soy sauce"
+  ];
+
+function isStapleIngredient(name) {
+  if (!name) return false;
+
+  const lower = name.toLowerCase().trim();
+
+  // 1) User-marked staples (from long-press “Mark as staple”)
+  if (Array.isArray(window.userStaples)) {
+    if (window.userStaples.includes(lower)) {
+      return true;
+    }
+  }
+
+  // 2) Always-in-cupboard list, if you have one
+  if (Array.isArray(window.ALWAYS_IN_CUPBOARD)) {
+    if (window.ALWAYS_IN_CUPBOARD.includes(lower)) {
+      return true;
+    }
+  }
+
+  // Normalise ingredient name into words
+  const words = lower
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/);
+
+  const normalised = " " + words.join(" ") + " ";
+
+  // Match keywords as whole words / phrases
+  return DEFAULT_STAPLE_KEYWORDS.some((rawKw) => {
+    const kw = rawKw.toLowerCase().trim();
+    const parts = kw.split(/\s+/);
+
+    if (parts.length === 1) {
+      // Single-word staple → must match whole word
+      return words.includes(kw);
+    } else {
+      // Multi-word staple → full phrase, e.g. "black pepper"
+      return normalised.includes(" " + kw + " ");
+    }
+  });
 }
 
 function toggleUserStaple(name) {
@@ -409,40 +534,8 @@ function splitIngredientsByStaples(ingredients) {
   return { staples, regular };
 }
 
-function dedupeStaplesByName(staples) {
-  const byName = new Map();
-
-  (staples || []).forEach((obj) => {
-    if (!obj || !obj.ing || !obj.ing.name) return;
-
-    const key = obj.ing.name.toLowerCase().trim();
-    if (!key) return;
-
-    const existing = byName.get(key);
-    if (!existing) {
-      // First time we see this ingredient name → keep this one
-      byName.set(key, obj);
-      return;
-    }
-
-    // If we already have one, decide which to keep.
-    // Simple rule: prefer the one that actually has a numeric quantity.
-    const hasQty = (x) =>
-      x.ing.quantity !== null &&
-      x.ing.quantity !== undefined &&
-      !Number.isNaN(x.ing.quantity) &&
-      x.ing.quantity > 0;
-
-    if (!hasQty(existing) && hasQty(obj)) {
-      byName.set(key, obj);
-    }
-    // otherwise keep the existing one
-  });
-
-  return Array.from(byName.values());
-}
-    // ---------- VERY SIMPLE PARSER FOR IMPORT ----------
-
+// ========= INGREDIENT PARSING ==============
+    
 function parseBbcIngredient(rawLine, ingredientNames) {
   const line = (rawLine || "").trim();
   if (!line) return null;
@@ -579,7 +672,7 @@ function parseBbcIngredient(rawLine, ingredientNames) {
   };
 }
     
-    function parseIngredientLine(line) {
+function parseIngredientLine(line) {
   let trimmed = line.trim();
   if (!trimmed) return null;
 
@@ -680,41 +773,98 @@ function parseBbcIngredient(rawLine, ingredientNames) {
   };
 }
 
-    // ---------- STATE ----------
+// ========= NUMERIC ROUND-UP HELPER ==============
 
-    const STORAGE_KEY = "pantryApp_simple_v1";
+function roundUpForShopping(qty, unit) {
+  const n = Number(qty);
+  const u = (unit || "").toLowerCase();
 
-    let inventory = [];
-    let recipes = [];
-    let mealPlan = [];
-    let barcodeMap = {}; // barcode -> {name, baseQty, unit}
+  if (!Number.isFinite(n) || n <= 0) {
+    return 0;
+  }
 
-    let inventoryFilter = "";
-    let editingInventoryKey = null;
+  // Units you buy in whole items (no decimals)
+  const countUnits = [
+    "",                 // no unit → whole items (onions, limes, etc.)
+    "bottle", "bottles",
+    "pack", "packs",
+    "jar", "jars",
+    "tin", "tins",
+    "can", "cans",
+    "sprig", "sprigs",
+    "bunch", "bunches",
+    "loaf", "loaves",
+    "bag", "bags"
+  ];
 
-    let currentRecipe = null;
-    let editingRecipeId = null;
-    let editingIngredientIndex = null;
+  if (countUnits.includes(u)) {
+    return Math.ceil(n);
+  }
 
-    let lastImportedRecipeMeta = null; // { instructions: [...], sourceUrl, servingsText }
+  // For your use-case: litres and kg should also be whole numbers (no 1.2L)
+  if (u === "l" || u === "kg") {
+    return Math.ceil(n);
+  }
 
-    function initDefaultMealPlan() {
-      const days = [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday",
-      ];
-      mealPlan = days.map((d) => ({
-        dayId: d.toLowerCase(),
-        dayLabel: d,
-        recipeId: "",
-        servings: 0,
-      }));
+  // For g / ml we’re already aggregating in base units, whole numbers are fine
+  if (u === "g" || u === "ml") {
+    return Math.ceil(n);
+  }
+
+  // Fallback – play safe and round up
+  return Math.ceil(n);
+}
+
+function dedupeStaplesByName(staples) {
+  const byName = new Map();
+
+  (staples || []).forEach((obj) => {
+    if (!obj || !obj.ing || !obj.ing.name) return;
+
+    const key = obj.ing.name.toLowerCase().trim();
+    if (!key) return;
+
+    const existing = byName.get(key);
+    if (!existing) {
+      // First time we see this ingredient name → keep this one
+      byName.set(key, obj);
+      return;
     }
+
+    // If we already have one, decide which to keep.
+    // Simple rule: prefer the one that actually has a numeric quantity.
+    const hasQty = (x) =>
+      x.ing.quantity !== null &&
+      x.ing.quantity !== undefined &&
+      !Number.isNaN(x.ing.quantity) &&
+      x.ing.quantity > 0;
+
+    if (!hasQty(existing) && hasQty(obj)) {
+      byName.set(key, obj);
+    }
+    // otherwise keep the existing one
+  });
+
+  return Array.from(byName.values());
+}   
+
+// ---------- STATE ----------
+
+const STORAGE_KEY = "pantryApp_simple_v1";
+
+  let inventory = [];
+  let recipes = [];
+  let mealPlan = [];
+  let barcodeMap = {}; // barcode -> {name, baseQty, unit}
+
+  let inventoryFilter = "";
+  let editingInventoryKey = null;
+
+  let currentRecipe = null;
+  let editingRecipeId = null;
+  let editingIngredientIndex = null;
+
+  let lastImportedRecipeMeta = null; // { instructions: [...], sourceUrl, servingsText }
 
 function loadState() {
   try {
@@ -806,83 +956,31 @@ function saveState() {
   }
 }
 
-    // ---------- INVENTORY ----------
+    // ==========================================
+    //          INVENTORY HELPERS
+    // ==========================================  
 
-    function upsertInventoryItem(name, quantity, unit) {
-      const cleanName = titleCase(name.trim());
-      const key = cleanName.toLowerCase();
-      let item = inventory.find((i) => i.key === key);
-
-      if (!item) {
-        item = { key, name: cleanName, quantity, unit };
-        normalizeInventoryItem(item);
-        inventory.push(item);
-      } else {
-        const baseUnit = item.unit || unit;
-        const converted = convertToUnit(quantity, unit, baseUnit);
-        if (!item.unit && unit) item.unit = unit;
-        item.quantity += converted;
-        normalizeInventoryItem(item);
+function normalizeInventoryItem(item) {
+      if (item.unit === "g" && item.quantity >= 1000) {
+        item.quantity = item.quantity / 1000;
+        item.unit = "kg";
+      } else if (item.unit === "ml" && item.quantity >= 1000) {
+        item.quantity = item.quantity / 1000;
+        item.unit = "l";
       }
     }
 
-    function setInventoryItemExact(originalKey, name, quantity, unit) {
-      const cleanName = titleCase(name.trim());
-      const newKey = cleanName.toLowerCase();
-      let item = inventory.find((i) => i.key === originalKey);
+function formatItemNameForDisplay(str) {
+  if (!str) return "";
 
-      if (!item) {
-        item = { key: newKey, name: cleanName, quantity, unit };
-        normalizeInventoryItem(item);
-        inventory.push(item);
-      } else {
-        item.name = cleanName;
-        item.key = newKey;
-        item.quantity = quantity;
-        item.unit = unit;
-        normalizeInventoryItem(item);
-      }
-    }
-
-    // Deduct a quantity of an ingredient from inventory by name.
-// qtyBase is in baseUnit (g/ml/whatever chooseBaseUnit returned).
-function deductInventoryForCooking(name, qtyBase, baseUnit) {
-  if (!name || !qtyBase || qtyBase <= 0) return;
-
-  const key = name.toLowerCase();
-  const item = inventory.find((i) => i.name.toLowerCase() === key);
-  if (!item) {
-    // Caller handles "not found" confirmation
-    return false;
-  }
-
-  // Decide a common base unit between ingredient + inventory
-  const invUnit = item.unit || "";
-  const base = baseUnit || chooseBaseUnit(invUnit);
-
-  // Current inventory in base units
-  let invQtyBase = convertToUnit(item.quantity, invUnit, base);
-
-  // Deduct
-  let newBase = invQtyBase - qtyBase;
-  if (newBase <= 0.0001) {
-    // Effectively used it all up → remove item
-    deleteInventoryItem(item.key);
-  } else {
-    // Convert back into the item's original unit
-    const newQty = convertToUnit(newBase, base, invUnit || "");
-    item.quantity = newQty;
-    normalizeInventoryItem(item);
-  }
-
-  return true;
+  return str
+    .toLowerCase()
+    .split(/\s+/)  // split on any whitespace
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
-    function deleteInventoryItem(key) {
-      inventory = inventory.filter((i) => i.key !== key);
-    }
-
-    function renderInventoryNameSuggestions() {
+function renderInventoryNameSuggestions() {
       const dl = document.getElementById("inv-name-list");
       if (!dl) return;
       dl.innerHTML = "";
@@ -896,7 +994,7 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
         });
     }
 
-    function attachInventorySwipe(row, item) {
+function attachInventorySwipe(row, item) {
   let startX = 0;
   let startY = 0;
   let activeId = null;
@@ -972,16 +1070,125 @@ function deductInventoryForCooking(name, qtyBase, baseUnit) {
   });
 }
 
-function formatItemNameForDisplay(str) {
-  if (!str) return "";
+function attachAddItemKeyboardShim(panel) {
+  const overlay = document.getElementById("add-item-overlay");
+  if (!overlay || !window.visualViewport) return;
 
-  return str
-    .toLowerCase()
-    .split(/\s+/)  // split on any whitespace
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+  const vv = window.visualViewport;
+
+  function updateOffset() {
+    // reset
+    panel.style.setProperty("--offset-y", "0px");
+    overlay.classList.remove("overlay-keyboard-up");
+
+    const rect = panel.getBoundingClientRect();
+    const vpHeight = vv.height;
+
+    // How far below the visible viewport bottom is the panel?
+    const overflow = rect.bottom - vpHeight;
+
+    // If panel is fully visible plus a small margin, do nothing
+    if (overflow <= 16) return;
+
+    // Shift the panel up just enough so the bottom is 16px above keyboard
+    let shift = - (overflow + 16);   // negative value = move up
+
+    // 💡 Clamp so it never jumps too far (e.g. max 140px up)
+    const MAX_UP = 140;              // tweak if you want more/less lift
+    if (Math.abs(shift) > MAX_UP) {
+      shift = -MAX_UP;
+    }
+
+    panel.style.setProperty("--offset-y", shift + "px");
+    overlay.classList.add("overlay-keyboard-up");
+  }
+
+  // Run when viewport changes (keyboard open/close, rotate, etc.)
+  vv.addEventListener("resize", updateOffset);
+  window.addEventListener("orientationchange", updateOffset);
+
+  // Initial run once the panel has animated in
+  setTimeout(updateOffset, 120);
+
+  // Store cleanup so we can detach listeners when dialog closes
+  overlay._keyboardCleanup = () => {
+    vv.removeEventListener("resize", updateOffset);
+    window.removeEventListener("orientationchange", updateOffset);
+  };
 }
 
+// ==========================================
+//          INVENTORY LOGIC
+// ==========================================  
+
+function upsertInventoryItem(name, quantity, unit) {
+      const cleanName = titleCase(name.trim());
+      const key = cleanName.toLowerCase();
+      let item = inventory.find((i) => i.key === key);
+
+      if (!item) {
+        item = { key, name: cleanName, quantity, unit };
+        normalizeInventoryItem(item);
+        inventory.push(item);
+      } else {
+        const baseUnit = item.unit || unit;
+        const converted = convertToUnit(quantity, unit, baseUnit);
+        if (!item.unit && unit) item.unit = unit;
+        item.quantity += converted;
+        normalizeInventoryItem(item);
+      }
+    }
+
+function setInventoryItemExact(originalKey, name, quantity, unit) {
+      const cleanName = titleCase(name.trim());
+      const newKey = cleanName.toLowerCase();
+      let item = inventory.find((i) => i.key === originalKey);
+
+      if (!item) {
+        item = { key: newKey, name: cleanName, quantity, unit };
+        normalizeInventoryItem(item);
+        inventory.push(item);
+      } else {
+        item.name = cleanName;
+        item.key = newKey;
+        item.quantity = quantity;
+        item.unit = unit;
+        normalizeInventoryItem(item);
+      }
+    }
+
+function deleteInventoryItem(key) {
+      inventory = inventory.filter((i) => i.key !== key);
+    }
+
+function startInventoryEdit(key) {
+      const item = inventory.find((i) => i.key === key);
+      if (!item) return;
+
+      document.getElementById("inv-name").value = item.name;
+      document.getElementById("inv-qty").value = item.quantity;
+      document.getElementById("inv-unit").value = item.unit || "";
+
+      document.getElementById("inventory-submit-btn").textContent =
+        "Save changes";
+      document
+        .getElementById("inventory-cancel-edit")
+        .classList.remove("hidden");
+      editingInventoryKey = key;
+    }
+
+function clearInventoryEditState() {
+      document.getElementById("inv-name").value = "";
+      document.getElementById("inv-qty").value = "1";
+      document.getElementById("inv-unit").value = "";
+      document.getElementById("inventory-submit-btn").textContent =
+        "Add / Update";
+      document
+        .getElementById("inventory-cancel-edit")
+        .classList.add("hidden");
+      editingInventoryKey = null;
+    }    
+    
 function renderInventory() {
   const container = document.getElementById("inventory-list");
   if (!container) return;
@@ -1008,10 +1215,12 @@ function renderInventory() {
 
       const qtyEl = document.createElement("div");
       qtyEl.className = "inventory-item-qty";
-      qtyEl.textContent = formatQuantityWithUnit(
-        item.quantity,
-        item.unit || ""
-      );
+      const q = item.quantity;
+      const u = normaliseUnit(item.unit || "");
+      const niceQty = formatQuantityForDisplay(q);
+      const unitLabel = pluraliseUnit(u, q);
+
+      qtyEl.textContent = unitLabel ? `${niceQty} ${unitLabel}` : niceQty;
 
       main.appendChild(nameEl);
       main.appendChild(qtyEl);
@@ -1060,85 +1269,8 @@ delBtn.addEventListener("click", (e) => {
 
       container.appendChild(row);
     });
-}
-
-    function startInventoryEdit(key) {
-      const item = inventory.find((i) => i.key === key);
-      if (!item) return;
-
-      document.getElementById("inv-name").value = item.name;
-      document.getElementById("inv-qty").value = item.quantity;
-      document.getElementById("inv-unit").value = item.unit || "";
-
-      document.getElementById("inventory-submit-btn").textContent =
-        "Save changes";
-      document
-        .getElementById("inventory-cancel-edit")
-        .classList.remove("hidden");
-      editingInventoryKey = key;
-    }
-
-    function clearInventoryEditState() {
-      document.getElementById("inv-name").value = "";
-      document.getElementById("inv-qty").value = "1";
-      document.getElementById("inv-unit").value = "";
-      document.getElementById("inventory-submit-btn").textContent =
-        "Add / Update";
-      document
-        .getElementById("inventory-cancel-edit")
-        .classList.add("hidden");
-      editingInventoryKey = null;
-    }
-
-    function attachAddItemKeyboardShim(panel) {
-  const overlay = document.getElementById("add-item-overlay");
-  if (!overlay || !window.visualViewport) return;
-
-  const vv = window.visualViewport;
-
-  function updateOffset() {
-    // reset
-    panel.style.setProperty("--offset-y", "0px");
-    overlay.classList.remove("overlay-keyboard-up");
-
-    const rect = panel.getBoundingClientRect();
-    const vpHeight = vv.height;
-
-    // How far below the visible viewport bottom is the panel?
-    const overflow = rect.bottom - vpHeight;
-
-    // If panel is fully visible plus a small margin, do nothing
-    if (overflow <= 16) return;
-
-    // Shift the panel up just enough so the bottom is 16px above keyboard
-    let shift = - (overflow + 16);   // negative value = move up
-
-    // 💡 Clamp so it never jumps too far (e.g. max 140px up)
-    const MAX_UP = 140;              // tweak if you want more/less lift
-    if (Math.abs(shift) > MAX_UP) {
-      shift = -MAX_UP;
-    }
-
-    panel.style.setProperty("--offset-y", shift + "px");
-    overlay.classList.add("overlay-keyboard-up");
-  }
-
-  // Run when viewport changes (keyboard open/close, rotate, etc.)
-  vv.addEventListener("resize", updateOffset);
-  window.addEventListener("orientationchange", updateOffset);
-
-  // Initial run once the panel has animated in
-  setTimeout(updateOffset, 120);
-
-  // Store cleanup so we can detach listeners when dialog closes
-  overlay._keyboardCleanup = () => {
-    vv.removeEventListener("resize", updateOffset);
-    window.removeEventListener("orientationchange", updateOffset);
-  };
-}
-
-        // ---------- BARCODE → ITEM MAPPINGS (SIMPLE NAMES ONLY) ----------
-
+}    
+    
 function openAddInventoryItemDialog(existingItem = null, opts = {}) {
   const { scannedBarcode = null, presetName = "" } = opts || {};
   const isEditMode = !!existingItem;
@@ -1232,19 +1364,21 @@ function openAddInventoryItemDialog(existingItem = null, opts = {}) {
   unitLabel.textContent = "Unit";
   unitLabel.style.display = "block";
 
-  const unitSelect = document.createElement("select");
-  const units = ["", "g", "kg", "ml", "l", "pack", "packs", "bottle", "bottles"];
+   const unitSelect = document.createElement("select");
 
-  units.forEach((u) => {
+  // Build options from our central unit list
+  const UNIT_OPTIONS = [
+    "",              // (none)
+    ...Object.keys(UNIT_DEFS),  // g, kg, ml, l, tsp, tbsp, stick, clove, etc.
+    "pcs",           // any extras that aren't in UNIT_DEFS yet
+  ];
+
+  UNIT_OPTIONS.forEach((u) => {
     const opt = document.createElement("option");
     opt.value = u;
     opt.textContent = u || "(none)";
     unitSelect.appendChild(opt);
   });
-
-  if (existingItem && existingItem.unit) {
-    unitSelect.value = existingItem.unit;
-  }
 
   unitLabel.appendChild(unitSelect);
   unitRow.appendChild(unitLabel);
@@ -1384,11 +1518,55 @@ function animateCloseAddItemDialog(durationMs = 480) {
   }, durationMs);
 }
 
-    // ---------- RECIPES ----------
+function initDefaultMealPlan() {
+    const days = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ];
+    mealPlan = days.map((d) => ({
+      dayId: d.toLowerCase(),
+      dayLabel: d,
+      recipeId: "",
+      servings: 0,
+    }));
+  }
 
-// =======================================
-// Import recipe from URL → show preview
-// =======================================
+function deductInventoryForCooking(name, qtyBase, baseUnit) {
+  if (!name || !qtyBase || qtyBase <= 0) return;
+
+  const key = name.toLowerCase();
+  const item = inventory.find((i) => i.name.toLowerCase() === key);
+  if (!item) {
+    // Caller handles "not found" confirmation
+    return false;
+  }
+
+  // Decide a common base unit between ingredient + inventory
+  const invUnit = item.unit || "";
+  const base = baseUnit || chooseBaseUnit(invUnit);
+
+  // Current inventory in base units
+  let invQtyBase = convertToUnit(item.quantity, invUnit, base);
+
+  // Deduct
+  let newBase = invQtyBase - qtyBase;
+  if (newBase <= 0.0001) {
+    // Effectively used it all up → remove item
+    deleteInventoryItem(item.key);
+  } else {
+    // Convert back into the item's original unit
+    const newQty = convertToUnit(newBase, base, invUnit || "");
+    item.quantity = newQty;
+    normalizeInventoryItem(item);
+  }
+
+  return true;
+}
 
 function formatIngredientNameForDetail(ing) {
   if (!ing || !ing.name) return "";
@@ -1568,7 +1746,6 @@ async function importRecipeFromUrl(url) {
     }
   }
 }
-
 
 function openRecipeMetaDialog(existingRecipe = null) {
   console.log("openRecipeMetaDialog()", existingRecipe);
@@ -2099,7 +2276,6 @@ function openRecipeIngredientsDialog() {
   });
 }
 
-// Normalise various unit words/synonyms into a canonical unit key
 function normaliseUnitToken(token) {
   if (!token) return null;
   const t = token.toLowerCase();
@@ -2123,8 +2299,6 @@ function normaliseUnitToken(token) {
   return null;
 }
 
-// If parser missed the unit (e.g. "½ tsp ground cumin"),
-// try to recover quantity + unit + name from the text line.
 function fixMissingUnitFromLine(normLine, parsedIng) {
   if (!normLine || !parsedIng) return parsedIng;
 
@@ -2578,7 +2752,7 @@ function makeSearchResultCard(item) {
   return row;
 }
 
-    function startIngredientEdit(index) {
+function startIngredientEdit(index) {
       if (!currentRecipe || !currentRecipe.ingredients[index]) return;
       const ing = currentRecipe.ingredients[index];
 
@@ -2594,7 +2768,7 @@ function makeSearchResultCard(item) {
       editingIngredientIndex = index;
     }
 
-    function clearIngredientEditState() {
+function clearIngredientEditState() {
       document.getElementById("ing-name").value = "";
       document.getElementById("ing-qty").value = "1";
       document.getElementById("ing-unit").value = "";
@@ -2606,7 +2780,7 @@ function makeSearchResultCard(item) {
       editingIngredientIndex = null;
     }
 
-    function clearRecipeEditState() {
+function clearRecipeEditState() {
       editingRecipeId = null;
       currentRecipe = null;
       document.getElementById("recipe-name").value = "";
@@ -2621,7 +2795,7 @@ function makeSearchResultCard(item) {
       clearIngredientEditState();
     }
 
-      function renderRecipesList() {
+function renderRecipesList() {
   const container = document.getElementById("recipes-list");
   if (!container) return;
   container.innerHTML = "";
@@ -2728,7 +2902,6 @@ mealPlan.forEach((day) => {
   renderMealPlan();
 }
 
-// Simple long-press helper
 function attachIngredientLongPress(li, recipeId, ingredientIndex, ingredientName) {
   let pressTimer = null;
 
@@ -2759,7 +2932,6 @@ function attachIngredientLongPress(li, recipeId, ingredientIndex, ingredientName
   li.addEventListener("pointercancel", cancel);
 }
 
-// Small popup for "Staple / Edit / Delete"
 function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   const recipe = recipes.find((r) => r.id === recipeId);
   if (!recipe) return;
@@ -2845,64 +3017,6 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   document.body.appendChild(overlay);
 }
 
-function isStapleIngredient(name) {
-  if (!name) return false;
-
-  const lower = name.toLowerCase().trim();
-
-  // 1) User-marked staples (from long-press “Mark as staple”)
-  if (Array.isArray(window.userStaples)) {
-    if (window.userStaples.includes(lower)) {
-      return true;
-    }
-  }
-
-  // 2) Always-in-cupboard list, if you have one
-  if (Array.isArray(window.ALWAYS_IN_CUPBOARD)) {
-    if (window.ALWAYS_IN_CUPBOARD.includes(lower)) {
-      return true;
-    }
-  }
-
-  // 3) Sensible default keywords – treated as staples.
-  // ✅ NOTE: plain "pepper" REMOVED so we only match "black pepper"
-  const DEFAULT_STAPLE_KEYWORDS = [
-    "salt",
-    "sea salt",
-    "black pepper",
-    "olive oil",
-    "vegetable oil",
-    "sunflower oil",
-    "cooking oil",
-    "nutmeg",
-    "stock cube",
-    "stock cubes",
-    "soy sauce"
-  ];
-
-  // Normalise ingredient name into words
-  const words = lower
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .split(/\s+/);
-
-  const normalised = " " + words.join(" ") + " ";
-
-  // Match keywords as whole words / phrases
-  return DEFAULT_STAPLE_KEYWORDS.some((rawKw) => {
-    const kw = rawKw.toLowerCase().trim();
-    const parts = kw.split(/\s+/);
-
-    if (parts.length === 1) {
-      // Single-word staple → must match whole word
-      return words.includes(kw);
-    } else {
-      // Multi-word staple → full phrase, e.g. "black pepper"
-      return normalised.includes(" " + kw + " ");
-    }
-  });
-}
-
 function shouldHideQuantityForDisplay(ing) {
   if (!ing || !ing.name) return false;
   const nameLower = ing.name.toLowerCase().trim();
@@ -2935,7 +3049,6 @@ function shouldHideQuantityForDisplay(ing) {
   return false;
 }
 
-// Give some ingredients a smart default unit if they have a quantity but no unit
 function applySmartDefaultUnit(name, quantity, unit) {
   // If we already have a unit, don't touch it
   if (unit) return unit;
@@ -3090,65 +3203,60 @@ function openRecipeDetail(recipeId) {
         q > 0 &&
         !hideQty;
 
-      if (hasNumericQty) {
-           const compactUnits = ["g", "kg", "ml", "l"];
-      let unitLower = (u || "").toLowerCase();
+    if (hasNumericQty) {
+  const compactUnits = ["g", "kg", "ml", "l"];
+  let unitLower = (u || "").toLowerCase();
 
-      if (
-        compactUnits.includes(unitLower) &&
-        typeof autoCompactQuantityUnit === "function"
-      ) {
-        ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
-        unitLower = (u || "").toLowerCase();
-      }
+  // Keep auto-compacting (e.g. 1200ml → 1.2l)
+  if (
+    compactUnits.includes(unitLower) &&
+    typeof autoCompactQuantityUnit === "function"
+  ) {
+    ({ quantity: q, unit: u } = autoCompactQuantityUnit(q, u));
+    unitLower = (u || "").toLowerCase();
+  }
 
-      const qtySpan = document.createElement("span");
-      qtySpan.className = "ingredient-qty";
+  const qtySpan = document.createElement("span");
+  qtySpan.className = "ingredient-qty";
 
-      const niceQty =
-        typeof formatQuantityForDisplay === "function"
-          ? formatQuantityForDisplay(q)
-          : q;
+const niceQty =
+  typeof formatQuantityForDisplay === "function"
+    ? formatQuantityForDisplay(q)
+    : q;
 
-      let label = "";
+const canonicalUnit = typeof normaliseUnit === "function"
+  ? normaliseUnit(u)
+  : unitLower;
 
-      if (unitLower === "l") {
-        // 1 litre / 2 litres
-        const word =
-          typeof pluraliseUnit === "function"
-            ? pluraliseUnit("l", q)
-            : (q === 1 ? "litre" : "litres");
-        label = `${niceQty} ${word}`;
-      } else if (["g", "kg", "ml"].includes(unitLower)) {
-        // Compact: 500g, 250ml
-        label = `${niceQty}${unitLower}`;
-      } else if (["tsp", "tbsp"].includes(unitLower)) {
-        // Teaspoons/tablespoons: never pluralised, always with a space
-        label = `${niceQty} ${unitLower}`;
-      } else if (unitLower) {
-        // Everything else: bottle(s), sprig(s), pack(s), etc.
-        const word =
-          typeof pluraliseUnit === "function"
-            ? pluraliseUnit(unitLower, q)
-            : (q === 1 ? unitLower : unitLower + "s");
-        label = `${niceQty} ${word}`;
-      } else {
-        label = `${niceQty}`;
-      }
+const unitLabel = typeof pluraliseUnit === "function"
+  ? pluraliseUnit(canonicalUnit, q)
+  : (canonicalUnit || "");
 
-      qtySpan.textContent = label;
-      li.appendChild(qtySpan);
-      } else if (isStapleList) {
-        // No numeric qty but in staples → "to taste"
-        const qtySpan = document.createElement("span");
-        qtySpan.className = "ingredient-qty";
+// ⬇️ NEW: units that should be shown without a space
+const COMPACT_UNITS = ["g", "kg", "ml", "tsp", "tbsp"];
 
-        const em = document.createElement("em");
-        em.textContent = "to taste";
-        qtySpan.appendChild(em);
+let label;
+if (!unitLabel) {
+  label = niceQty;                           // "2"  (Onions carries plural)
+} else if (COMPACT_UNITS.includes(canonicalUnit)) {
+  label = `${niceQty}${unitLabel}`;          // "650g", "2tbsp"
+} else {
+  label = `${niceQty} ${unitLabel}`;         // "1 litre", "4 sprigs", "2 bottles"
+}
 
-        li.appendChild(qtySpan);
-      }
+  qtySpan.textContent = label;
+  li.appendChild(qtySpan);
+} else if (isStapleList) {
+  // No numeric qty but in staples → "to taste"
+  const qtySpan = document.createElement("span");
+  qtySpan.className = "ingredient-qty";
+
+  const em = document.createElement("em");
+  em.textContent = "to taste";
+  qtySpan.appendChild(em);
+
+  li.appendChild(qtySpan);
+}
       // If not staple and no qty → just the name
 
       // Long-press menu
@@ -3220,8 +3328,6 @@ function openRecipeDetail(recipeId) {
     alert("There was a problem opening this recipe. Check the console for details.");
   }
 }
-
-    // ----- COOK MODE: tick ingredients to deduct from inventory -----
 
 function openCookDialog(dayId) {
   const entry = mealPlan.find((d) => d.dayId === dayId);
@@ -3537,8 +3643,6 @@ function formatUnitText(unit, quantity) {
   return unit;
 }
 
-// Turn decimal quantities into nice fractions for display only.
-// Under the hood we still store them as decimals (e.g. 1.25).
 function formatQuantityForDisplay(q) {
   if (q == null || Number.isNaN(q)) return "";
 
@@ -3846,11 +3950,7 @@ function openRecipeImportPreviewDialog(parsed) {
     panel.classList.add("visible");
   });
 }
-// <!-- ======================================= -->
-// <!--            MEAL PLAN JS                    
-// <!-- ======================================= -->
 
-// 3 slots per day – you can add "snack" etc later if you want
 const MEAL_SLOTS = [
   { key: "breakfast", label: "Breakfast" },
   { key: "lunch",     label: "Lunch"     },
@@ -3896,7 +3996,6 @@ function normaliseMealPlan() {
   mealPlan = nextPlan;
 }
 
-// "This week · 24–30 Nov"
 function formatWeekRangeLabel() {
   if (!mealPlanBaseMonday) {
     mealPlanBaseMonday = getMonday(new Date());
@@ -3907,7 +4006,6 @@ function formatWeekRangeLabel() {
   return `${formatDayMonth(start)}–${formatDayMonth(end)}`;
 }
 
-// Used by renderMealPlan() per-day
 function formatDayLabel(dayObj) {
   let d;
   if (dayObj && dayObj.dateISO) {
@@ -3925,13 +4023,11 @@ function formatDayLabel(dayObj) {
   return { dayName, dateLabel };
 }
 
-// Convenience for looking recipes up
 function getRecipeById(id) {
   if (!id) return null;
   return recipes.find(r => r.id === id) || null;
 }
 
-// === MEAL PLAN DATE STATE ===
 let mealPlanBaseMonday = null; // "anchor" Monday for the current week
 
 function getMonday(date) {
@@ -3943,7 +4039,6 @@ function getMonday(date) {
   return d;
 }
 
-// Format helpers
 function formatDayMonth(d) {
   return d.toLocaleDateString(undefined, {
     day: "numeric",
@@ -4100,7 +4195,6 @@ function openMealplanWeekPicker() {
 
   renderMonth();
 }
-
 
 function renderMealPlan() {
   const container = document.getElementById("mealplan-days");
@@ -4399,47 +4493,6 @@ function clearMealPlanWeek() {
   renderMealPlan();
 }
 
-    // ---------- SHOPPING LIST ----------
-function roundUpForShopping(qty, unit) {
-  const n = Number(qty);
-  const u = (unit || "").toLowerCase();
-
-  if (!Number.isFinite(n) || n <= 0) {
-    return 0;
-  }
-
-  // Units you buy in whole items (no decimals)
-  const countUnits = [
-    "",                 // no unit → whole items (onions, limes, etc.)
-    "bottle", "bottles",
-    "pack", "packs",
-    "jar", "jars",
-    "tin", "tins",
-    "can", "cans",
-    "sprig", "sprigs",
-    "bunch", "bunches",
-    "loaf", "loaves",
-    "bag", "bags"
-  ];
-
-  if (countUnits.includes(u)) {
-    return Math.ceil(n);
-  }
-
-  // For your use-case: litres and kg should also be whole numbers (no 1.2L)
-  if (u === "l" || u === "kg") {
-    return Math.ceil(n);
-  }
-
-  // For g / ml we’re already aggregating in base units, whole numbers are fine
-  if (u === "g" || u === "ml") {
-    return Math.ceil(n);
-  }
-
-  // Fallback – play safe and round up
-  return Math.ceil(n);
-}
-
 function pluraliseUnit(rawUnit, quantity) {
   const unit = (rawUnit || "").toLowerCase();
   const q = Number(quantity);
@@ -4504,7 +4557,7 @@ function generateShoppingList() {
         }
 
         const keyName = (ing.name || "").toLowerCase();
-        const ingUnit = ing.unit || "";
+        const ingUnit = normaliseUnit(ing.unit || "");
 
         // Reuse existing baseUnit for this ingredient name if we have one
         const existing = required[keyName];
@@ -4604,35 +4657,12 @@ function generateShoppingList() {
 
     // Build a nice string, with litres spelt out and
     // bottle/sprig/etc pluralised via pluraliseUnit()
-    let qtyStr;
-      if (!displayUnit) {
-      qtyStr = formatNumberNice(displayQty);
-    } else {
-      const nStr = formatNumberNice(displayQty);
-      const unitLower = displayUnit.toLowerCase();
+   const q = displayQty;
+const u = normaliseUnit(displayUnit || "");
+const niceQty = formatNumberNice(q);
+const unitLabel = pluraliseUnit(u, q);
 
-      if (unitLower === "l") {
-        // 1 litre / 2 litres
-        const word =
-          typeof pluraliseUnit === "function"
-            ? pluraliseUnit("l", displayQty)
-            : (displayQty === 1 ? "litre" : "litres");
-        qtyStr = `${nStr} ${word}`;
-      } else if (["g", "kg", "ml"].includes(unitLower)) {
-        // Compact: 500g, 250ml
-        qtyStr = nStr + unitLower;
-      } else if (["tsp", "tbsp"].includes(unitLower)) {
-        // Teaspoons/tablespoons: no plural, with space
-        qtyStr = `${nStr} ${unitLower}`;
-      } else {
-        // sprig, bottle, pack, jar, etc → pluralise
-        const word =
-          typeof pluraliseUnit === "function"
-            ? pluraliseUnit(unitLower, displayQty)
-            : displayUnit;
-        qtyStr = `${nStr} ${word}`;
-      }
-    }
+let qtyStr = unitLabel ? `${niceQty} ${unitLabel}` : niceQty;
 
     // Convert tiny kg/L back to g/ml in the final string if needed
     let fixedQtyStr = qtyStr;
@@ -4705,15 +4735,12 @@ function generateShoppingList() {
   });
 }
 
-// ----- BARCODE GLOBALS -----
 let activeBarcodeReader = null;
 let barcodeScanHandled = false;
 let scanSessionId = 0;
 
-// make sure we have a barcode map object
 window.barcodeMap = window.barcodeMap || {};
 
-// Stop ZXing + camera stream safely
 function stopBarcodeReader() {
   try {
     if (activeBarcodeReader && typeof activeBarcodeReader.reset === "function") {
@@ -4734,7 +4761,7 @@ function stopBarcodeReader() {
     video.srcObject = null;
   }
 }
-// Close overlay + stop scanning
+
 function closeBarcodeScannerOverlay() {
   barcodeScanHandled = true;          // guard so callback ignores further reads
   stopBarcodeReader();
@@ -4990,9 +5017,7 @@ function openBarcodeNamePicker(barcode, names) {
   document.body.appendChild(overlay);
 }
 
-    // ---------- NAVIGATION ----------
-
-    function showPage(pageId) {
+function showPage(pageId) {
       const pages = document.querySelectorAll(".page");
       const navButtons = document.querySelectorAll(".app-nav button");
 
@@ -5388,7 +5413,6 @@ function openBarcodeNamePicker(barcode, names) {
   renderMealPlan();
 });
 
-// Keep service worker registration small & safe
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker
     .register("./sw.js")
