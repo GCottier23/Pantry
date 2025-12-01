@@ -377,8 +377,7 @@
   return { quantity: q, unit };
 }
 
-    function toggleUserStaple(name) {
-
+function toggleUserStaple(name) {
   if (!name) return;
   const lower = name.toLowerCase().trim();
   if (!lower) return;
@@ -397,7 +396,7 @@
   saveState();
 }
 
-    function splitIngredientsByStaples(ingredients) {
+function splitIngredientsByStaples(ingredients) {
   const staples = [];
   const regular = [];
 
@@ -410,7 +409,7 @@
   return { staples, regular };
 }
 
-    function dedupeStaplesByName(staples) {
+function dedupeStaplesByName(staples) {
   const byName = new Map();
 
   (staples || []).forEach((obj) => {
@@ -425,7 +424,6 @@
       byName.set(key, obj);
       return;
     }
-  }
 
     // If we already have one, decide which to keep.
     // Simple rule: prefer the one that actually has a numeric quantity.
@@ -442,7 +440,7 @@
   });
 
   return Array.from(byName.values());
-
+}
     // ---------- VERY SIMPLE PARSER FOR IMPORT ----------
 
 function parseBbcIngredient(rawLine, ingredientNames) {
@@ -4104,7 +4102,7 @@ function openMealplanWeekPicker() {
 }
 
 
-   function renderMealPlan() {
+function renderMealPlan() {
   const container = document.getElementById("mealplan-days");
   const labelEl   = document.getElementById("mealplan-week-label");
   if (!container) return;
