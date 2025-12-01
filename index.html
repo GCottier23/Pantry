@@ -210,7 +210,12 @@
   <!-- =============== JAVASCRIPT =============== -->
   <script>
     const WORKER_BASE = "https://icy-rain-e28c.gaz-cottier23.workers.dev";
-    // ---------- UTILITIES ----------
+
+    // ==========================================
+    //          GENERAL/RECIPE HELPERS   
+    // ==========================================  
+    
+    // ========= TEXT / FORMATTING ==============
 
     function titleCase(str) {
       return str
@@ -221,36 +226,56 @@
         .join(" ");
     }
 
+    function tidyRecipeTitle(str) {
+      if (!str) return "";
+      let t = str.trim();
+      // Strip trailing " - BBC Food" / " - BBC Good Food"
+      t = t.replace(/\s*-\s*BBC\s*Food\s*$/i, "");
+      t = t.replace(/\s*-\s*BBC\s*Good\s*Food\s*$/i, "");
+      return t;
+    }
+
+    function parseServingsNumber(servingsText) {
+      if (!servingsText) return null;
+      // Look for the first number: "Serves 8-10" -> 8
+      const m = servingsText.match(/(\d+)/);
+      if (!m) return null;
+      const n = parseInt(m[1], 10);
+      return Number.isNaN(n) ? null : n;
+    }
+
+    // ========= UNITS . QUANTITIES ==============
+
     function convertToUnit(qty, fromUnit, toUnit) {
-  const n = Number(qty);
-  if (!Number.isFinite(n)) return 0;
+      const n = Number(qty);
+      if (!Number.isFinite(n)) return 0;
 
-  const from = (fromUnit || "").toLowerCase();
-  const to   = (toUnit   || "").toLowerCase();
+      const from = (fromUnit || "").toLowerCase();
+      const to   = (toUnit   || "").toLowerCase();
 
-  // If no target unit, just return the raw quantity
-  if (!to) return n;
+      // If no target unit, just return the raw quantity
+      if (!to) return n;
 
-  // Same unit – no conversion needed
-  if (from === to) return n;
+      // Same unit – no conversion needed
+      if (from === to) return n;
 
-  // ----- WEIGHT -----
-  if (from === "g" && to === "kg") return n / 1000;
-  if (from === "kg" && to === "g") return n * 1000;
+      // ----- WEIGHT -----
+      if (from === "g" && to === "kg") return n / 1000;
+      if (from === "kg" && to === "g") return n * 1000;
 
-  // ----- VOLUME -----
-  if (from === "ml" && to === "l") return n / 1000;
-  if (from === "l" && to === "ml") return n * 1000;
+      // ----- VOLUME -----
+      if (from === "ml" && to === "l") return n / 1000;
+      if (from === "l" && to === "ml") return n * 1000;
 
-  // ----- WINE BOTTLES ↔ ml (750ml per bottle) -----
-  if (from === "bottle"  && to === "ml") return n * 750;
-  if (from === "bottles" && to === "ml") return n * 750;
-  if (from === "ml" && to === "bottle")  return n / 750;
-  if (from === "ml" && to === "bottles") return n / 750;
+      // ----- WINE BOTTLES ↔ ml (750ml per bottle) -----
+      if (from === "bottle"  && to === "ml") return n * 750;
+      if (from === "bottles" && to === "ml") return n * 750;
+      if (from === "ml" && to === "bottle")  return n / 750;
+      if (from === "ml" && to === "bottles") return n / 750;
 
-  // Unknown conversion – just treat as equivalent units
-  return n;
-}
+      // Unknown conversion – just treat as equivalent units
+      return n;
+    } 
 
     function normalizeInventoryItem(item) {
       if (item.unit === "g" && item.quantity >= 1000) {
@@ -262,7 +287,7 @@
       }
     }
 
-function chooseBaseUnit(unit, name) {
+    function chooseBaseUnit(unit, name) {
   const u = (unit || "").toLowerCase();
   const lowerName = (name || "").toLowerCase();
 
@@ -284,8 +309,8 @@ function chooseBaseUnit(unit, name) {
   // Everything else – stay as whatever unit we have (tsp, tbsp, pack, etc.)
   return u || "";
 }
-   // Replace your existing helper with this
-function formatQuantityWithUnit(quantity, unit) {
+  
+    function formatQuantityWithUnit(quantity, unit) {
   if (quantity == null || Number.isNaN(quantity)) return "";
 
   const q = Number(quantity);
@@ -323,7 +348,7 @@ function formatQuantityWithUnit(quantity, unit) {
   return niceQty;
 }
 
-function autoCompactQuantityUnit(q, unit) {
+    function autoCompactQuantityUnit(q, unit) {
   if (q == null || Number.isNaN(q)) return { quantity: q, unit };
 
   const u = (unit || "").toLowerCase();
@@ -352,15 +377,15 @@ function autoCompactQuantityUnit(q, unit) {
   return { quantity: q, unit };
 }
 
-// Toggle user staple on/off for this device
-function toggleUserStaple(name) {
+    function toggleUserStaple(name) {
+
   if (!name) return;
   const lower = name.toLowerCase().trim();
   if (!lower) return;
 
   // make sure array exists
-  if (typeof userStaples === "undefined" || !Array.isArray(userStaples)) {
-    window.userStaples = [];
+  if (!Array.isArray(userStaples)) {
+    userStaples = [];
   }
 
   const idx = userStaples.indexOf(lower);
@@ -372,8 +397,7 @@ function toggleUserStaple(name) {
   saveState();
 }
 
-// Split a list into { staples, regular }, keeping the original index
-function splitIngredientsByStaples(ingredients) {
+    function splitIngredientsByStaples(ingredients) {
   const staples = [];
   const regular = [];
 
@@ -386,17 +410,7 @@ function splitIngredientsByStaples(ingredients) {
   return { staples, regular };
 }
 
-        function tidyRecipeTitle(str) {
-      if (!str) return "";
-      let t = str.trim();
-      // Strip trailing " - BBC Food" / " - BBC Good Food"
-      t = t.replace(/\s*-\s*BBC\s*Food\s*$/i, "");
-      t = t.replace(/\s*-\s*BBC\s*Good\s*Food\s*$/i, "");
-      return t;
-    }
-
-    // Collapse multiple staple entries with the same name into a single row
-function dedupeStaplesByName(staples) {
+    function dedupeStaplesByName(staples) {
   const byName = new Map();
 
   (staples || []).forEach((obj) => {
@@ -411,6 +425,7 @@ function dedupeStaplesByName(staples) {
       byName.set(key, obj);
       return;
     }
+  }
 
     // If we already have one, decide which to keep.
     // Simple rule: prefer the one that actually has a numeric quantity.
@@ -427,16 +442,6 @@ function dedupeStaplesByName(staples) {
   });
 
   return Array.from(byName.values());
-}
-
-    function parseServingsNumber(servingsText) {
-      if (!servingsText) return null;
-      // Look for the first number: "Serves 8-10" -> 8
-      const m = servingsText.match(/(\d+)/);
-      if (!m) return null;
-      const n = parseInt(m[1], 10);
-      return Number.isNaN(n) ? null : n;
-    }
 
     // ---------- VERY SIMPLE PARSER FOR IMPORT ----------
 
@@ -5391,6 +5396,6 @@ if ("serviceWorker" in navigator) {
     .register("./sw.js")
     .catch(() => {});
 }
-  </script>
+</script>
 </body>
 </html>
