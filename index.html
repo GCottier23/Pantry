@@ -228,6 +228,14 @@
       if (fromUnit === "kg" && toUnit === "g") return quantity * 1000;
       if (fromUnit === "ml" && toUnit === "l") return quantity / 1000;
       if (fromUnit === "l" && toUnit === "ml") return quantity * 1000;
+      // 🍷 Bottle conversion (750ml)
+if (fromUnit === "bottle" && toUnit === "ml") {
+  return value * 750; // 1 bottle = 750ml
+}
+
+if (fromUnit === "ml" && toUnit === "bottle") {
+  return value / 750;
+}
       return quantity;
     }
 
@@ -241,11 +249,22 @@
       }
     }
 
-    function chooseBaseUnit(unit) {
-      if (unit === "kg" || unit === "g") return "g";
-      if (unit === "l" || unit === "ml") return "ml";
-      return unit || "";
-    }
+   function chooseBaseUnit(unit, nameOptional = "") {
+  const name = (nameOptional || "").toLowerCase();
+  const u = (unit || "").toLowerCase();
+
+  // 🍷 FORCE wine → ml as base unit
+  if (name.includes("wine")) {
+    return "ml";
+  }
+
+  // Normal logic
+  if (u === "kg" || u === "g") return "g";
+  if (u === "l"  || u === "ml") return "ml";
+
+  // Otherwise treat as unitless (counts)
+  return "";
+}
 
    // Replace your existing helper with this
 function formatQuantityWithUnit(quantity, unit) {
@@ -4370,14 +4389,14 @@ function pluraliseUnit(unit, qty) {
 }
 
 function generateShoppingList() {
-  // Make sure the week structure is sane
+  // Keep the structure sane first
   if (typeof normaliseMealPlan === "function") {
     normaliseMealPlan();
   }
 
   const required = {};
 
-  // 🔹 Go through each day AND each meal slot
+  // Walk every day and every MEAL_SLOT
   mealPlan.forEach((dayEntry) => {
     if (!dayEntry) return;
 
@@ -4394,27 +4413,30 @@ function generateShoppingList() {
       const scale = plannedServings / recipe.servings;
 
       (recipe.ingredients || []).forEach((ing) => {
-        if (! ing || !ing.name) return;
+        if (!ing || !ing.name) return;
 
-        // Skip cupboard staples (salt, pepper, oil, nutmeg, etc.)
-        if (typeof isStapleIngredient === "function" &&
-            isStapleIngredient(ing.name)) {
+        // Skip staples (salt, oil, pepper, etc.)
+        if (
+          typeof isStapleIngredient === "function" &&
+          isStapleIngredient(ing.name)
+        ) {
           return;
         }
 
-        // Skip ingredients that don't have a usable quantity
+        // Skip if no usable quantity
         if (!ing.quantity || ing.quantity <= 0) {
           return;
         }
 
-        const keyName = ing.name.toLowerCase();
+        const keyName = (ing.name || "").toLowerCase();
         const ingUnit = ing.unit || "";
 
-        // Decide the "base unit" we want to aggregate in
-        const baseUnit = required[keyName]
-          ? required[keyName].baseUnit
+        // Reuse existing baseUnit for this ingredient name if we have one
+        const existing = required[keyName];
+        const baseUnit = existing
+          ? existing.baseUnit
           : (typeof chooseBaseUnit === "function"
-              ? chooseBaseUnit(ingUnit)
+              ? chooseBaseUnit(ingUnit, ing.name)
               : ingUnit);
 
         if (!required[keyName]) {
@@ -4441,7 +4463,7 @@ function generateShoppingList() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  // Helper to make numbers look tidy
+  // Tidy number for display
   function formatNumberNice(n) {
     if (Number.isInteger(n)) return String(n);
     const oneDp = Math.round(n * 10) / 10;
@@ -4454,7 +4476,7 @@ function generateShoppingList() {
     const baseUnit = need.baseUnit;
     let requiredBase = need.quantityBase;
 
-    // Work out what we already have in inventory (in the same base unit)
+    // How much we already have (in same base unit)
     let invQtyBase = 0;
     const invItem = inventory.find(
       (i) => i.name.toLowerCase() === keyName
@@ -4471,18 +4493,18 @@ function generateShoppingList() {
     }
 
     let toBuyBase = Math.max(0, requiredBase - invQtyBase);
-    if (toBuyBase <= 1e-9) return; // nothing to buy → skip row
+    if (toBuyBase <= 1e-9) return; // nothing to buy
 
-       // Decide how to *display* that quantity
+    // Decide how to *display* quantity
     let displayQty = toBuyBase;
     let displayUnit = baseUnit;
 
     if (!displayUnit) {
-      // 📦 No unit → count of items (onions, limes, eggs, etc.)
-      // Always round UP so you don't underbuy.
+      // No unit → single items (onions, limes, eggs, etc.)
+      // Always round UP so you don’t underbuy
       displayQty = Math.ceil(displayQty);
     } else {
-      // g/ml ↔ kg/L logic
+      // g/ml ↔ kg/l conversion
       if (baseUnit === "g") {
         if (displayQty >= 1000) {
           displayQty = displayQty / 1000;
@@ -4499,36 +4521,45 @@ function generateShoppingList() {
         }
       }
 
-      // Round up to sensible shopping amounts for things with units
+      // Let your helper round to sensible shopping amounts
       if (typeof roundUpForShopping === "function") {
         displayQty = roundUpForShopping(displayQty, displayUnit);
       }
     }
 
-    // Build a nice string like "500g" or "1.5kg" or "2 packs"
+    // Build a nice string, with litres spelt out and
+    // bottle/sprig/etc pluralised via pluraliseUnit()
     let qtyStr;
- if (!displayUnit) {
-  qtyStr = formatNumberNice(displayQty);
-} else {
-  const smallUnits = ["g", "kg", "ml", "l"];
-  const nStr = formatNumberNice(displayQty);
-
-  if (smallUnits.includes(displayUnit)) {
-    // special case: litres should be spelled out
-    if (displayUnit.toLowerCase() === "l") {
-      const word = pluraliseUnit("l", displayQty);
-      qtyStr = `${nStr} ${word}`;
+    if (!displayUnit) {
+      qtyStr = formatNumberNice(displayQty);
     } else {
-      qtyStr = nStr + displayUnit;
-    }
-  } else {
-    // 🍃 This path is for sprig, bottle, pack, jar, etc.
-    const word = pluraliseUnit(displayUnit, displayQty);
-    qtyStr = `${nStr} ${word}`;
-  }
-}
+      const smallUnits = ["g", "kg", "ml", "l"];
+      const nStr = formatNumberNice(displayQty);
 
-    // Fix tiny kg/L back to g/ml for display
+      if (smallUnits.includes(displayUnit)) {
+        if (displayUnit.toLowerCase() === "l") {
+          // 1 litre / 2 litres
+          const word =
+            typeof pluraliseUnit === "function"
+              ? pluraliseUnit("l", displayQty)
+              : displayQty === 1
+              ? "litre"
+              : "litres";
+          qtyStr = `${nStr} ${word}`;
+        } else {
+          qtyStr = nStr + displayUnit;
+        }
+      } else {
+        // sprig, bottle, pack, jar, etc.
+        const word =
+          typeof pluraliseUnit === "function"
+            ? pluraliseUnit(displayUnit, displayQty)
+            : displayUnit;
+        qtyStr = `${nStr} ${word}`;
+      }
+    }
+
+    // Convert tiny kg/L back to g/ml in the final string if needed
     let fixedQtyStr = qtyStr;
     const match = qtyStr.match(/^(\d+(?:\.\d+)?)\s*(kg|KG|l|L)$/);
 
@@ -4550,7 +4581,7 @@ function generateShoppingList() {
       }
     }
 
-    // Create table row
+    // Table row
     const tr = document.createElement("tr");
     tr.dataset.itemName = need.name;
     tr.dataset.buyQty = String(displayQty);
