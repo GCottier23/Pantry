@@ -4353,39 +4353,73 @@ function clearMealPlanWeek() {
     // ---------- SHOPPING LIST ----------
 function roundUpForShopping(qty, unit) {
   const n = Number(qty);
-  if (!Number.isFinite(n) || n <= 0) return 0;
+  const u = (unit || "").toLowerCase();
 
-  // For the purposes of shopping, we never want decimals:
-  //  - 1.2 litres  -> 2 litres
-  //  - 0.6 kg      -> 1 kg
-  //  - 0.3 packs   -> 1 pack
-  //  - 3.1 onions  -> 4 onions
+  if (!Number.isFinite(n) || n <= 0) {
+    return 0;
+  }
+
+  // Units you buy in whole items (no decimals)
+  const countUnits = [
+    "",                 // no unit → whole items (onions, limes, etc.)
+    "bottle", "bottles",
+    "pack", "packs",
+    "jar", "jars",
+    "tin", "tins",
+    "can", "cans",
+    "sprig", "sprigs",
+    "bunch", "bunches",
+    "loaf", "loaves",
+    "bag", "bags"
+  ];
+
+  if (countUnits.includes(u)) {
+    return Math.ceil(n);
+  }
+
+  // For your use-case: litres and kg should also be whole numbers (no 1.2L)
+  if (u === "l" || u === "kg") {
+    return Math.ceil(n);
+  }
+
+  // For g / ml we’re already aggregating in base units, whole numbers are fine
+  if (u === "g" || u === "ml") {
+    return Math.ceil(n);
+  }
+
+  // Fallback – play safe and round up
   return Math.ceil(n);
 }
 
 function pluraliseUnit(unit, qty) {
-  const u = (unit || "").toLowerCase().trim();
+  const u = (unit || "").toLowerCase();
   const n = Number(qty);
 
-  if (!u) return ""; // no unit
-
-  // Anything that ends with 's' is probably already plural
-  if (u.endsWith("s")) return u;
-
-  // If qty is exactly 1 → singular
-  if (n === 1) {
-    if (u === "l") return "litre";
-    if (u === "bottle") return "bottle";
-    if (u === "sprig") return "sprig";
-    return u; // default
+  if (!Number.isFinite(n)) {
+    return unit || "";
   }
 
-  // qty ≠ 1 → plural
-  if (u === "l") return "litres";
-  if (u === "bottle") return "bottles";
-  if (u === "sprig") return "sprigs";
+  // Special case: litres → "litre / litres"
+  if (u === "l") {
+    return n === 1 ? "litre" : "litres";
+  }
 
-  return u + "s"; // fallback: add "s"
+  // Optional: add any irregulars you care about
+  if (u === "leaf") {
+    return n === 1 ? "leaf" : "leaves";
+  }
+
+  // For count-type units (bottle, sprig, pack, jar, etc.)
+  if (n === 1) {
+    return unit;
+  }
+
+  // If it already ends with "s", leave it alone
+  if (u.endsWith("s")) {
+    return unit;
+  }
+
+  return unit + "s";
 }
 
 function generateShoppingList() {
