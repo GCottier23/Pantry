@@ -3083,15 +3083,42 @@ function applySmartDefaultUnit(name, quantity, unit) {
   return unit;
 }
 
-function openRecipeDetail(recipeId) {
+function openRecipeDetail(recipeId, options = {}) {
+  const {
+    targetServings = null,   // e.g. 10
+    showCookCheckboxes = false
+  } = options || {};
+
   const recipe = recipes.find((r) => r.id === recipeId);
   if (!recipe) return;
+
+  // How much to scale ingredient quantities by
+  const baseServings =
+    recipe.servings && recipe.servings > 0 ? recipe.servings : 1;
+  const scale =
+    targetServings && targetServings > 0
+      ? targetServings / baseServings
+      : 1;
 
   try {
     const recipeIdActual = recipe.id;
 
     // Work on a copy so we don't mutate the underlying recipe
-    const ingForDisplay = (recipe.ingredients || []).slice();
+    // and apply scaling if needed (e.g. 5 → 10 servings).
+    const ingForDisplay = (recipe.ingredients || []).map((ing) => {
+      if (!ing) return ing;
+      const copy = { ...ing };
+
+      if (
+        scale !== 1 &&
+        copy.quantity != null &&
+        !Number.isNaN(copy.quantity) &&
+        copy.quantity > 0
+      ) {
+        copy.quantity = copy.quantity * scale;
+      }
+      return copy;
+    });
 
     // If any ingredient mentions black pepper but none mentions salt,
     // add a synthetic "Salt" line (staple, shown as "to taste").
@@ -3187,9 +3214,25 @@ function openRecipeDetail(recipeId) {
       return 0;
     });
 
-    function addIngredientLi(ul, obj, isStapleList) {
+      function addIngredientLi(ul, obj, isStapleList) {
       const { ing, index } = obj;
       const li = document.createElement("li");
+
+      // Optional checkbox for "cooking" mode
+      let cookCheckbox = null;
+      if (showCookCheckboxes) {
+        cookCheckbox = document.createElement("input");
+        cookCheckbox.type = "checkbox";
+        cookCheckbox.className = "ingredient-cook-checkbox";
+        cookCheckbox.style.marginRight = "0.5rem";
+
+        cookCheckbox.addEventListener("change", () => {
+          // For now just visually dim when ticked
+          li.style.opacity = cookCheckbox.checked ? "0.5" : "";
+        });
+
+        li.appendChild(cookCheckbox);
+      }
 
       const nameSpan = document.createElement("span");
       nameSpan.className = "ingredient-name";
@@ -4358,6 +4401,126 @@ function openMealplanWeekPicker() {
   renderMonth();
 }
 
+// Long-press on a meal slot → "LET'S COOK!!" dialog
+function attachMealSlotLongPress(btn, dayIndex, slotKey) {
+  let pressTimer = null;
+
+  // Avoid text selection on long-press
+  btn.style.userSelect = "none";
+  btn.style.webkitUserSelect = "none";
+
+  const start = (event) => {
+    // Don’t kill normal click – just prevent text selection
+    event.preventDefault();
+
+    if (pressTimer !== null) return;
+
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      openLetsCookDialog(dayIndex, slotKey);
+    }, 450); // ~0.45s long press
+  };
+
+  const cancel = () => {
+    if (pressTimer !== null) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
+
+  btn.addEventListener("pointerdown", start);
+  btn.addEventListener("pointerup", cancel);
+  btn.addEventListener("pointerleave", cancel);
+  btn.addEventListener("pointercancel", cancel);
+}
+
+function openLetsCookDialog(dayIndex, slotKey) {
+  normaliseMealPlan();
+
+  const dayObj = mealPlan[dayIndex];
+  if (!dayObj) return;
+
+  const slotState = dayObj[slotKey] || { recipeId: "", servings: 0 };
+  if (!slotState.recipeId) {
+    alert("No recipe selected for this slot yet.");
+    return;
+  }
+
+  const recipe = getRecipeById(slotState.recipeId);
+  if (!recipe) {
+    alert("Recipe not found.");
+    return;
+  }
+
+  const { dayName, dateLabel } = formatDayLabel(dayObj);
+  const servings =
+    (slotState.servings && slotState.servings > 0)
+      ? slotState.servings
+      : (recipe.servings || "");
+
+  // Remove any existing cook overlay
+  const old = document.getElementById("lets-cook-overlay");
+  if (old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "lets-cook-overlay";
+  overlay.className = "recipe-detail-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "recipe-detail-panel";
+
+  // Title
+  const titleEl = document.createElement("h2");
+  titleEl.textContent = "LET'S COOK!!";
+  panel.appendChild(titleEl);
+
+  // Little summary
+  const info = document.createElement("p");
+  info.textContent = `${dayName} · ${slotKey.charAt(0).toUpperCase() + slotKey.slice(1)} · ${dateLabel}`;
+  panel.appendChild(info);
+
+  const recipeLine = document.createElement("p");
+  recipeLine.textContent = servings
+    ? `${recipe.name} – ${servings} serving${servings === 1 ? "" : "s"}`
+    : recipe.name;
+  panel.appendChild(recipeLine);
+
+  // Buttons row
+  const btnRow = document.createElement("div");
+  btnRow.className = "barcode-scanner-actions";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "inventory-delete-button";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => overlay.remove());
+
+  const cookBtn = document.createElement("button");
+  cookBtn.type = "button";
+  cookBtn.className = "ios-green-button";
+  cookBtn.textContent = "Open recipe";
+   cookBtn.addEventListener("click", () => {
+    overlay.remove();
+    // 🔥 Open recipe with scaled ingredients + checkboxes
+    openRecipeDetail(recipe.id, {
+      targetServings: servings,        // e.g. 10
+      showCookCheckboxes: true
+    });
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(cookBtn);
+  panel.appendChild(btnRow);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  // Tap dim background to close
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
 function renderMealPlan() {
   const container = document.getElementById("mealplan-days");
   const labelEl   = document.getElementById("mealplan-week-label");
@@ -4446,6 +4609,9 @@ function renderMealPlan() {
       btn.addEventListener("click", () => {
         openMealSlotPicker(dayIndex, key);
       });
+
+            // Long-press for LET'S COOK!! dialog
+      attachMealSlotLongPress(btn, dayIndex, key);
 
       row.appendChild(btn);
       mealsWrap.appendChild(row);
