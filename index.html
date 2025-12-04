@@ -3383,39 +3383,68 @@ if (!unitLabel) {
   }
 }
 
-function openCookDialog(dayId) {
-  const entry = mealPlan.find((d) => d.dayId === dayId);
-  if (!entry || !entry.recipeId) {
-    alert("No recipe selected for this day.");
-    return;
+// Can be called EITHER as:
+//   openCookDialog(recipeObj, servings)
+// OR
+//   openCookDialog(dayId)
+function openCookDialog(arg1, defaultServings) {
+  let recipe = null;
+  let plannedServings = defaultServings;
+
+  // ---------- MODE 1: called with a recipe object ----------
+  if (arg1 && typeof arg1 === "object" && Array.isArray(arg1.ingredients)) {
+    recipe = arg1;
+  } else {
+    // ---------- MODE 2: called with a dayId (old behaviour) ----------
+    const dayId = arg1;
+    const entry = mealPlan.find((d) => d && d.dayId === dayId);
+    if (!entry || !entry.recipeId) {
+      alert("No recipe selected for this day.");
+      return;
+    }
+
+    const found = recipes.find((r) => r.id === entry.recipeId);
+    if (!found) {
+      alert("Recipe not found.");
+      return;
+    }
+
+    recipe = found;
+
+    if (!plannedServings || plannedServings <= 0) {
+      plannedServings =
+        (entry.servings && entry.servings > 0)
+          ? entry.servings
+          : (recipe.servings && recipe.servings > 0 ? recipe.servings : 1);
+    }
   }
 
-  const recipe = recipes.find((r) => r.id === entry.recipeId);
-  if (!recipe) {
-    alert("Recipe not found.");
-    return;
-  }
-  if (!recipe.ingredients || !recipe.ingredients.length) {
+  // Final safety check
+  if (!recipe || !Array.isArray(recipe.ingredients) || !recipe.ingredients.length) {
     alert("This recipe has no ingredients saved yet.");
     return;
   }
 
-  // Default servings = planned servings, or recipe base if 0
-  const defaultServings =
-    entry.servings && entry.servings > 0 ? entry.servings : recipe.servings || 1;
+  // If we came from LET'S COOK, use that; otherwise fall back to recipe base
+  const initialServings =
+    (plannedServings && plannedServings > 0)
+      ? plannedServings
+      : (recipe.servings && recipe.servings > 0 ? recipe.servings : 1);
 
-  // Build overlay
+  // ===== BUILD OVERLAY =====
   const overlay = document.createElement("div");
   overlay.className = "recipe-detail-overlay cook-overlay";
 
   const panel = document.createElement("div");
   panel.className = "recipe-detail-panel";
 
-  // Close button
+  // Close button (YELLOW so we know it's cook mode)
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
-  closeBtn.className = "recipe-detail-close inventory-delete-button";
+  closeBtn.className = "recipe-detail-close";
   closeBtn.textContent = "Close";
+  closeBtn.style.backgroundColor = "yellow";
+  closeBtn.style.color = "#000";
   closeBtn.addEventListener("click", () => overlay.remove());
   panel.appendChild(closeBtn);
 
@@ -3433,13 +3462,13 @@ function openCookDialog(dayId) {
   servingsInput.type = "number";
   servingsInput.min = "1";
   servingsInput.step = "1";
-  servingsInput.value = String(defaultServings);
+  servingsInput.value = String(initialServings);
   servingsInput.style.marginTop = "0.5rem";
 
   servingsLabel.appendChild(servingsInput);
   panel.appendChild(servingsLabel);
 
-  // Container for ingredient checklist
+  // Ingredient checklist container
   const ingSection = document.createElement("div");
   ingSection.className = "subpanel";
   ingSection.style.marginTop = "1rem";
@@ -3454,14 +3483,15 @@ function openCookDialog(dayId) {
   ingSection.appendChild(ingHelp);
 
   const ingList = document.createElement("ul");
-  ingList.className = "recipe-detail-ingredients";
+  // reuse normal detail styling
+  ingList.className = "recipe-detail-ingredients cook-ingredients-list";
   ingSection.appendChild(ingList);
 
   panel.appendChild(ingSection);
 
-  // Bottom buttons
+  // Footer buttons
   const footer = document.createElement("div");
-  footer.className = "barcode-scanner-actions"; // reuse nice flex styling if you have it
+  footer.className = "barcode-scanner-actions";
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
@@ -3485,79 +3515,103 @@ function openCookDialog(dayId) {
     if (e.target === overlay) overlay.remove();
   });
 
-  // Helper to render scaled ingredient list
+  // ---------- RENDER SCALED INGREDIENTS ----------
   function renderCookIngredients() {
     ingList.innerHTML = "";
 
     const cookServings = parseFloat(servingsInput.value || "0");
     if (!cookServings || cookServings <= 0) return;
 
-        const baseServings = recipe.servings && recipe.servings > 0 ? recipe.servings : 1;
+    const baseServings =
+      recipe.servings && recipe.servings > 0 ? recipe.servings : 1;
     const scale = cookServings / baseServings;
 
     recipe.ingredients.forEach((ing) => {
-      // Skip cupboard staples – you don't deduct salt / pepper / oil / nutmeg, etc.
-      if (isStapleIngredient(ing.name)) {
+      if (!ing || !ing.name) return;
+
+      // Skip staples
+      if (typeof isStapleIngredient === "function" && isStapleIngredient(ing.name)) {
         return;
       }
 
-      const li = document.createElement("li");
-    
-      const row = document.createElement("div");
-      row.style.display = "flex";
-      row.style.alignItems = "center";
-      row.style.gap = "0.5rem";
-
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-
-      // Work out scaled quantity + baseUnit for deduction
       let q = ing.quantity || 0;
       let u = ing.unit || "";
       let scaledQty = q * scale;
 
-      const baseUnit = chooseBaseUnit(u);
-      const qtyBase = convertToUnit(scaledQty, u, baseUnit);
+      const baseUnit =
+        typeof chooseBaseUnit === "function"
+          ? chooseBaseUnit(u, ing.name)
+          : (u || "");
+      const qtyBase =
+        typeof convertToUnit === "function"
+          ? convertToUnit(scaledQty, u, baseUnit)
+          : scaledQty;
 
-      // Nicely formatted label
+      // Pretty quantity string (same as detail view)
       let displayQty = scaledQty;
       let displayUnit = u;
 
-      if (displayQty && (u === "g" || u === "ml") && displayQty >= 1000) {
+      if (
+        displayQty &&
+        (displayUnit === "g" || displayUnit === "ml") &&
+        displayQty >= 1000
+      ) {
         displayQty = displayQty / 1000;
-        displayUnit = u === "g" ? "kg" : "l";
+        displayUnit = displayUnit === "g" ? "kg" : "l";
       }
 
-      // Turn "l" into friendly "litre / litres"
-const isLitre = displayUnit === "l";
-const friendlyUnit = isLitre
-  ? (displayQty === 1 ? "litre" : "litres")
-  : displayUnit;
+      const niceQty =
+        typeof formatQuantityForDisplay === "function"
+          ? formatQuantityForDisplay(displayQty)
+          : displayQty;
 
-// Compact units (NO "l" now – litres get the word form)
-const compactUnits = ["g", "kg", "ml"];
+      const canonicalUnit =
+        typeof normaliseUnit === "function"
+          ? normaliseUnit(displayUnit || "")
+          : (displayUnit || "").toLowerCase();
 
-const niceNum = Number.isInteger(displayQty)
-  ? String(displayQty)
-  : (Math.round(displayQty * 10) / 10).toString();
+      const unitLabel =
+        typeof pluraliseUnit === "function"
+          ? pluraliseUnit(canonicalUnit, displayQty)
+          : canonicalUnit;
 
-let qtyStr = "";
-if (displayQty > 0) {
-  if (!friendlyUnit) {
-    qtyStr = niceNum;
-  } else if (compactUnits.includes(friendlyUnit)) {
-    qtyStr = niceNum + friendlyUnit;   // 800g, 250ml
-  } else {
-    qtyStr = niceNum + " " + friendlyUnit; // 1 litre, 1.5 litres, 2 packs, etc.
-  }
-}
+      let qtyStr = "";
+      if (displayQty && displayQty > 0) {
+        if (!unitLabel) {
+          qtyStr = String(niceQty);
+        } else {
+          const COMPACT_UNITS = ["g", "kg", "ml"];
+          if (COMPACT_UNITS.includes(canonicalUnit)) {
+            qtyStr = `${niceQty}${unitLabel}`;      // 450g, 200ml
+          } else {
+            qtyStr = `${niceQty} ${unitLabel}`;     // 1 litre, 2 bottles, etc.
+          }
+        }
+      }
 
-      const labelSpan = document.createElement("span");
-      labelSpan.textContent = qtyStr
-        ? `${ing.name}: ${qtyStr}`
-        : ing.name;
+      // ONE LINE: Name   QtyUnit   [ ]
+      const li = document.createElement("li");
+      li.className = "cook-ingredient-row";
+      li.style.display = "flex";
+      li.style.alignItems = "center";
 
-      // Attach metadata for deduction
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "ingredient-name";
+      nameSpan.textContent = ing.name;
+      nameSpan.style.flex = "1 1 auto";
+      li.appendChild(nameSpan);
+
+      const qtySpan = document.createElement("span");
+      qtySpan.className = "ingredient-qty";
+      qtySpan.textContent = qtyStr || "";
+      qtySpan.style.marginLeft = "0.75rem";
+      li.appendChild(qtySpan);
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "cook-ingredient-checkbox";
+      cb.style.marginLeft = "0.75rem";
+
       cb.dataset.ingName = ing.name;
       cb.dataset.qtyBase = String(qtyBase);
       cb.dataset.baseUnit = baseUnit || "";
@@ -3569,9 +3623,8 @@ if (displayQty > 0) {
         const qtyBaseNum = parseFloat(cb.dataset.qtyBase || "0");
         const base = cb.dataset.baseUnit || "";
 
-        // Check exists in inventory first
         const invItem = inventory.find(
-          (i) => i.name.toLowerCase() === name.toLowerCase()
+          (i) => i.name && i.name.toLowerCase() === name.toLowerCase()
         );
 
         if (!invItem) {
@@ -3583,14 +3636,16 @@ if (displayQty > 0) {
             cb.checked = false;
             return;
           }
-          // If they are happy → do nothing to inventory, just mark as applied
           cb.dataset.applied = "true";
           cb.disabled = true;
           return;
         }
 
-        // Deduct from inventory
-        const success = deductInventoryForCooking(name, qtyBaseNum, base);
+        const success =
+          typeof deductInventoryForCooking === "function"
+            ? deductInventoryForCooking(name, qtyBaseNum, base)
+            : false;
+
         if (!success) {
           alert("Could not update inventory for " + name);
           cb.checked = false;
@@ -3604,9 +3659,7 @@ if (displayQty > 0) {
         saveState();
       });
 
-      row.appendChild(cb);
-      row.appendChild(labelSpan);
-      li.appendChild(row);
+      li.appendChild(cb);
       ingList.appendChild(li);
     });
   }
@@ -3614,7 +3667,7 @@ if (displayQty > 0) {
   // Initial render
   renderCookIngredients();
 
-  // If servings change, regenerate checklist
+  // Re-render when servings change
   servingsInput.addEventListener("change", () => {
     const val = parseFloat(servingsInput.value || "0");
     if (!val || val <= 0) {
@@ -3636,14 +3689,13 @@ if (displayQty > 0) {
           "\n\nIs that because you didn't use them or couldn't buy them?"
       );
       if (!ok) return;
-      // We don't change inventory here – it's just a safety check
     }
 
     overlay.remove();
   });
 }
 
-  function startRecipeEdit(id, ingredientIndexToEdit) {
+function startRecipeEdit(id, ingredientIndexToEdit) {
   const recipe = recipes.find((r) => r.id === id);
   if (!recipe) return;
 
@@ -4417,6 +4469,8 @@ function attachMealSlotLongPress(btn, dayIndex, slotKey) {
 
     pressTimer = setTimeout(() => {
       pressTimer = null;
+      // mark that this was a long-press so click handler can ignore it
+      btn._mealSlotLongPressFired = true;
       openLetsCookDialog(dayIndex, slotKey);
     }, 450); // ~0.45s long press
   };
@@ -4453,12 +4507,14 @@ function openLetsCookDialog(dayIndex, slotKey) {
   }
 
   const { dayName, dateLabel } = formatDayLabel(dayObj);
-  const servings =
+
+  // What is currently planned for this slot?
+  const plannedServings =
     (slotState.servings && slotState.servings > 0)
       ? slotState.servings
-      : (recipe.servings || "");
+      : (recipe.servings && recipe.servings > 0 ? recipe.servings : 1);
 
-  // Remove any existing cook overlay
+  // Kill any existing LET'S COOK overlay
   const old = document.getElementById("lets-cook-overlay");
   if (old) old.remove();
 
@@ -4476,14 +4532,31 @@ function openLetsCookDialog(dayIndex, slotKey) {
 
   // Little summary
   const info = document.createElement("p");
-  info.textContent = `${dayName} · ${slotKey.charAt(0).toUpperCase() + slotKey.slice(1)} · ${dateLabel}`;
+  info.textContent = `${dayName} · ${
+    slotKey.charAt(0).toUpperCase() + slotKey.slice(1)
+  } · ${dateLabel}`;
   panel.appendChild(info);
 
   const recipeLine = document.createElement("p");
-  recipeLine.textContent = servings
-    ? `${recipe.name} – ${servings} serving${servings === 1 ? "" : "s"}`
-    : recipe.name;
+  recipeLine.textContent = `${recipe.name} – ${plannedServings} serving${
+    plannedServings === 1 ? "" : "s"
+  }`;
   panel.appendChild(recipeLine);
+
+  // --- Servings input in this dialog ---
+  const servingsLabel = document.createElement("label");
+  servingsLabel.textContent = "How many servings are you cooking?";
+  servingsLabel.style.display = "block";
+
+  const servingsInput = document.createElement("input");
+  servingsInput.type = "number";
+  servingsInput.min = "1";
+  servingsInput.step = "1";
+  servingsInput.value = String(plannedServings);
+  servingsInput.style.marginTop = "0.5rem";
+
+  servingsLabel.appendChild(servingsInput);
+  panel.appendChild(servingsLabel);
 
   // Buttons row
   const btnRow = document.createElement("div");
@@ -4499,13 +4572,19 @@ function openLetsCookDialog(dayIndex, slotKey) {
   cookBtn.type = "button";
   cookBtn.className = "ios-green-button";
   cookBtn.textContent = "Open recipe";
-   cookBtn.addEventListener("click", () => {
+
+  cookBtn.addEventListener("click", () => {
+    // Read the chosen servings from this dialog
+    let chosenServings = parseFloat(servingsInput.value || "0");
+    if (!chosenServings || chosenServings <= 0) {
+      chosenServings = plannedServings;
+    }
+
+    // Close LET'S COOK dialog
     overlay.remove();
-    // 🔥 Open recipe with scaled ingredients + checkboxes
-    openRecipeDetail(recipe.id, {
-      targetServings: servings,        // e.g. 10
-      showCookCheckboxes: true
-    });
+
+    // 🔥 Open the cook overlay, passing the RECIPE OBJECT + servings
+    openCookDialog(recipe, chosenServings);
   });
 
   btnRow.appendChild(cancelBtn);
@@ -4579,15 +4658,14 @@ function renderMealPlan() {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "action-pill";
+      btn._mealSlotLongPressFired = false;   // flag for long-press
 
-            if (recipe) {
-        // Planned servings = slot choice, or fall back to recipe base
+      if (recipe) {
         const plannedServings =
           (slotState.servings && slotState.servings > 0)
             ? slotState.servings
             : (recipe.servings || null);
 
-        // Build label: "Recipe Name – 4 Servings"
         if (plannedServings) {
           const servingWord =
             plannedServings === 1 ? "Serving" : "Servings";
@@ -4599,18 +4677,23 @@ function renderMealPlan() {
             </span>
           `;
         } else {
-          // No servings stored, just show the name
           btn.innerHTML = `<strong>${recipe.name}</strong>`;
         }
       } else {
         btn.textContent = "Add recipe";
       }
 
+      // Normal tap → open slot picker
       btn.addEventListener("click", () => {
+        // if this click is immediately after a long-press, swallow it
+        if (btn._mealSlotLongPressFired) {
+          btn._mealSlotLongPressFired = false;
+          return;
+        }
         openMealSlotPicker(dayIndex, key);
       });
 
-            // Long-press for LET'S COOK!! dialog
+      // Long-press → "LET'S COOK!!" dialog
       attachMealSlotLongPress(btn, dayIndex, key);
 
       row.appendChild(btn);
@@ -5741,11 +5824,6 @@ function showPage(pageId) {
   renderMealPlan();
 });
 
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker
-    .register("./sw.js")
-    .catch(() => {});
-}
 </script>
 </body>
 </html>
