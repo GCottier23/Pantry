@@ -2957,87 +2957,85 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   const recipe = recipes.find((r) => r.id === recipeId);
   if (!recipe) return;
 
-  // Kill any existing ingredient menu
-  const old = document.getElementById("ingredient-menu-overlay");
-  if (old) old.remove();
+  // Kill any existing menu
+  const existing = document.getElementById("ingredient-menu-overlay");
+  if (existing) existing.remove();
 
+  // Dim background
   const overlay = document.createElement("div");
   overlay.id = "ingredient-menu-overlay";
   overlay.className = "recipe-detail-overlay";
 
+  // 🔒 Disable text selection anywhere in this overlay
+  overlay.style.userSelect = "none";
+  overlay.style.webkitUserSelect = "none";
+
+  // Panel
   const panel = document.createElement("div");
   panel.className = "recipe-detail-panel";
   panel.style.maxWidth = "420px";
+  panel.style.padding = "1.4rem 1.2rem 1.2rem";
 
   // Title
   const title = document.createElement("h3");
   title.textContent = ingredientName;
   panel.appendChild(title);
 
+  // Subtitle
   const subtitle = document.createElement("p");
   subtitle.textContent = "What would you like to do?";
   subtitle.style.marginTop = "0.25rem";
-  subtitle.style.marginBottom = "0.75rem";
+  subtitle.style.marginBottom = "0.9rem";
+  subtitle.style.opacity = "0.85";
   panel.appendChild(subtitle);
 
-  // --- Staple toggle button (green) ---
+  // Helper to style all buttons consistently
+  function styleMenuButton(btn) {
+    btn.style.display = "block";
+    btn.style.width = "100%";
+    btn.style.marginTop = "0.55rem";        // ⬅️ adds the gap
+    btn.style.borderRadius = "999px";
+    btn.style.fontSize = "1rem";
+    btn.style.padding = "0.9rem 1.1rem";
+    btn.style.userSelect = "none";
+    btn.style.webkitUserSelect = "none";
+  }
+
+  // --- Staple toggle ---
+  const currentlyStaple = isStapleIngredient(ingredientName);
   const stapleBtn = document.createElement("button");
   stapleBtn.type = "button";
   stapleBtn.className = "ios-green-button";
-
-  const currentlyStaple =
-    typeof isStapleIngredient === "function"
-      ? isStapleIngredient(ingredientName)
-      : false;
-
-  stapleBtn.textContent = currentlyStaple
-    ? "Remove from staples"
-    : "Mark as staple";
+  stapleBtn.textContent = currentlyStaple ? "Remove from staples" : "Mark as staple";
+  styleMenuButton(stapleBtn);
 
   stapleBtn.addEventListener("click", () => {
-    if (typeof toggleUserStaple === "function") {
-      toggleUserStaple(ingredientName);
-    }
+    toggleUserStaple(ingredientName);
     overlay.remove();
-    // Re-open the detail view so the ingredient jumps in/out of the staples section
-    if (typeof openRecipeDetail === "function") {
-      openRecipeDetail(recipeId);
-    }
+    // Re-open detail so ingredients jump in/out of "Make sure you have"
+    openRecipeDetail(recipeId);
   });
-  panel.appendChild(stapleBtn);
 
-  // --- Edit ingredient button (blue) ---
+  // --- Edit ingredient ---
   const editBtn = document.createElement("button");
   editBtn.type = "button";
   editBtn.className = "inventory-edit-btn";
   editBtn.textContent = "Edit ingredient";
+  styleMenuButton(editBtn);
 
   editBtn.addEventListener("click", () => {
     overlay.remove();
-
-    const recipeToEdit = recipes.find((r) => r.id === recipeId);
-
-    // Prefer the same dialog as the recipe-card "Edit" button
-    if (recipeToEdit && typeof openRecipeMetaDialog === "function") {
-      // Pass the ingredient index so you can optionally auto-focus that one
-      openRecipeMetaDialog(recipeToEdit, { ingredientIndexToEdit: ingredientIndex });
-    } else {
-      // Fallback to legacy inline edit so nothing breaks
-      if (typeof showPage === "function") {
-        showPage("page-recipes");
-      }
-      if (typeof startRecipeEdit === "function") {
-        startRecipeEdit(recipeId, ingredientIndex);
-      }
-    }
+    showPage("page-recipes");
+    // jump into the same editor as the card "Edit" flow
+    startRecipeEdit(recipeId, ingredientIndex);
   });
-  panel.appendChild(editBtn);
 
-  // --- Delete ingredient button (red) ---
+  // --- Delete ingredient ---
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
   deleteBtn.className = "inventory-delete-button";
   deleteBtn.textContent = "Delete ingredient";
+  styleMenuButton(deleteBtn);
 
   deleteBtn.addEventListener("click", () => {
     const ok = confirm(`Remove "${ingredientName}" from this recipe?`);
@@ -3049,29 +3047,30 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
       ingredientIndex < recipe.ingredients.length
     ) {
       recipe.ingredients.splice(ingredientIndex, 1);
-      if (typeof saveState === "function") {
-        saveState();
-      }
+      saveState();
     }
-
     overlay.remove();
-    if (typeof openRecipeDetail === "function") {
-      openRecipeDetail(recipeId);
-    }
+    openRecipeDetail(recipeId);
   });
-  panel.appendChild(deleteBtn);
 
-  // --- Cancel button (dark) ---
+  // --- Cancel ---
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
   cancelBtn.className = "secondary";
   cancelBtn.textContent = "Cancel";
+  styleMenuButton(cancelBtn);
+
   cancelBtn.addEventListener("click", () => overlay.remove());
+
+  // Add buttons to panel
+  panel.appendChild(stapleBtn);
+  panel.appendChild(editBtn);
+  panel.appendChild(deleteBtn);
   panel.appendChild(cancelBtn);
 
   overlay.appendChild(panel);
 
-  // Tap outside panel to close
+  // Close if you tap outside the panel
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.remove();
   });
