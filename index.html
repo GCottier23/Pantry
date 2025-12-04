@@ -3460,6 +3460,7 @@ function openCookDialog(arg1, defaultServings) {
 
   const servingsInput = document.createElement("input");
   servingsInput.type = "number";
+  servingsInput.inputMode = "numeric";
   servingsInput.min = "1";
   servingsInput.step = "1";
   servingsInput.value = String(initialServings);
@@ -3502,6 +3503,7 @@ function openCookDialog(arg1, defaultServings) {
   const finishBtn = document.createElement("button");
   finishBtn.type = "button";
   finishBtn.textContent = "Finish cooking";
+  finishBtn.className = "ios-green-button";
 
   footer.appendChild(cancelBtn);
   footer.appendChild(finishBtn);
@@ -4790,6 +4792,7 @@ function openMealSlotPicker(dayIndex, slotKey) {
 
     servingsInput = document.createElement("input");
     servingsInput.type = "number";
+    servingsInput.inputMode = "numeric";
     servingsInput.min = "1";
     servingsInput.step = "1";
 
