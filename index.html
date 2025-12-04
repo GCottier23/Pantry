@@ -1904,7 +1904,7 @@ photoBtn.textContent = "+";   // ⬅️ this line
 
   const nextBtn = document.createElement("button");
   nextBtn.type = "button";
-  nextBtn.textContent = "Add ingredients";
+  nextBtn.textContent = "Edit Ingredients";
   nextBtn.className = "ios-green-button";   // ← NEW
   nextBtn.addEventListener("click", () => {
     const rawName = nameInput.value.trim();
@@ -2957,81 +2957,86 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   const recipe = recipes.find((r) => r.id === recipeId);
   if (!recipe) return;
 
-  // Kill any existing overlay
+  // Kill any existing ingredient menu
   const old = document.getElementById("ingredient-menu-overlay");
   if (old) old.remove();
 
-  // Dark scrim – same as other dialogs
   const overlay = document.createElement("div");
   overlay.id = "ingredient-menu-overlay";
-  overlay.className = "barcode-scanner-overlay";
+  overlay.className = "recipe-detail-overlay";
 
-  // Card panel – same rounded card as add-item / import dialogs
   const panel = document.createElement("div");
-  panel.className = "barcode-scanner-panel add-item-panel";
+  panel.className = "recipe-detail-panel";
+  panel.style.maxWidth = "420px";
 
   // Title
-  const title = document.createElement("h2");
+  const title = document.createElement("h3");
   title.textContent = ingredientName;
   panel.appendChild(title);
 
-  // Subtitle
   const subtitle = document.createElement("p");
   subtitle.textContent = "What would you like to do?";
   subtitle.style.marginTop = "0.25rem";
   subtitle.style.marginBottom = "0.75rem";
-  subtitle.style.fontSize = "0.9rem";
-  subtitle.style.opacity = "0.8";
   panel.appendChild(subtitle);
 
-  // Button column (reuse barcode-scanner-actions but force column layout)
-  const btnCol = document.createElement("div");
-  btnCol.className = "barcode-scanner-actions";
-  btnCol.style.flexDirection = "column";
-  btnCol.style.alignItems = "stretch";
-  btnCol.style.gap = "0.5rem";
-
-  // --- Staple toggle button (green primary) ---
+  // --- Staple toggle button (green) ---
   const stapleBtn = document.createElement("button");
   stapleBtn.type = "button";
+  stapleBtn.className = "ios-green-button";
 
   const currentlyStaple =
-    typeof isStapleIngredient === "function" && isStapleIngredient(ingredientName);
+    typeof isStapleIngredient === "function"
+      ? isStapleIngredient(ingredientName)
+      : false;
 
   stapleBtn.textContent = currentlyStaple
     ? "Remove from staples"
     : "Mark as staple";
-
-  stapleBtn.className = "ios-green-button";
-  stapleBtn.style.width = "100%";
 
   stapleBtn.addEventListener("click", () => {
     if (typeof toggleUserStaple === "function") {
       toggleUserStaple(ingredientName);
     }
     overlay.remove();
-    // Re-open detail view so the ingredient jumps into / out of staples section
-    openRecipeDetail(recipeId);
+    // Re-open the detail view so the ingredient jumps in/out of the staples section
+    if (typeof openRecipeDetail === "function") {
+      openRecipeDetail(recipeId);
+    }
   });
+  panel.appendChild(stapleBtn);
 
-  // --- Edit ingredient (neutral pill) ---
+  // --- Edit ingredient button (blue) ---
   const editBtn = document.createElement("button");
   editBtn.type = "button";
   editBtn.className = "inventory-edit-btn";
-  editBtn.style.width = "100%";
   editBtn.textContent = "Edit ingredient";
 
   editBtn.addEventListener("click", () => {
     overlay.remove();
-    showPage("page-recipes");
-    startRecipeEdit(recipeId, ingredientIndex);
-  });
 
-  // --- Delete ingredient (red pill) ---
+    const recipeToEdit = recipes.find((r) => r.id === recipeId);
+
+    // Prefer the same dialog as the recipe-card "Edit" button
+    if (recipeToEdit && typeof openRecipeMetaDialog === "function") {
+      // Pass the ingredient index so you can optionally auto-focus that one
+      openRecipeMetaDialog(recipeToEdit, { ingredientIndexToEdit: ingredientIndex });
+    } else {
+      // Fallback to legacy inline edit so nothing breaks
+      if (typeof showPage === "function") {
+        showPage("page-recipes");
+      }
+      if (typeof startRecipeEdit === "function") {
+        startRecipeEdit(recipeId, ingredientIndex);
+      }
+    }
+  });
+  panel.appendChild(editBtn);
+
+  // --- Delete ingredient button (red) ---
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
   deleteBtn.className = "inventory-delete-button";
-  deleteBtn.style.width = "100%";
   deleteBtn.textContent = "Delete ingredient";
 
   deleteBtn.addEventListener("click", () => {
@@ -3044,39 +3049,34 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
       ingredientIndex < recipe.ingredients.length
     ) {
       recipe.ingredients.splice(ingredientIndex, 1);
-      saveState();
+      if (typeof saveState === "function") {
+        saveState();
+      }
     }
-    overlay.remove();
-    openRecipeDetail(recipeId);
-  });
 
-  // --- Cancel (grey pill) ---
+    overlay.remove();
+    if (typeof openRecipeDetail === "function") {
+      openRecipeDetail(recipeId);
+    }
+  });
+  panel.appendChild(deleteBtn);
+
+  // --- Cancel button (dark) ---
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
   cancelBtn.className = "secondary";
-  cancelBtn.style.width = "100%";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => overlay.remove());
+  panel.appendChild(cancelBtn);
 
-  // Add buttons to column
-  btnCol.appendChild(stapleBtn);
-  btnCol.appendChild(editBtn);
-  btnCol.appendChild(deleteBtn);
-  btnCol.appendChild(cancelBtn);
-
-  panel.appendChild(btnCol);
   overlay.appendChild(panel);
-  document.body.appendChild(overlay);
 
-  // Tap outside to close
+  // Tap outside panel to close
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.remove();
   });
 
-  // Animate in (if you’re using the .visible transition)
-  requestAnimationFrame(() => {
-    panel.classList.add("visible");
-  });
+  document.body.appendChild(overlay);
 }
 
 function shouldHideQuantityForDisplay(ing) {
