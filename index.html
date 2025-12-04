@@ -2957,49 +2957,83 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
   const recipe = recipes.find((r) => r.id === recipeId);
   if (!recipe) return;
 
+  // Kill any existing overlay
+  const old = document.getElementById("ingredient-menu-overlay");
+  if (old) old.remove();
+
+  // Dark scrim – same as other dialogs
   const overlay = document.createElement("div");
-  overlay.className = "recipe-detail-overlay"; // reuse dim background
+  overlay.id = "ingredient-menu-overlay";
+  overlay.className = "barcode-scanner-overlay";
 
+  // Card panel – same rounded card as add-item / import dialogs
   const panel = document.createElement("div");
-  panel.className = "recipe-detail-panel";
-  panel.style.maxWidth = "320px";
+  panel.className = "barcode-scanner-panel add-item-panel";
 
-  const title = document.createElement("h3");
+  // Title
+  const title = document.createElement("h2");
   title.textContent = ingredientName;
   panel.appendChild(title);
 
-  // --- Staple toggle button ---
+  // Subtitle
+  const subtitle = document.createElement("p");
+  subtitle.textContent = "What would you like to do?";
+  subtitle.style.marginTop = "0.25rem";
+  subtitle.style.marginBottom = "0.75rem";
+  subtitle.style.fontSize = "0.9rem";
+  subtitle.style.opacity = "0.8";
+  panel.appendChild(subtitle);
+
+  // Button column (reuse barcode-scanner-actions but force column layout)
+  const btnCol = document.createElement("div");
+  btnCol.className = "barcode-scanner-actions";
+  btnCol.style.flexDirection = "column";
+  btnCol.style.alignItems = "stretch";
+  btnCol.style.gap = "0.5rem";
+
+  // --- Staple toggle button (green primary) ---
   const stapleBtn = document.createElement("button");
   stapleBtn.type = "button";
 
-  const currentlyStaple = isStapleIngredient(ingredientName);
+  const currentlyStaple =
+    typeof isStapleIngredient === "function" && isStapleIngredient(ingredientName);
+
   stapleBtn.textContent = currentlyStaple
     ? "Remove from staples"
     : "Mark as staple";
 
+  stapleBtn.className = "ios-green-button";
+  stapleBtn.style.width = "100%";
+
   stapleBtn.addEventListener("click", () => {
-    toggleUserStaple(ingredientName);
+    if (typeof toggleUserStaple === "function") {
+      toggleUserStaple(ingredientName);
+    }
     overlay.remove();
-    // Re-open the detail view so the ingredient jumps into / out of the staples section
+    // Re-open detail view so the ingredient jumps into / out of staples section
     openRecipeDetail(recipeId);
   });
 
-  // --- Edit ingredient button ---
+  // --- Edit ingredient (neutral pill) ---
   const editBtn = document.createElement("button");
   editBtn.type = "button";
-  editBtn.className = "secondary";
+  editBtn.className = "inventory-edit-btn";
+  editBtn.style.width = "100%";
   editBtn.textContent = "Edit ingredient";
+
   editBtn.addEventListener("click", () => {
     overlay.remove();
     showPage("page-recipes");
-    startRecipeEdit(recipeId, ingredientIndex); // jump straight to that ingredient
+    startRecipeEdit(recipeId, ingredientIndex);
   });
 
-  // --- Delete ingredient button ---
+  // --- Delete ingredient (red pill) ---
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
-  deleteBtn.className = "secondary";
+  deleteBtn.className = "inventory-delete-button";
+  deleteBtn.style.width = "100%";
   deleteBtn.textContent = "Delete ingredient";
+
   deleteBtn.addEventListener("click", () => {
     const ok = confirm(`Remove "${ingredientName}" from this recipe?`);
     if (!ok) return;
@@ -3016,26 +3050,33 @@ function openIngredientContextMenu(recipeId, ingredientIndex, ingredientName) {
     openRecipeDetail(recipeId);
   });
 
-  // --- Cancel button ---
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "secondary";
-  closeBtn.textContent = "Cancel";
-  closeBtn.addEventListener("click", () => overlay.remove());
+  // --- Cancel (grey pill) ---
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "secondary";
+  cancelBtn.style.width = "100%";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => overlay.remove());
 
-  panel.appendChild(stapleBtn);
-  panel.appendChild(editBtn);
-  panel.appendChild(deleteBtn);
-  panel.appendChild(closeBtn);
+  // Add buttons to column
+  btnCol.appendChild(stapleBtn);
+  btnCol.appendChild(editBtn);
+  btnCol.appendChild(deleteBtn);
+  btnCol.appendChild(cancelBtn);
 
+  panel.appendChild(btnCol);
   overlay.appendChild(panel);
+  document.body.appendChild(overlay);
 
-  // Close if you tap outside the panel
+  // Tap outside to close
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.remove();
   });
 
-  document.body.appendChild(overlay);
+  // Animate in (if you’re using the .visible transition)
+  requestAnimationFrame(() => {
+    panel.classList.add("visible");
+  });
 }
 
 function shouldHideQuantityForDisplay(ing) {

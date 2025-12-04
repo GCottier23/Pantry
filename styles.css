@@ -329,6 +329,16 @@ button.secondary:active {
   transform: scale(0.97);
 }
 
+
+#ingredient-menu-overlay .ios-green-button,
+#ingredient-menu-overlay .inventory-edit-btn,
+#ingredient-menu-overlay .inventory-delete-button,
+#ingredient-menu-overlay .secondary {
+  padding: 0.9rem 1.1rem;   /* match height */
+  font-size: 1rem;
+  border-radius: 999px;     /* same pill shape */
+  width: 100%;
+}
 /* EDIT pill button (blue) */
 
 .inventory-edit-btn {
@@ -1591,11 +1601,4 @@ button.ios-green-button {
   margin-left: 0.5rem;
 }
 
-}
-
-/* Let’s Cook overlay: make ONLY this Close button bright yellow */
-.recipe-detail-close {
-  background-color: yellow !important;
-  color: #000 !important;
-  border-color: yellow !important;
 }
