@@ -1601,4 +1601,18 @@ button.ios-green-button {
   margin-left: 0.5rem;
 }
 
+#ingredient-menu-overlay .recipe-detail-panel button {
+  margin-top: 0.5rem;
+}
+
+#ingredient-menu-overlay .recipe-detail-panel button:first-of-type {
+  margin-top: 0; /* keep the top button flush with the title */
+}
+
+#ingredient-menu-overlay,
+#ingredient-menu-overlay * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 }
