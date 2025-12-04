@@ -429,21 +429,31 @@ function normaliseUnit(unit) {
   return u; // fallback – unknown unit, leave as-is
 }
 
-function pluraliseUnit(unit, quantity) {
-  const key = normaliseUnit(unit);
-  const def = UNIT_DEFS[key];
-  const q = Number(quantity || 0);
+function pluraliseUnit(rawUnit, quantity) {
+  const unit = (rawUnit || "").toLowerCase();
+  const q = Number(quantity);
 
-  // If we don't recognise this unit, fall back to a simple "add s"
-  if (!def) {
-    const raw = unit || "";
-    if (!raw) return "";          // no unit at all
-    if (q === 1) return raw;      // singular
-    return raw.endsWith("s") ? raw : raw + "s";
+  // Units that NEVER get an "s"
+  const FIXED_UNITS = ["g", "kg", "ml", "tsp", "tbsp"];
+  if (FIXED_UNITS.includes(unit)) {
+    return unit;
   }
 
-  // Known unit → use the singular/plural text from UNIT_DEFS
-  return q === 1 ? def.singular : def.plural;
+  if (!unit) return "";
+
+  // Treat fractions (0 < q < 1) as singular:
+  // 0.5 bottle, 0.5 sprig, ¼ bottle, etc.
+  const isSingular = q === 1 || (q > 0 && q < 1);
+
+  // Special case: litres
+  if (unit === "l") {
+    return isSingular ? "litre" : "litres";
+  }
+
+  // Default plural logic for word-y units like bottle, sprig, pack…
+  if (isSingular) return unit;
+  if (unit.endsWith("y")) return unit.slice(0, -1) + "ies";
+  return unit + "s";
 }
 
 const DEFAULT_STAPLE_KEYWORDS = [
@@ -3438,16 +3448,6 @@ function openCookDialog(arg1, defaultServings) {
   const panel = document.createElement("div");
   panel.className = "recipe-detail-panel";
 
-  // Close button (YELLOW so we know it's cook mode)
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "recipe-detail-close";
-  closeBtn.textContent = "Close";
-  closeBtn.style.backgroundColor = "yellow";
-  closeBtn.style.color = "#000";
-  closeBtn.addEventListener("click", () => overlay.remove());
-  panel.appendChild(closeBtn);
-
   // Title
   const title = document.createElement("h2");
   title.textContent = `Cook: ${recipe.name}`;
@@ -4902,29 +4902,6 @@ function clearMealPlanWeek() {
   });
   saveState();
   renderMealPlan();
-}
-
-function pluraliseUnit(rawUnit, quantity) {
-  const unit = (rawUnit || "").toLowerCase();
-  const q = Number(quantity);
-
-  // Units that NEVER get an "s"
-  const FIXED_UNITS = ["g", "kg", "ml", "tsp", "tbsp"];
-  if (FIXED_UNITS.includes(unit)) {
-    return unit;
-  }
-
-  // Special case: litres
-  if (unit === "l") {
-    return q === 1 ? "litre" : "litres";
-  }
-
-  if (!unit) return "";
-
-  // Default plural logic for word-y units like bottle, sprig, pack…
-  if (q === 1) return unit;
-  if (unit.endsWith("y")) return unit.slice(0, -1) + "ies";
-  return unit + "s";
 }
 
 function generateShoppingList() {
