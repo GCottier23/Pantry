@@ -3490,6 +3490,28 @@ function openCookDialog(arg1, defaultServings) {
 
   panel.appendChild(ingSection);
 
+    // ---- Method (same as normal detail view) ----
+  const methodTitle = document.createElement("h3");
+  methodTitle.textContent = "Method";
+  panel.appendChild(methodTitle);
+
+  const methodList = document.createElement("ol");
+  methodList.className = "recipe-detail-instructions cook-method-list";
+
+  if (Array.isArray(recipe.instructions) && recipe.instructions.length) {
+    recipe.instructions.forEach((step) => {
+      const li = document.createElement("li");
+      li.textContent = step;
+      methodList.appendChild(li);
+    });
+  } else {
+    const li = document.createElement("li");
+    li.textContent = "No method stored yet.";
+    methodList.appendChild(li);
+  }
+
+  panel.appendChild(methodList);
+
   // Footer buttons
   const footer = document.createElement("div");
   footer.className = "barcode-scanner-actions";
@@ -3518,6 +3540,7 @@ function openCookDialog(arg1, defaultServings) {
   });
 
   // ---------- RENDER SCALED INGREDIENTS ----------
+    // ---------- HELPER: render scaled ingredient list ----------
   function renderCookIngredients() {
     ingList.innerHTML = "";
 
@@ -3528,28 +3551,28 @@ function openCookDialog(arg1, defaultServings) {
       recipe.servings && recipe.servings > 0 ? recipe.servings : 1;
     const scale = cookServings / baseServings;
 
-    recipe.ingredients.forEach((ing) => {
+    // Split into regular + staples (for "Make sure you have")
+    const regular = [];
+    const staples = [];
+
+    (recipe.ingredients || []).forEach((ing) => {
       if (!ing || !ing.name) return;
 
-      // Skip staples
-      if (typeof isStapleIngredient === "function" && isStapleIngredient(ing.name)) {
-        return;
+      if (
+        typeof isStapleIngredient === "function" &&
+        isStapleIngredient(ing.name)
+      ) {
+        staples.push(ing);
+      } else {
+        regular.push(ing);
       }
+    });
 
-      let q = ing.quantity || 0;
-      let u = ing.unit || "";
-      let scaledQty = q * scale;
+    // Small helper to build qty string + base-unit quantity
+    function makeQtyInfo(quantity, unit, ingredientName) {
+      let scaledQty = (quantity || 0) * scale;
+      let u = unit || "";
 
-      const baseUnit =
-        typeof chooseBaseUnit === "function"
-          ? chooseBaseUnit(u, ing.name)
-          : (u || "");
-      const qtyBase =
-        typeof convertToUnit === "function"
-          ? convertToUnit(scaledQty, u, baseUnit)
-          : scaledQty;
-
-      // Pretty quantity string (same as detail view)
       let displayQty = scaledQty;
       let displayUnit = u;
 
@@ -3579,19 +3602,37 @@ function openCookDialog(arg1, defaultServings) {
 
       let qtyStr = "";
       if (displayQty && displayQty > 0) {
+        const COMPACT_UNITS = ["g", "kg", "ml"];
         if (!unitLabel) {
           qtyStr = String(niceQty);
+        } else if (COMPACT_UNITS.includes(canonicalUnit)) {
+          qtyStr = `${niceQty}${unitLabel}`;       // 450g, 250ml
         } else {
-          const COMPACT_UNITS = ["g", "kg", "ml"];
-          if (COMPACT_UNITS.includes(canonicalUnit)) {
-            qtyStr = `${niceQty}${unitLabel}`;      // 450g, 200ml
-          } else {
-            qtyStr = `${niceQty} ${unitLabel}`;     // 1 litre, 2 bottles, etc.
-          }
+          qtyStr = `${niceQty} ${unitLabel}`;      // 1 litre, 2 bottles, etc.
         }
       }
 
-      // ONE LINE: Name   QtyUnit   [ ]
+      const baseUnit =
+        typeof chooseBaseUnit === "function"
+          ? chooseBaseUnit(u, ingredientName)
+          : (u || "");
+
+      const qtyBase =
+        typeof convertToUnit === "function"
+          ? convertToUnit(scaledQty, u, baseUnit)
+          : scaledQty;
+
+      return { qtyStr, qtyBase, baseUnit };
+    }
+
+    // ----- 1) Regular ingredients WITH checkboxes (deduct inventory) -----
+    regular.forEach((ing) => {
+      const { qtyStr, qtyBase, baseUnit } = makeQtyInfo(
+        ing.quantity || 0,
+        ing.unit || "",
+        ing.name
+      );
+
       const li = document.createElement("li");
       li.className = "cook-ingredient-row";
       li.style.display = "flex";
@@ -3615,7 +3656,7 @@ function openCookDialog(arg1, defaultServings) {
       cb.style.marginLeft = "0.75rem";
 
       cb.dataset.ingName = ing.name;
-      cb.dataset.qtyBase = String(qtyBase);
+      cb.dataset.qtyBase = String(qtyBase || 0);
       cb.dataset.baseUnit = baseUnit || "";
 
       cb.addEventListener("change", () => {
@@ -3664,6 +3705,51 @@ function openCookDialog(arg1, defaultServings) {
       li.appendChild(cb);
       ingList.appendChild(li);
     });
+
+    // ----- 2) Staples: "Make sure you have" (NO checkboxes) -----
+
+    // Clear any previous staples block (if re-rendering after servings change)
+    const oldTitle = ingSection.querySelector(".cook-staples-title");
+    const oldList  = ingSection.querySelector(".cook-staples-list");
+    if (oldTitle) oldTitle.remove();
+    if (oldList)  oldList.remove();
+
+    if (staples.length) {
+      const staplesTitle = document.createElement("h3");
+      staplesTitle.className = "cook-staples-title";
+      staplesTitle.innerHTML = "<em>Make sure you have</em>";
+      ingSection.appendChild(staplesTitle);
+
+      const staplesList = document.createElement("ul");
+      staplesList.className = "recipe-detail-ingredients cook-staples-list";
+
+      staples.forEach((ing) => {
+        const { qtyStr } = makeQtyInfo(
+          ing.quantity || 0,
+          ing.unit || "",
+          ing.name
+        );
+
+        const li = document.createElement("li");
+        li.className = "cook-staple-row";
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "ingredient-name";
+        nameSpan.textContent = ing.name;
+        li.appendChild(nameSpan);
+
+        if (qtyStr) {
+          const qtySpan = document.createElement("span");
+          qtySpan.className = "ingredient-qty";
+          qtySpan.textContent = qtyStr;
+          li.appendChild(qtySpan);
+        }
+
+        staplesList.appendChild(li);
+      });
+
+      ingSection.appendChild(staplesList);
+    }
   }
 
   // Initial render
