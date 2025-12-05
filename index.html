@@ -3433,10 +3433,37 @@ if (!unitLabel) {
   }
 }
 
-// Can be called EITHER as:
-//   openCookDialog(recipeObj, servings)
-// OR
-//   openCookDialog(dayId)
+// Round awkward discrete amounts for cooking only
+function applyCookRounding(name, unit, qty) {
+  const u = (unit || "").toLowerCase();
+  const q = Number(qty);
+  if (!q || !Number.isFinite(q) || q <= 0) {
+    return { quantity: qty, unit };
+  }
+
+  // Units that should be treated as "countable"
+  const DISCRETE_UNITS = [
+    "stick", "sticks",
+    "clove", "cloves",
+    "sprig", "sprigs",
+    "bottle", "bottles",
+    "bay leaf", "bay leaves",
+    "egg", "eggs"
+  ];
+
+  if (!DISCRETE_UNITS.includes(u)) {
+    // g / ml / kg / tsp / tbsp etc → leave alone
+    return { quantity: qty, unit };
+  }
+
+  // Round **up** to the nearest 0.5, never below 0.5
+  const STEP = 0.5;
+  let rounded = Math.ceil(q / STEP) * STEP;
+  if (rounded < STEP) rounded = STEP;
+
+  return { quantity: rounded, unit };
+}
+
 function openCookDialog(arg1, defaultServings) {
   let recipe = null;
   let plannedServings = defaultServings;
@@ -3609,10 +3636,19 @@ function openCookDialog(arg1, defaultServings) {
     });
 
     // Small helper to build qty string + base-unit quantity
-    function makeQtyInfo(quantity, unit, ingredientName) {
+      function makeQtyInfo(quantity, unit, ingredientName) {
       let scaledQty = (quantity || 0) * scale;
       let u = unit || "";
 
+      // 🔹 For discrete units (sticks, cloves, sprigs, bottles, eggs, …)
+      //    round *up* to the nearest 0.5 for cooking
+      if (typeof applyCookRounding === "function") {
+        const rounded = applyCookRounding(ingredientName, u, scaledQty);
+        scaledQty = rounded.quantity;
+        u = rounded.unit;
+      }
+
+      // ----- Build display quantity/unit -----
       let displayQty = scaledQty;
       let displayUnit = u;
 
@@ -3652,6 +3688,7 @@ function openCookDialog(arg1, defaultServings) {
         }
       }
 
+      // ----- Base-unit quantity for inventory deduction -----
       const baseUnit =
         typeof chooseBaseUnit === "function"
           ? chooseBaseUnit(u, ingredientName)
@@ -3664,7 +3701,6 @@ function openCookDialog(arg1, defaultServings) {
 
       return { qtyStr, qtyBase, baseUnit };
     }
-
     // ----- 1) Regular ingredients WITH checkboxes (deduct inventory) -----
     regular.forEach((ing) => {
       const { qtyStr, qtyBase, baseUnit } = makeQtyInfo(
