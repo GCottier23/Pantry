@@ -1197,20 +1197,25 @@ button.secondary:active {
   min-width: 0;           /* allow them to shrink if the panel is narrow */
 }
 
-/* Make the Import Recipe dialog field match the Add Item dialog */
-#recipe-import-overlay .barcode-scanner-panel {
+/* === Recipe import/search dialogs – unified look === */
+
+/* Same panel width for both dialogs */
+#recipe-import-overlay .barcode-scanner-panel,
+#recipe-search-overlay .barcode-scanner-panel {
   max-width: 500px;
   width: calc(100% - 2rem);
 }
 
-/* Stack label over input, like Add Item */
-#recipe-import-overlay .barcode-input-row label {
+/* Same label styling */
+#recipe-import-overlay .barcode-input-row label,
+#recipe-search-overlay .barcode-input-row label {
   display: block;
   font-size: 0.95rem;
 }
 
-/* Big full-width URL field */
-#recipe-import-overlay .barcode-input-row input[type="url"] {
+/* Same text field for BOTH dialogs (URL + search) */
+#recipe-import-overlay .barcode-input-row input,
+#recipe-search-overlay .barcode-input-row input {
   width: 100%;
   box-sizing: border-box;
   margin-top: 0.45rem;
@@ -1222,6 +1227,13 @@ button.secondary:active {
   font-size: 1rem;
 }
 
+/* Same focus look for both */
+#recipe-import-overlay .barcode-input-row input:focus,
+#recipe-search-overlay .barcode-input-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(77, 166, 255, 0.55);
+  background: #121212;
+}
 /* -------- Meal plan layout -------- */
 
 .mealplan-header-row {
@@ -1614,5 +1626,6 @@ button.ios-green-button {
   user-select: none;
   -webkit-user-select: none;
 }
+
 
 }

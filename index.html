@@ -2621,44 +2621,37 @@ function openRecipeImportDialog() {
   row.appendChild(label);
   panel.appendChild(row);
 
-  // Little "or" divider
-  const orText = document.createElement("p");
-  orText.textContent = "or";
-  orText.style.textAlign = "center";
-  orText.style.margin = "0.5rem 0 0.25rem";
-  orText.style.fontSize = "0.8rem";
-  orText.style.color = "var(--text-muted)";
-  panel.appendChild(orText);
-
-  // "Search BBC recipes" button (opens separate dialog)
-  const searchRow = document.createElement("div");
-  searchRow.className = "barcode-scanner-actions";
-
-  const searchBtn = document.createElement("button");
-  searchBtn.type = "button";
-  searchBtn.textContent = "Search BBC recipes";
-  searchBtn.className = "primary-pill";
-
-  searchBtn.addEventListener("click", () => {
-    closeRecipeImportDialog();
-    openRecipeSearchDialog();        // ⬅️ we’ll define this next
-  });
-
-  searchRow.appendChild(searchBtn);
-  panel.appendChild(searchRow);
-
-  // Buttons (Cancel + Import from URL)
+  // Buttons (Cancel + Search + Import)
   const btnRow = document.createElement("div");
   btnRow.className = "barcode-scanner-actions";
 
+  // Cancel (red pill)
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "inventory-delete-button"; // red pill
+  cancelBtn.className = "inventory-delete-button";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => {
     closeRecipeImportDialog();
   });
+  btnRow.appendChild(cancelBtn);
 
+  // 🔍 Search BBC recipes (middle button)
+  const searchBtn = document.createElement("button");
+  searchBtn.type = "button";
+  searchBtn.textContent = "Back to Search";
+  searchBtn.className = "secondary"; // same style as other mid-dialog buttons
+
+  searchBtn.addEventListener("click", () => {
+    closeRecipeImportDialog();
+    if (typeof openRecipeSearchDialog === "function") {
+      openRecipeSearchDialog();
+    } else {
+      alert("Search dialog is not available.");
+    }
+  });
+  btnRow.appendChild(searchBtn);
+
+  // Import from URL (green pill)
   const importBtn = document.createElement("button");
   importBtn.type = "button";
   importBtn.textContent = "Import from URL";
@@ -2674,7 +2667,7 @@ function openRecipeImportDialog() {
 
     try {
       console.log("Importing from URL:", url);
-      // ⬇️ this should already exist and open your nice preview dialog
+
       if (typeof importRecipeFromUrl === "function") {
         await importRecipeFromUrl(url);
       } else {
@@ -2689,9 +2682,8 @@ function openRecipeImportDialog() {
       alert("Could not import recipe from that URL.");
     }
   });
-
-  btnRow.appendChild(cancelBtn);
   btnRow.appendChild(importBtn);
+
   panel.appendChild(btnRow);
 
   overlay.appendChild(panel);
@@ -2727,20 +2719,21 @@ function openRecipeSearchDialog() {
   const panel = document.createElement("div");
   panel.className = "barcode-scanner-panel add-item-panel";
 
+  // ---- Title (same style as Import dialog) ----
   const title = document.createElement("h2");
   title.textContent = "Search BBC recipes";
   panel.appendChild(title);
 
-  // --- Search input row ---
+  // ---- Input row (identical structure to Import dialog) ----
   const row = document.createElement("div");
   row.className = "barcode-input-row";
 
   const label = document.createElement("label");
-  label.textContent = "Search term";
+  label.textContent = "Recipe name";
   label.style.display = "block";
 
   const input = document.createElement("input");
-  input.type = "text";
+  input.type = "text";               // keep as text so "Lasagne" is valid
   input.placeholder = "e.g. Lasagne";
   input.autocomplete = "off";
 
@@ -2748,23 +2741,11 @@ function openRecipeSearchDialog() {
   row.appendChild(label);
   panel.appendChild(row);
 
-  // Status text: "Type a word and tap Search"
-  const status = document.createElement("p");
-  status.style.fontSize = "0.8rem";
-  status.style.margin = "0.4rem 0 0";
-  status.style.color = "var(--text-muted)";
-  status.textContent = "Type a recipe name and tap Search.";
-  panel.appendChild(status);
-
-  // Results container
-  const resultsWrap = document.createElement("div");
-  resultsWrap.className = "recipe-search-results";
-  panel.appendChild(resultsWrap);
-
-  // --- Buttons row ---
+  // ---- Buttons row (Cancel · Paste URL instead · Search) ----
   const btnRow = document.createElement("div");
   btnRow.className = "barcode-scanner-actions";
 
+  // Cancel (red pill)
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
   cancelBtn.className = "inventory-delete-button";
@@ -2772,46 +2753,73 @@ function openRecipeSearchDialog() {
   cancelBtn.addEventListener("click", () => {
     closeRecipeSearchDialog();
   });
+  btnRow.appendChild(cancelBtn);
 
+  // Middle pill – go to URL import dialog
+  const urlBtn = document.createElement("button");
+  urlBtn.type = "button";
+  urlBtn.className = "secondary";
+  urlBtn.textContent = "Paste URL instead";
+  urlBtn.addEventListener("click", () => {
+    closeRecipeSearchDialog();
+    if (typeof openRecipeImportDialog === "function") {
+      openRecipeImportDialog();
+    } else {
+      alert("URL import dialog is not available.");
+    }
+  });
+  btnRow.appendChild(urlBtn);
+
+  // Green Search button (same class as Import from URL)
   const searchBtn = document.createElement("button");
   searchBtn.type = "button";
   searchBtn.textContent = "Search";
   searchBtn.className = "ios-green-button";
-
-  btnRow.appendChild(cancelBtn);
   btnRow.appendChild(searchBtn);
+
   panel.appendChild(btnRow);
+
+  // ✅ Results sit *under* the buttons, so the layout above
+  // (title → field → buttons) matches Import dialog exactly.
+  const resultsWrap = document.createElement("div");
+  resultsWrap.className = "recipe-search-results";
+  panel.appendChild(resultsWrap);
 
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
   requestAnimationFrame(() => panel.classList.add("visible"));
 
-  // Helper to actually run the search
-    async function runSearch() {
+  // ---- Helper to show status text inside results area ----
+  function setStatus(text, isError = false) {
+    resultsWrap.innerHTML = "";
+    if (!text) return;
+    const p = document.createElement("p");
+    p.textContent = text;
+    p.style.fontSize = "0.8rem";
+    p.style.margin = "0.4rem 0 0";
+    p.style.color = isError ? "var(--danger)" : "var(--text-muted)";
+    resultsWrap.appendChild(p);
+  }
+
+  // ---- Actually run search ----
+  async function runSearch() {
     const q = input.value.trim();
     if (!q) {
-      status.textContent = "Please enter a search term.";
-      status.classList.add("error");
+      setStatus("Please enter a search term.", true);
       return;
     }
 
-    status.textContent = "Searching BBC Food…";
-    status.classList.remove("error");
-    resultsWrap.innerHTML = "";
+    setStatus("Searching BBC Food…", false);
 
     try {
-      // ✅ Use the same global constant as your other code
       if (typeof WORKER_BASE !== "string" || !WORKER_BASE) {
         console.error("WORKER_BASE is not defined or not a string");
-        status.textContent = "Worker base URL is not configured.";
-        status.classList.add("error");
+        setStatus("Worker base URL is not configured.", true);
         return;
       }
 
-      const endpoint =
-        WORKER_BASE + "?search=" + encodeURIComponent(q);
-
+      const endpoint = WORKER_BASE + "?search=" + encodeURIComponent(q);
       const res = await fetch(endpoint);
       if (!res.ok) {
         throw new Error("Search worker returned " + res.status);
@@ -2819,73 +2827,66 @@ function openRecipeSearchDialog() {
 
       const data = await res.json();
       if (!data.ok || !Array.isArray(data.results) || !data.results.length) {
-        status.textContent = "No recipes found for that search.";
-        status.classList.add("error");
+        setStatus("No recipes found for that search.", true);
         return;
       }
 
-      status.textContent = `Found ${data.results.length} recipe(s).`;
-      status.classList.remove("error");
+      // Clear status and render result cards
+      resultsWrap.innerHTML = "";
 
-   // Render results as big cards
-resultsWrap.innerHTML = "";
+      data.results.forEach((r) => {
+        const rawTitle = r.title || "";
+        const rawMeta  = r.servingsText || "";
 
-data.results.forEach((r) => {
-  const rawTitle = r.title || "";
-  const rawMeta  = r.servingsText || "";
+        const decodedTitle = rawTitle
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/\s+/g, " ")
+          .trim();
 
-  const decodedTitle = rawTitle
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\s+/g, " ")
-    .trim();
+        const decodedMeta = rawMeta
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/\s+/g, " ")
+          .trim();
 
-  const decodedMeta = rawMeta
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\s+/g, " ")
-    .trim();
+        // CLEAN TITLE
+        let cleanTitle = decodedTitle;
 
-  // ---- CLEAN TITLE ----
-  let cleanTitle = decodedTitle;
+        const titleMatch = decodedTitle.match(
+          /^(.*?)(?:\s+Serves\s+\d+(?:-\d+)?)/i
+        );
+        if (titleMatch) {
+          cleanTitle = titleMatch[1].trim();
+        }
 
-  // Remove "Serves X" if BBC stuffed it inside the title
-  const titleMatch = decodedTitle.match(/^(.*?)(?:\s+Serves\s+\d+(?:-\d+)?)/i);
-  if (titleMatch) {
-    cleanTitle = titleMatch[1].trim();
-  }
+        cleanTitle = cleanTitle
+          .replace(/\s+by\s+[\w\s'.-]+$/i, "")   // strip "by Someone"
+          .replace(/\s+Main Course$/i, "")       // strip "Main Course"
+          .trim();
 
-  // Remove "... By Someone Name"
-  cleanTitle = cleanTitle.replace(/\s+by\s+[\w\s'.-]+$/i, "").trim();
+        // SERVES X
+        let shortServings = "";
+        const serveMatch = (decodedMeta || decodedTitle)
+          .match(/Serves\s+(\d+(?:-\d+)?)/i);
+        if (serveMatch) {
+          shortServings = `Serves ${serveMatch[1]}`;
+        }
 
-  // Remove trailing "Main Course"
-  cleanTitle = cleanTitle.replace(/\s+Main Course$/i, "").trim();
+        const item = {
+          title: cleanTitle,
+          servingsText: shortServings,
+          image: r.imageUrl || "",
+          url: r.url
+        };
 
-  // ---- SERVINGS ----
-  let shortServings = "";
-  const serveMatch = (decodedMeta || decodedTitle)
-    .match(/Serves\s+(\d+(?:-\d+)?)/i);
-
-  if (serveMatch) {
-    shortServings = `Serves ${serveMatch[1]}`;
-  }
-
-  // ---- ITEM OBJ ----
-  const item = {
-    title: cleanTitle,
-    servingsText: shortServings,
-    image: r.imageUrl || "",
-    url: r.url
-  };
-
-  const card = makeSearchResultCard(item);
-  resultsWrap.appendChild(card);
-});
+        const card = makeSearchResultCard(item);
+        resultsWrap.appendChild(card);
+      });
 
     } catch (err) {
       console.error("Search failed:", err);
-      status.textContent = "Search failed. Please try again.";
-      status.classList.add("error");
+      setStatus("Search failed. Please try again.", true);
     }
   }
 
@@ -2903,7 +2904,6 @@ data.results.forEach((r) => {
     if (input.focus) input.focus({ preventScroll: true });
   }, 40);
 }
-
 function closeRecipeSearchDialog() {
   const overlay = document.getElementById("recipe-search-overlay");
   if (!overlay) return;
@@ -5896,7 +5896,7 @@ function showPage(pageId) {
 
   if (importRecipeBtn) {
     importRecipeBtn.addEventListener("click", () => {
-      openRecipeImportDialog();
+      openRecipeSearchDialog();
     });
   }
 
