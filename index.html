@@ -429,6 +429,76 @@ function normaliseUnit(unit) {
   return u; // fallback – unknown unit, leave as-is
 }
 
+// === SHOPPING NAME NORMALISATION =====================
+// Use this to merge "Pork Sausages" + "Sausages", or
+// "White Onion" + "Onion", etc, into a single shopping line.
+
+const SHOPPING_NAME_NORMALISATION = {
+  // Onions
+  "white onion": "onion",
+  "yellow onion": "onion",
+  "brown onion": "onion",
+  "onions": "onion",
+
+  // Potatoes
+  "maris piper potatoes": "potatoes",
+  "new potatoes": "potatoes",
+  "baby potatoes": "potatoes",
+  "red potatoes": "potatoes",
+
+  // Sausages
+  "pork sausage": "sausages",
+  "pork sausages": "sausages",
+  "cumberland sausages": "sausages",
+
+  // Mince
+  "minced beef": "beef mince",
+  "lean beef mince": "beef mince",
+  "steak mince": "beef mince",
+
+  // Tomatoes (tinned)
+  "chopped tomatoes": "tinned tomatoes",
+  "plum tomatoes": "tinned tomatoes",
+  "tinned tomatoes": "tinned tomatoes",
+
+  // Herbs
+  "fresh basil": "basil",
+  "basil leaves": "basil",
+  "fresh coriander": "coriander",
+  "coriander leaves": "coriander",
+};
+
+function normaliseShoppingName(rawName) {
+  if (!rawName) return "";
+  const lower = rawName.toLowerCase().trim();
+
+  // 1) Exact mapping first (full control)
+  if (Object.prototype.hasOwnProperty.call(SHOPPING_NAME_NORMALISATION, lower)) {
+    return SHOPPING_NAME_NORMALISATION[lower];
+  }
+
+  // 2) Optional generic rules (keep very conservative)
+  //    You can comment any of these out if you don't like them.
+
+  // Merge generic sausages (but NOT things you've explicitly protected)
+  if (lower.endsWith(" sausages")) {
+    return "sausages";
+  }
+
+  // Merge generic potatoes to "potatoes"
+  if (lower.endsWith(" potatoes")) {
+    return "potatoes";
+  }
+
+  // Generic onion → onion, but "red onion" stays as-is
+  if (lower === "onion" || lower === "onions") {
+    return "onion";
+  }
+
+  // Default: return as-is (lowercased)
+  return lower;
+}
+
 function pluraliseUnit(rawUnit, quantity) {
   const unit = (rawUnit || "").toLowerCase();
   const q = Number(quantity);
@@ -546,6 +616,35 @@ function splitIngredientsByStaples(ingredients) {
 
 // ========= INGREDIENT PARSING ==============
     
+function tidyIngredientDisplayName(rawName) {
+  if (!rawName) return "";
+
+  // Normalise spaces
+  let n = String(rawName).trim().replace(/\s+/g, " ");
+  const lower = n.toLowerCase();
+
+  // --- Floury potato → Potatoes ---
+  if (/\bfloury\s+potato(?:es)?\b/.test(lower)) {
+    n = "Potatoes";
+  }
+
+  // --- Anything ending "... spice mix" → "... Seasoning" ---
+  // e.g. "Cajun Spice Mix"  -> "Cajun Seasoning"
+  //      "Casserole spice mix" -> "Casserole Seasoning"
+  const spiceMixMatch = n.match(/^(.*)\bspice\s+mix\b$/i);
+  if (spiceMixMatch) {
+    const prefix = spiceMixMatch[1].trim();   // "Cajun", "Casserole", etc.
+    n = prefix ? `${prefix} Seasoning` : "Seasoning";
+  }
+
+  // Final tidy casing using your existing helper
+  if (typeof titleCase === "function") {
+    n = titleCase(n);
+  }
+
+  return n;
+}
+
 function parseBbcIngredient(rawLine, ingredientNames) {
   const line = (rawLine || "").trim();
   if (!line) return null;
@@ -580,16 +679,21 @@ function parseBbcIngredient(rawLine, ingredientNames) {
     return parseIngredientLine(normLine);
   }
 
-  const before = normLine.slice(0, bestIndex).trim(); // text before name
-  const after  = normLine.slice(bestIndex + bestName.length).trim(); // text after
+  const before = normLine.slice(0, bestIndex).trim();                // text before name
+  const after  = normLine.slice(bestIndex + bestName.length).trim(); // text after name
 
   let quantity = 0;
   let unit = "";
 
   // Only care about the *first* metric – drop anything after a slash
+  // BUT keep real fractions like "1/2"
   let qtyText = before;
   if (qtyText.includes("/")) {
-    qtyText = qtyText.split("/")[0].trim(); // "1.2 l/2 pints" -> "1.2 l"
+    const parts = qtyText.split("/");
+    // If it looks like "1/2" keep it, if it looks like "1.2 l/2 pints" drop after slash
+    if (!(parts.length === 2 && /\d/.test(parts[0]) && /\d/.test(parts[1]))) {
+      qtyText = parts[0].trim();
+    }
   }
 
   // --- 2. Pattern: "2 x 400g tins" -> 800 g ---
@@ -628,13 +732,26 @@ function parseBbcIngredient(rawLine, ingredientNames) {
         unit = "ml";
       }
     } else {
-      // --- 4. "number unit" with a space, like "2 tbsp" or "1.2 l" ---
-      const numMatch  = qtyText.match(/(\d+(?:\.\d+)?)/);
-      const unitMatch = qtyText.match(/\b(g|kg|ml|l|tsp|tbsp)\b/i);
+      // --- 4. Fractions / normal "number unit" with a space ---
+      let numMatch = null;
 
-      if (numMatch) {
-        quantity = parseFloat(numMatch[1]);
+      // 4a) Try leading fraction like "½ heaped tsp", "1 1/2 tbsp", etc.
+      const fractionQty = typeof parseLeadingFractionQuantity === "function"
+        ? parseLeadingFractionQuantity(qtyText)
+        : null;
+
+      if (fractionQty != null) {
+        quantity = fractionQty;              // <-- this is where "½" becomes 0.5
+      } else {
+        // 4b) Fallback: plain number
+        numMatch = qtyText.match(/(\d+(?:\.\d+)?)/);
+        if (numMatch) {
+          quantity = parseFloat(numMatch[1]);
+        }
       }
+
+      // Find unit word (tsp, tbsp, g, ml, etc.)
+      const unitMatch = qtyText.match(/\b(g|kg|ml|l|tsp|tbsp)\b/i);
       if (unitMatch) {
         unit = unitMatch[1].toLowerCase();
         if (unit === "kg") {
@@ -655,7 +772,7 @@ function parseBbcIngredient(rawLine, ingredientNames) {
           "packet", "packets",
           "pack", "packs",
           "bottle", "bottles",
-          "sprig", "sprigs"
+          "sprig", "sprigs",
         ];
 
         if (after) {
@@ -669,21 +786,35 @@ function parseBbcIngredient(rawLine, ingredientNames) {
       }
 
       // No number at all (e.g. salt/pepper line) → assume 1
-      if (!numMatch) {
+      if (fractionQty == null && !numMatch) {
         quantity = 1;
       }
     }
   }
 
+  // --- if BBC-specific parsing failed for qty/unit, fall back to generic ---
+  if ((!quantity || quantity <= 0) && !unit) {
+    const generic = parseIngredientLine(normLine);
+    if (generic) {
+      quantity = generic.quantity;
+      unit     = generic.unit;
+    }
+  }
+
+  // --- NEATEN THE NAME ONLY (does NOT touch quantity/unit) ---
+  const niceName = tidyIngredientDisplayName
+    ? tidyIngredientDisplayName(bestName)
+    : bestName;
+
   return {
-    name: titleCase(bestName),
+    name: tidyIngredientDisplayName(bestName),
     quantity,
     unit,
   };
 }
     
 function parseIngredientLine(line) {
-  let trimmed = line.trim();
+  let trimmed = (line || "").trim();
   if (!trimmed) return null;
 
   // Normalise common long-form units to short ones
@@ -718,7 +849,7 @@ function parseIngredientLine(line) {
     cloves: "cloves",
 
     stick: "stick",
-    sticks: "sticks",
+    sticks: "sticks"
   };
 
   // Words we DON'T want to keep at the start of the ingredient name
@@ -729,11 +860,67 @@ function parseIngredientLine(line) {
     "large", "small", "medium"
   ]);
 
+  // Unicode fraction glyphs (so "½ heaped tsp ..." works)
+  const FRACTION_GLYPHS = {
+    "¼": 1 / 4,
+    "½": 1 / 2,
+    "¾": 3 / 4,
+    "⅐": 1 / 7,
+    "⅑": 1 / 9,
+    "⅒": 1 / 10,
+    "⅓": 1 / 3,
+    "⅔": 2 / 3,
+    "⅕": 1 / 5,
+    "⅖": 2 / 5,
+    "⅗": 3 / 5,
+    "⅘": 4 / 5,
+    "⅙": 1 / 6,
+    "⅚": 5 / 6,
+    "⅛": 1 / 8,
+    "⅜": 3 / 8,
+    "⅝": 5 / 8,
+    "⅞": 7 / 8
+  };
+
   let quantity;
   let unit = "";
   let nameWords = [];
 
   const first = parts[0];
+
+  // ----- A) Leading *Unicode* fraction, e.g. "½ heaped tsp Cajun spice mix"
+  if (Object.prototype.hasOwnProperty.call(FRACTION_GLYPHS, first)) {
+    quantity = FRACTION_GLYPHS[first];
+
+    // Look for unit after optional noise words like "heaped"
+    let idx = 1;
+    while (idx < parts.length && noiseWords.has(parts[idx].toLowerCase())) {
+      idx++;
+    }
+
+    if (idx < parts.length) {
+      let unitClean = parts[idx].toLowerCase().replace(/[^a-z]/g, "");
+      if (unitMap[unitClean]) {
+        unit = unitMap[unitClean];
+        nameWords = parts.slice(idx + 1);
+      } else {
+        nameWords = parts.slice(idx);
+      }
+    }
+
+    // Strip any leftover noise at the very start of the name
+    while (nameWords.length && noiseWords.has(nameWords[0].toLowerCase())) {
+      nameWords.shift();
+    }
+
+    return {
+      name: titleCase(nameWords.join(" ")),
+      quantity,
+      unit
+    };
+  }
+
+  // ----- B) Original logic (numbers and "1/4" style fractions) -----
 
   // 1) Try "inline unit" in first token, e.g. "150ml", "225g"
   const inlineMatch = first.match(/^([\d.]+)([a-zA-Z]+)$/);
@@ -759,15 +946,23 @@ function parseIngredientLine(line) {
       return { name: "", quantity, unit: "" };
     }
 
-    const secondRaw = parts[1].toLowerCase();
-    const unitClean = secondRaw.replace(/[^a-z]/g, ""); // e.g. "l/2" → "l"
+    let secondIdx = 1;
+    let secondRaw = parts[secondIdx].toLowerCase();
+    let unitClean = secondRaw.replace(/[^a-z]/g, ""); // e.g. "l/2" → "l"
+
+    // Skip noise words (e.g. "1 heaped tsp ...")
+    while (noiseWords.has(unitClean) && secondIdx < parts.length - 1) {
+      secondIdx++;
+      secondRaw = parts[secondIdx].toLowerCase();
+      unitClean = secondRaw.replace(/[^a-z]/g, "");
+    }
 
     if (unitMap[unitClean]) {
       unit = unitMap[unitClean];
-      nameWords = parts.slice(2);
+      nameWords = parts.slice(secondIdx + 1);
     } else {
       unit = "";
-      nameWords = parts.slice(1);
+      nameWords = parts.slice(secondIdx);
     }
   }
 
@@ -779,7 +974,7 @@ function parseIngredientLine(line) {
   return {
     name: titleCase(nameWords.join(" ")),
     quantity,
-    unit,
+    unit
   };
 }
 
@@ -3265,13 +3460,22 @@ function openRecipeDetail(recipeId, options = {}) {
         li.appendChild(cookCheckbox);
       }
 
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "ingredient-name";
-      nameSpan.textContent =
-        typeof formatIngredientNameForDetail === "function"
-          ? formatIngredientNameForDetail(ing)
-          : (ing.name || "");
-      li.appendChild(nameSpan);
+     const nameSpan = document.createElement("span");
+nameSpan.className = "ingredient-name";
+
+// First let your existing formatter run (if present)
+let rawName =
+  typeof formatIngredientNameForDetail === "function"
+    ? formatIngredientNameForDetail(ing)
+    : (ing.name || "");
+
+// Then tidy it for display (Potatoes, Cajun Seasoning, etc.)
+if (typeof tidyIngredientDisplayName === "function") {
+  rawName = tidyIngredientDisplayName(rawName);
+}
+
+nameSpan.textContent = rawName;
+li.appendChild(nameSpan);
 
       let q = ing.quantity;
       let u = ing.unit || "";
@@ -5090,20 +5294,33 @@ function generateShoppingList() {
           return;
         }
 
-        const keyName = (ing.name || "").toLowerCase();
+        // 🔹 NEW: collapse names like "pork sausages" → "sausages",
+        // "white onion" → "onion", etc.
+        const shoppingKey = normaliseShoppingName(ing.name);
+        if (!shoppingKey) return;
+
         const ingUnit = normaliseUnit(ing.unit || "");
 
-        // Reuse existing baseUnit for this ingredient name if we have one
-        const existing = required[keyName];
+        // Reuse existing baseUnit for this shopping name if we have one
+        const existing = required[shoppingKey];
         const baseUnit = existing
           ? existing.baseUnit
           : (typeof chooseBaseUnit === "function"
               ? chooseBaseUnit(ingUnit, ing.name)
               : ingUnit);
 
-        if (!required[keyName]) {
-          required[keyName] = {
-            name: ing.name,
+        if (!required[shoppingKey]) {
+          // Nice display name – use titleCase if you have it
+          const displayName =
+            typeof titleCase === "function"
+              ? titleCase(shoppingKey)
+              : shoppingKey
+                  .split(" ")
+                  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                  .join(" ");
+
+          required[shoppingKey] = {
+            name: displayName,  // what appears in the table
             quantityBase: 0,
             baseUnit,
           };
@@ -5113,10 +5330,10 @@ function generateShoppingList() {
 
         const qtyInBase =
           typeof convertToUnit === "function"
-            ? convertToUnit(qtyScaled, ingUnit, required[keyName].baseUnit)
+            ? convertToUnit(qtyScaled, ingUnit, required[shoppingKey].baseUnit)
             : qtyScaled;
 
-        required[keyName].quantityBase += qtyInBase;
+        required[shoppingKey].quantityBase += qtyInBase;
       });
     });
   });
@@ -5133,15 +5350,18 @@ function generateShoppingList() {
     return (Math.round(n * 100) / 100).toString();
   }
 
-  Object.keys(required).forEach((keyName) => {
-    const need = required[keyName];
+  Object.keys(required).forEach((shoppingKey) => {
+    const need = required[shoppingKey];
     const baseUnit = need.baseUnit;
     let requiredBase = need.quantityBase;
 
-    // How much we already have (in same base unit)
+    // How much we already have (in same base unit),
+    // using the SAME normalised name for inventory.
     let invQtyBase = 0;
     const invItem = inventory.find(
-      (i) => i.name.toLowerCase() === keyName
+      (i) =>
+        i.name &&
+        normaliseShoppingName(i.name) === shoppingKey
     );
 
     if (invItem && baseUnit && typeof convertToUnit === "function") {
@@ -5191,12 +5411,12 @@ function generateShoppingList() {
 
     // Build a nice string, with litres spelt out and
     // bottle/sprig/etc pluralised via pluraliseUnit()
-   const q = displayQty;
-const u = normaliseUnit(displayUnit || "");
-const niceQty = formatNumberNice(q);
-const unitLabel = pluraliseUnit(u, q);
+    const q = displayQty;
+    const u = normaliseUnit(displayUnit || "");
+    const niceQty = formatNumberNice(q);
+    const unitLabel = pluraliseUnit(u, q);
 
-let qtyStr = unitLabel ? `${niceQty} ${unitLabel}` : niceQty;
+    let qtyStr = unitLabel ? `${niceQty} ${unitLabel}` : niceQty;
 
     // Convert tiny kg/L back to g/ml in the final string if needed
     let fixedQtyStr = qtyStr;
@@ -5222,7 +5442,7 @@ let qtyStr = unitLabel ? `${niceQty} ${unitLabel}` : niceQty;
 
     // Table row
     const tr = document.createElement("tr");
-    tr.dataset.itemName = need.name;
+    tr.dataset.itemName = need.name;           // display label
     tr.dataset.buyQty = String(displayQty);
     tr.dataset.buyUnit = displayUnit || "";
 
